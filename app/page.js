@@ -69,7 +69,10 @@ export default function Home() {
         <div className="text-2xl font-bold text-gray-800">
           <i className="fas fa-shield-alt text-blue-600 mr-2"></i> SecureVDR
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
+          <Link href="/documents" className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full font-semibold shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg hover:shadow-blue-500/35 hover:scale-102 transition-all duration-300 flex items-center gap-2">
+            <i className="fas fa-chart-line"></i> Dashboard
+          </Link>
           <a href="/login" className="px-5 py-2 border-2 border-blue-600 text-blue-600 rounded-full font-semibold hover:bg-blue-50 transition-all duration-300">Login</a>
           <Link href="/roles/super_admin/register" className="px-5 py-2 border-2 border-blue-600 text-blue-600 rounded-full font-semibold hover:bg-blue-50 transition-all duration-300">Register</Link>
         </div>
@@ -81,7 +84,7 @@ export default function Home() {
           <h1 className="text-5xl md:text-6xl font-extrabold text-gray-800 leading-tight mb-6">Secure Your Business Data with Smart VDR Platform</h1>
           <p className="text-xl text-gray-600 mb-8">IPO, Due Diligence, Legal Docs — All in One Place. Enterprise-grade security meets intelligent collaboration.</p>
           <div className="flex gap-4">
-            <button className="px-8 py-3 bg-blue-600 text-white rounded-full font-semibold shadow-lg hover:bg-blue-700 transition-all duration-300 flex items-center gap-2">Get Started <i className="fas fa-arrow-right"></i></button>
+            <Link href="/documents" className="px-8 py-3 bg-blue-600 text-white rounded-full font-semibold shadow-lg hover:bg-blue-700 hover:shadow-xl hover:scale-102 transition-all duration-300 flex items-center gap-2">Get Started <i className="fas fa-arrow-right"></i></Link>
             <button className="px-8 py-3 border-2 border-blue-600 text-blue-600 rounded-full font-semibold hover:bg-blue-50 transition-all duration-300 flex items-center gap-2">Request Demo <i className="fas fa-play"></i></button>
           </div>
         </div>

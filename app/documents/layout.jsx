@@ -1,4 +1,5 @@
 import DocumentsLayoutWrapper from '@/components/documents/DocumentsLayoutWrapper';
+import MainSidebar from '@/components/MainSidebar';
 
 export const metadata = {
     title: 'Documents - Virtual Data Room',
@@ -8,7 +9,7 @@ export const metadata = {
 export default function DocumentsLayout({ children }) {
     return (
         <div className="h-screen w-full bg-white flex overflow-hidden font-sans">
-            {/* Tier 2 Sidebar & Main Content Wrapper */}
+            <MainSidebar />
             <DocumentsLayoutWrapper>
                 {children}
             </DocumentsLayoutWrapper>

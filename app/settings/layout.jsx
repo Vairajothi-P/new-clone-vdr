@@ -1,4 +1,5 @@
 import SettingsLayoutWrapper from '@/components/settings/SettingsLayoutWrapper';
+import MainSidebar from '@/components/MainSidebar';
 
 export const metadata = {
   title: 'Settings - Virtual Data Room',
@@ -8,7 +9,7 @@ export const metadata = {
 export default function SettingsLayout({ children }) {
   return (
     <div className="h-screen w-full bg-white flex overflow-hidden font-sans">
-      {/* Tier 2 Sidebar & Main Content Wrapper */}
+      <MainSidebar />
       <SettingsLayoutWrapper>
         {children}
       </SettingsLayoutWrapper>
