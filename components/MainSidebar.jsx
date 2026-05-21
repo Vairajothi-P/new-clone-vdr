@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FaFolder, FaCog, FaShieldAlt, FaHome } from 'react-icons/fa';
+import { FiFolder, FiSettings, FiShield, FiHome } from 'react-icons/fi';
 
 export default function MainSidebar() {
   const pathname = usePathname();
@@ -15,7 +15,7 @@ export default function MainSidebar() {
       <div className="flex flex-col items-center gap-8 w-full">
         <Link href="/" className="group relative flex items-center justify-center">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-gray-900 to-slate-800 flex items-center justify-center shadow-md shadow-gray-950/10 group-hover:scale-105 group-hover:rotate-3 transition-all duration-300">
-            <FaShieldAlt className="text-white text-lg" />
+            <FiShield className="text-white text-lg" strokeWidth={2.8} />
           </div>
           <span className="absolute left-16 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
             SecureVDR Home
@@ -31,10 +31,10 @@ export default function MainSidebar() {
               <div className="absolute left-0 w-1 h-8 bg-gray-900 rounded-r-md" />
             )}
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isDocumentsActive
-                ? 'bg-gray-100 text-gray-900 shadow-inner font-semibold'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              ? 'bg-gray-100 text-gray-900 shadow-inner font-semibold'
+              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
               }`}>
-              <FaFolder className="text-lg md:text-xl transition-transform duration-300 group-hover:scale-110" />
+              <FiFolder className="text-lg md:text-xl transition-transform duration-300 group-hover:scale-110" strokeWidth={2.8} />
             </div>
             <span className="absolute left-16 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
               Documents Vault
@@ -49,10 +49,10 @@ export default function MainSidebar() {
             )}
 
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isSettingsActive
-                ? 'bg-gray-100 text-gray-900 shadow-inner font-semibold'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              ? 'bg-gray-100 text-gray-900 shadow-inner font-semibold'
+              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
               }`}>
-              <FaCog className="text-lg md:text-xl transition-transform duration-300 group-hover:scale-110" />
+              <FiSettings className="text-lg md:text-xl transition-transform duration-300 group-hover:scale-110" strokeWidth={2.8} />
             </div>
             <span className="absolute left-16 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
               VDR Settings
@@ -66,7 +66,7 @@ export default function MainSidebar() {
           href="/"
           className="group relative w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-all duration-300"
         >
-          <FaHome className="text-lg" />
+          <FiHome className="text-lg" strokeWidth={2.8} />
           <span className="absolute left-16 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
             Exit to Landing
           </span>

@@ -89,7 +89,7 @@ function DocumentsPageContent() {
             downloadsCount: files.filter(f => downloadedIds.has(f.id) && !deletedIds.has(f.id)).length,
             trashCount: files.filter(f => deletedIds.has(f.id)).length
         };
-        
+
         const event = new CustomEvent('vdr-state-update', { detail });
         window.dispatchEvent(event);
     }, [files, bookmarkedIds, downloadedIds, deletedIds]);
@@ -109,7 +109,7 @@ function DocumentsPageContent() {
         };
 
         window.addEventListener('vdr-state-request', handleRequest);
-        
+
         // Dispatch immediately in case sidebar is already mounted
         handleRequest();
 
@@ -134,9 +134,13 @@ function DocumentsPageContent() {
 
     // QnA States
     const [activeRightTab, setActiveRightTab] = useState('details'); // 'details' or 'qna'
+    const [isRightPaneOpen, setIsRightPaneOpen] = useState(true);
+    const [isInspectorExpanded, setIsInspectorExpanded] = useState(true);
+    const [isQnaExpanded, setIsQnaExpanded] = useState(true);
     const [qnaThreads, setQnaThreads] = useState([
         {
             id: 'thread-1',
+            fileId: '4', // VDR-Shareholders-Agreement.pdf
             subject: 'Shareholder Signatures Verification',
             category: 'Legal',
             priority: 'HIGH',
@@ -149,6 +153,7 @@ function DocumentsPageContent() {
         },
         {
             id: 'thread-2',
+            fileId: '201', // Q1 Balance Sheets Audited.xlsx
             subject: 'Q1 Balance Sheet Formulas Audit',
             category: 'Financial',
             priority: 'MEDIUM',
@@ -167,6 +172,32 @@ function DocumentsPageContent() {
     const [newQuestionText, setNewQuestionText] = useState('');
     const [qnaChatInput, setQnaChatInput] = useState('');
     const [isAdminTyping, setIsAdminTyping] = useState(false);
+
+    // Compute active selected file from selectedIds
+    const selectedFile = useMemo(() => {
+        if (selectedIds.size === 1) {
+            const singleId = Array.from(selectedIds)[0];
+            const found = files.find(f => f.id === singleId);
+            return found && found.type !== 'folder' ? found : null;
+        }
+        return null;
+    }, [selectedIds, files]);
+
+    // Automatically open the QnA portal and reset active thread view when a file is selected
+    useEffect(() => {
+        if (selectedFile) {
+            setIsRightPaneOpen(true);
+            setSelectedThreadId(null);
+        }
+    }, [selectedFile]);
+
+    // Filter QnA threads for the selected file
+    const filteredQnaThreads = useMemo(() => {
+        if (selectedFile) {
+            return qnaThreads.filter(t => t.fileId === selectedFile.id);
+        }
+        return [];
+    }, [qnaThreads, selectedFile]);
 
     // Multi-File Upload Queue System States
     const [uploadQueue, setUploadQueue] = useState([]);
@@ -405,7 +436,7 @@ function DocumentsPageContent() {
         });
 
         setFiles(files.filter(f => !idsToDestroy.has(f.id)));
-        
+
         const newDeleted = new Set(deletedIds);
         const newBookmarked = new Set(bookmarkedIds);
         const newDownloaded = new Set(downloadedIds);
@@ -426,7 +457,7 @@ function DocumentsPageContent() {
     const handleRestoreSelected = () => {
         if (selectedIds.size === 0) return;
         const newDeleted = new Set(deletedIds);
-        
+
         const getAllChildrenIds = (parentId) => {
             files.filter(f => f.parentId === parentId).forEach(child => {
                 newDeleted.delete(child.id);
@@ -442,7 +473,7 @@ function DocumentsPageContent() {
             if (item && item.type === 'folder') {
                 getAllChildrenIds(id);
             }
-            
+
             // Also restore parents if they were deleted
             let parentId = item?.parentId;
             while (parentId) {
@@ -458,7 +489,7 @@ function DocumentsPageContent() {
 
     const handleEmptyTrash = () => {
         setFiles(files.filter(f => !deletedIds.has(f.id)));
-        
+
         const newBookmarked = new Set(bookmarkedIds);
         const newDownloaded = new Set(downloadedIds);
 
@@ -645,6 +676,7 @@ INTEGRITY LOCK STATUS: SECURE AND SEALED
 
         const newThread = {
             id: `thread-${Date.now()}`,
+            fileId: selectedFile?.id || null,
             subject: newQuestionSubject,
             category: newQuestionCategory,
             priority: newQuestionPriority,
@@ -794,56 +826,88 @@ INTEGRITY LOCK STATUS: SECURE AND SEALED
 
                 {/* Breadcrumb or View Header */}
                 {currentView === 'files' || currentView === 'upload' ? (
-                    <div className="flex items-center gap-2 text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-5 select-none">
-                        <span onClick={() => setCurrentFolderId(null)} className="hover:text-slate-800 hover:underline cursor-pointer transition-colors duration-200 flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-                            home
-                        </span>
-                        <span className="text-slate-300">/</span>
-                        {breadcrumbPath.map((item, idx) => {
-                            const isLast = idx === breadcrumbPath.length - 1;
-                            return (
-                                <span key={item.id} className="flex items-center gap-2">
-                                    <span
-                                        onClick={() => !isLast && setCurrentFolderId(item.id)}
-                                        className={`transition-colors duration-200 ${isLast
-                                            ? 'text-slate-800 font-black'
-                                            : 'hover:text-slate-800 hover:underline cursor-pointer'
-                                            }`}
-                                    >
-                                        {item.name}
+                    <div className="flex items-center justify-between mb-5 select-none w-full gap-4">
+                        <div className="flex items-center gap-2 text-[15px] text-black font-bold uppercase">
+                            Files Management
+                            {breadcrumbPath.map((item, idx) => {
+                                const isLast = idx === breadcrumbPath.length - 1;
+                                return (
+                                    <span key={item.id} className="flex items-center gap-2">
+                                        <span
+                                            onClick={() => !isLast && setCurrentFolderId(item.id)}
+                                            className={`transition-colors duration-200 ${isLast
+                                                ? 'text-slate-800 font-black'
+                                                : 'hover:text-slate-800 hover:underline cursor-pointer'
+                                                }`}
+                                        >
+                                            {item.name}
+                                        </span>
+                                        {!isLast && <span className="text-slate-300">/</span>}
                                     </span>
-                                    {!isLast && <span className="text-slate-300">/</span>}
-                                </span>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
+
+                        {/* Expander Button */}
+                        <button
+                            onClick={() => {
+                                setIsRightPaneOpen(!isRightPaneOpen);
+                                if (!isRightPaneOpen) {
+                                    setIsQnaExpanded(true);
+                                }
+                            }}
+                            className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-[11.5px] font-bold rounded-xl shadow-sm transition-all duration-300 active:scale-[0.98] select-none cursor-pointer"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform duration-300 ${isRightPaneOpen ? 'rotate-180' : ''}`}>
+                                <polyline points="15 18 9 12 15 6" />
+                            </svg>
+                            {isRightPaneOpen ? 'Hide QnA' : 'Show QnA Portal'}
+                        </button>
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2.5 text-[14px] font-black text-slate-900 tracking-tight mb-5 select-none uppercase">
-                        {currentView === 'bookmarks' && (
-                            <>
-                                <svg className="text-amber-500" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-                                <span>Bookmarks</span>
-                            </>
-                        )}
-                        {currentView === 'recent' && (
-                            <>
-                                <svg className="text-slate-600" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                                <span>Recent Documents</span>
-                            </>
-                        )}
-                        {currentView === 'downloads' && (
-                            <>
-                                <svg className="text-slate-655" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                                <span>Download History</span>
-                            </>
-                        )}
-                        {currentView === 'trash' && (
-                            <>
-                                <svg className="text-rose-500" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                                <span className="text-rose-600">Secure Trash Vault</span>
-                            </>
-                        )}
+                    <div className="flex items-center justify-between mb-5 select-none w-full gap-4">
+                        <div className="flex items-center gap-2.5 text-[14px] font-black text-slate-900 tracking-tight uppercase">
+                            {currentView === 'bookmarks' && (
+                                <>
+                                    <svg className="text-amber-500" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                                    <span>Bookmarks</span>
+                                </>
+                            )}
+                            {currentView === 'recent' && (
+                                <>
+                                    <svg className="text-slate-600" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                                    <span>Recent Documents</span>
+                                </>
+                            )}
+                            {currentView === 'downloads' && (
+                                <>
+                                    <svg className="text-slate-655" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                                    <span>Download History</span>
+                                </>
+                            )}
+                            {currentView === 'trash' && (
+                                <>
+                                    <svg className="text-rose-500" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                                    <span className="text-rose-600">Secure Trash Vault</span>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Expander Button */}
+                        <button
+                            onClick={() => {
+                                setIsRightPaneOpen(!isRightPaneOpen);
+                                if (!isRightPaneOpen) {
+                                    setIsQnaExpanded(true);
+                                }
+                            }}
+                            className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-[11.5px] font-bold rounded-xl shadow-sm transition-all duration-300 active:scale-[0.98] select-none cursor-pointer"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform duration-300 ${isRightPaneOpen ? 'rotate-180' : ''}`}>
+                                <polyline points="15 18 9 12 15 6" />
+                            </svg>
+                            {isRightPaneOpen ? 'Hide QnA' : 'Show QnA Portal'}
+                        </button>
                     </div>
                 )}
 
@@ -1067,15 +1131,15 @@ INTEGRITY LOCK STATUS: SECURE AND SEALED
                                             <div>
                                                 <span className="font-extrabold text-[14px] text-slate-700 block">
                                                     {currentView === 'bookmarks' ? 'No bookmarked items'
-                                                     : currentView === 'trash' ? 'Trash vault is empty'
-                                                     : currentView === 'downloads' ? 'No download history'
-                                                     : 'No files match your query'}
+                                                        : currentView === 'trash' ? 'Trash vault is empty'
+                                                            : currentView === 'downloads' ? 'No download history'
+                                                                : 'No files match your query'}
                                                 </span>
                                                 <p className="text-[12px] text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
                                                     {currentView === 'bookmarks' ? 'Star files or folders to add them here for quick access.'
-                                                     : currentView === 'trash' ? 'Items you delete will be moved here and kept securely in the trash.'
-                                                     : currentView === 'downloads' ? 'Downloaded packages and cryptographic seal lockers will be logged here.'
-                                                     : 'Try adjusting or removing your filter keyword in the directory search input.'}
+                                                        : currentView === 'trash' ? 'Items you delete will be moved here and kept securely in the trash.'
+                                                            : currentView === 'downloads' ? 'Downloaded packages and cryptographic seal lockers will be logged here.'
+                                                                : 'Try adjusting or removing your filter keyword in the directory search input.'}
                                                 </p>
                                             </div>
                                         </div>
@@ -1179,248 +1243,188 @@ INTEGRITY LOCK STATUS: SECURE AND SEALED
 
             </div>
 
-            {/* Right Side Pane: Inspector & QnA Panel */}
-            <aside className="w-80 border-l border-slate-200/60 bg-white h-full hidden lg:flex flex-col select-none shadow-[-5px_0_20px_rgba(0,0,0,0.005)]">
-
-                {/* Panel Tabs */}
-                <div className="flex border-b border-slate-200/60 font-bold text-[10px] uppercase tracking-widest bg-slate-50/50">
-                    <button
-                        onClick={() => setActiveRightTab('details')}
-                        className={`flex-1 py-4 text-center border-b-2 transition-all flex items-center justify-center gap-2 ${activeRightTab === 'details'
-                            ? 'border-slate-800 text-slate-900 bg-white'
-                            : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-white/40'
-                            }`}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                        Audit Inspector
-                    </button>
-                    <button
-                        onClick={() => {
-                            setActiveRightTab('qna');
-                            setSelectedThreadId(null);
-                        }}
-                        className={`flex-1 py-4 text-center border-b-2 transition-all flex items-center justify-center gap-2 relative ${activeRightTab === 'qna'
-                            ? 'border-slate-800 text-slate-900 bg-white'
-                            : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-white/40'
-                            }`}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                        QnA Portal
-                        <span className="absolute top-4 right-3 w-1.5 h-1.5 bg-slate-400 rounded-full"></span>
-                    </button>
-                </div>
-
-                {/* Tab Content */}
-                <div className="flex-1 overflow-y-auto p-5">
-
-                    {activeRightTab === 'details' ? (
-                        <div className="space-y-6">
-
-                            {/* Item Overview */}
-                            <div className="flex flex-col items-center text-center pb-5 border-b border-slate-100">
-                                <div className="w-14 h-14 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-center shadow-sm mb-3">
-                                    {renderFileIcon(activeInspectionItem.type)}
-                                </div>
-                                <h4 className="font-extrabold text-slate-800 leading-snug break-all px-1 text-[13px]">
-                                    {activeInspectionItem.name}
-                                </h4>
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2 px-2.5 py-0.5 bg-slate-100 rounded-md border border-slate-200/50">
-                                    INDEX {activeInspectionItem.index} • {activeInspectionItem.type === 'folder' ? 'Folder' : `${activeInspectionItem.type.toUpperCase()}`}
-                                </span>
-                            </div>
-
-                            {/* Clearance Matrix */}
-                            <div>
-                                <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-widest block mb-3">Access Clearance Matrix</span>
-                                <div className="space-y-2.5 select-none">
-                                    <div className="flex justify-between items-center p-3 bg-slate-50 border border-slate-200/50 rounded-xl hover:border-slate-300 transition-colors duration-200">
-                                        <div>
-                                            <span className="text-[11.5px] font-bold text-slate-700 block">System Operators</span>
-                                            <p className="text-[9px] text-slate-400">Admins</p>
-                                        </div>
-                                        <span className="text-[9.5px] font-bold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded uppercase">Full Access</span>
-                                    </div>
-
-                                    <div className="flex justify-between items-center p-3 bg-slate-50 border border-slate-200/50 rounded-xl hover:border-slate-300 transition-colors duration-200">
-                                        <div>
-                                            <span className="text-[11.5px] font-bold text-slate-700 block">Due Diligence Lead</span>
-                                            <p className="text-[9px] text-slate-400">Auditors</p>
-                                        </div>
-                                        <span className="text-[9.5px] font-bold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded uppercase">Watermarked</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Specifications */}
-                            <div>
-                                <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-widest block mb-2">Vault Specifications</span>
-                                <div className="space-y-3 mt-3.5 bg-slate-50/50 border border-slate-100 p-3.5 rounded-2xl">
-                                    <div className="flex justify-between items-center text-[12px]">
-                                        <span className="text-slate-400 font-semibold">Uploaded By</span>
-                                        <span className="font-bold text-slate-700">{activeInspectionItem.uploadedBy}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-[12px]">
-                                        <span className="text-slate-400 font-semibold">Date Sealed</span>
-                                        <span className="font-bold text-slate-700">{activeInspectionItem.dateCreated}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-[12px]">
-                                        <span className="text-slate-400 font-semibold">Net Size</span>
-                                        <span className="font-bold text-slate-700">{activeInspectionItem.size}</span>
-                                    </div>
-                                </div>
-                            </div>
-
+            {/* Right Side Pane: QnA Panel */}
+            <aside className={`border-l border-slate-200/60 bg-white h-full hidden lg:flex flex-col select-none shadow-[-5px_0_20px_rgba(0,0,0,0.005)] transition-all duration-300 ${isRightPaneOpen ? 'w-[380px]' : 'w-0 !border-l-0 overflow-hidden'}`}>
+                <div className="w-[380px] h-full flex flex-col shrink-0 overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                        <div className="flex items-center gap-2 font-bold text-[12px] uppercase tracking-wider text-slate-700 min-w-0 flex-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-slate-500 shrink-0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                            <span className="truncate">QnA Portal</span>
                         </div>
-                    ) : (
+                    </div>
 
-                        /* QnA board */
-                        <div className="flex flex-col h-full overflow-hidden">
+                    {/* Content */}
+                    <div className="flex-1 overflow-hidden p-5 flex flex-col">
+                        {selectedFile === null ? (
+                            /* Unselected File Fallback */
+                            <div className="flex flex-col items-center justify-center text-center h-full px-4 select-none my-auto">
+                                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-400 mb-5 shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                        <path d="M8 10h8" />
+                                        <path d="M8 14h6" />
+                                    </svg>
+                                </div>
+                                <h4 className="font-extrabold text-[14px] text-slate-800 tracking-tight">Dedicated File Q&A</h4>
+                                <p className="text-[12px] text-slate-400 font-semibold leading-relaxed mt-2 max-w-[260px]">
+                                    Select any file from the vault to view or ask questions in its dedicated Q&A portal.
+                                </p>
+                            </div>
+                        ) : selectedThreadId === null ? (
+                            /* Ticket List for the Selected File */
+                            <div className="flex flex-col h-full space-y-4 overflow-hidden">
+                                <div className="flex items-center justify-between shrink-0">
+                                    <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-widest">QnA Queries board</span>
+                                    <button
+                                        onClick={() => setIsNewQuestionOpen(true)}
+                                        className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white text-[10.5px] font-bold rounded-lg transition-colors duration-200 cursor-pointer"
+                                    >
+                                        + Ask Query
+                                    </button>
+                                </div>
 
-                            {selectedThreadId === null ? (
-                                /* Ticket List */
-                                <div className="flex flex-col h-full space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-widest">QnA Queries board</span>
-                                        <button
-                                            onClick={() => setIsNewQuestionOpen(true)}
-                                            className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white text-[10.5px] font-bold rounded-lg transition-colors duration-200"
-                                        >
-                                            + Ask Query
-                                        </button>
-                                    </div>
+                                {isNewQuestionOpen ? (
+                                    /* Submission Form */
+                                    <form onSubmit={handleNewQuestionSubmit} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 animate-in fade-in duration-300 overflow-y-auto max-h-full">
+                                        <h5 className="font-bold text-[11px] text-slate-800 uppercase tracking-wider">New Query Submission</h5>
+                                        <input
+                                            type="text"
+                                            placeholder="Subject..."
+                                            value={newQuestionSubject}
+                                            onChange={(e) => setNewQuestionSubject(e.target.value)}
+                                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-[12px] focus:outline-none focus:border-slate-450 font-bold"
+                                            required
+                                        />
 
-                                    {isNewQuestionOpen ? (
-                                        /* Submission Form */
-                                        <form onSubmit={handleNewQuestionSubmit} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 animate-in fade-in duration-300">
-                                            <h5 className="font-bold text-[11px] text-slate-800 uppercase tracking-wider">New Query Submission</h5>
-                                            <input
-                                                type="text"
-                                                placeholder="Subject..."
-                                                value={newQuestionSubject}
-                                                onChange={(e) => setNewQuestionSubject(e.target.value)}
-                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-[12px] focus:outline-none focus:border-slate-450 font-bold"
-                                                required
-                                            />
+                                        <div className="flex gap-2">
+                                            <select
+                                                value={newQuestionCategory}
+                                                onChange={(e) => setNewQuestionCategory(e.target.value)}
+                                                className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-[11.5px] font-bold focus:outline-none cursor-pointer"
+                                            >
+                                                <option value="Legal">Legal</option>
+                                                <option value="Financial">Financial</option>
+                                            </select>
+                                            <select
+                                                value={newQuestionPriority}
+                                                onChange={(e) => setNewQuestionPriority(e.target.value)}
+                                                className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-[11.5px] font-bold focus:outline-none cursor-pointer"
+                                            >
+                                                <option value="HIGH">High</option>
+                                                <option value="MEDIUM">Medium</option>
+                                            </select>
+                                        </div>
 
-                                            <div className="flex gap-2">
-                                                <select
-                                                    value={newQuestionCategory}
-                                                    onChange={(e) => setNewQuestionCategory(e.target.value)}
-                                                    className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-[11.5px] font-bold focus:outline-none cursor-pointer"
-                                                >
-                                                    <option value="Legal">Legal</option>
-                                                    <option value="Financial">Financial</option>
-                                                </select>
-                                                <select
-                                                    value={newQuestionPriority}
-                                                    onChange={(e) => setNewQuestionPriority(e.target.value)}
-                                                    className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-[11.5px] font-bold focus:outline-none cursor-pointer"
-                                                >
-                                                    <option value="HIGH">High</option>
-                                                    <option value="MEDIUM">Medium</option>
-                                                </select>
+                                        <textarea
+                                            placeholder="Details..."
+                                            rows="3"
+                                            value={newQuestionText}
+                                            onChange={(e) => setNewQuestionText(e.target.value)}
+                                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-[12px] focus:outline-none focus:border-slate-400"
+                                            required
+                                        ></textarea>
+
+                                        <div className="flex justify-end gap-2 pt-1">
+                                            <button type="button" onClick={() => setIsNewQuestionOpen(false)} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-500 text-[11px] font-bold rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">Cancel</button>
+                                            <button type="submit" className="px-3.5 py-1.5 bg-slate-900 text-white text-[11px] font-bold rounded-lg hover:bg-slate-800 transition-colors cursor-pointer">Submit</button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <div className="flex-1 space-y-2.5 overflow-y-auto pr-1">
+                                        {filteredQnaThreads.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center text-center py-12 px-4 select-none my-auto">
+                                                <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 mb-3.5 shadow-sm">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                                                </div>
+                                                <span className="font-bold text-[12.5px] text-slate-700 block">No active threads</span>
+                                                <p className="text-[11px] text-slate-400 mt-1 max-w-[200px] font-medium leading-relaxed">
+                                                    Ask a query to start an administrative Q&A thread for this file.
+                                                </p>
                                             </div>
-
-                                            <textarea
-                                                placeholder="Details..."
-                                                rows="3"
-                                                value={newQuestionText}
-                                                onChange={(e) => setNewQuestionText(e.target.value)}
-                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-[12px] focus:outline-none focus:border-slate-400"
-                                                required
-                                            ></textarea>
-
-                                            <div className="flex justify-end gap-2 pt-1">
-                                                <button type="button" onClick={() => setIsNewQuestionOpen(false)} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-500 text-[11px] font-bold rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
-                                                <button type="submit" className="px-3.5 py-1.5 bg-slate-900 text-white text-[11px] font-bold rounded-lg hover:bg-slate-800 transition-colors">Submit</button>
-                                            </div>
-                                        </form>
-                                    ) : (
-                                        <div className="flex-1 space-y-2.5 overflow-y-auto pr-1">
-                                            {qnaThreads.map(thread => (
+                                        ) : (
+                                            filteredQnaThreads.map(thread => (
                                                 <div
                                                     key={thread.id}
                                                     onClick={() => setSelectedThreadId(thread.id)}
-                                                    className="p-4 bg-white border border-slate-200 hover:border-slate-455 hover:shadow-md rounded-2xl cursor-pointer transition-all duration-300 space-y-2 group"
+                                                    className="p-3.5 bg-white border border-slate-200 hover:border-slate-400 hover:shadow-sm rounded-xl cursor-pointer transition-all duration-300 space-y-1.5 group"
                                                 >
                                                     <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase tracking-wider">
                                                         <span>{thread.category}</span>
                                                         <span className="text-[8.5px] border border-slate-200 px-1.5 rounded">{thread.priority}</span>
                                                     </div>
-                                                    <h5 className="font-bold text-[12.5px] text-slate-700 group-hover:text-slate-950 truncate transition-colors">
+                                                    <h5 className="font-bold text-[12px] text-slate-700 group-hover:text-slate-950 truncate transition-colors">
                                                         {thread.subject}
                                                     </h5>
-                                                    <div className="flex justify-between items-center text-[9.5px] font-bold text-slate-400 pt-2 border-t border-slate-100">
+                                                    <div className="flex justify-between items-center text-[9.5px] font-bold text-slate-400 pt-1.5 border-t border-slate-100">
                                                         <span>{thread.dateCreated}</span>
                                                         <span className="text-slate-600 font-extrabold uppercase">{thread.status}</span>
                                                     </div>
                                                 </div>
-                                            ))}
+                                            ))
+                                        )}
+                                    </div>
+                                )}
+
+                            </div>
+                        ) : (
+                            /* Thread Conversation Chat */
+                            <div className="flex flex-col h-full overflow-hidden select-text">
+                                <button
+                                    onClick={() => setSelectedThreadId(null)}
+                                    className="flex items-center gap-1.5 text-[9.5px] font-black text-slate-400 hover:text-slate-800 transition-colors mb-3.5 select-none uppercase tracking-wider cursor-pointer"
+                                >
+                                    ← Back to boards
+                                </button>
+
+                                <div className="border-b border-slate-100 pb-2.5 mb-3 shrink-0">
+                                    <span className="text-[10px] font-bold text-slate-500 tracking-widest uppercase block mb-1">Ticket Subject</span>
+                                    <h5 className="font-bold text-[12px] text-slate-800 leading-snug truncate">{activeThread?.subject}</h5>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 min-h-0">
+                                    {activeThread?.messages.map((msg, idx) => (
+                                        <div key={idx} className={`flex flex-col max-w-[85%] ${msg.isUser ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+                                            <span className="text-[9px] font-black text-slate-400 mb-1 px-1">{msg.sender} • {msg.time}</span>
+                                            <div className={`p-2.5 rounded-2xl text-[12px] font-medium leading-relaxed shadow-sm ${msg.isUser
+                                                ? 'bg-slate-900 text-white rounded-tr-none'
+                                                : 'bg-slate-50 text-slate-700 border border-slate-200/80 rounded-tl-none'
+                                                }`}>
+                                                {msg.text}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {isAdminTyping && (
+                                        <div className="flex flex-col max-w-[80%] mr-auto items-start animate-pulse">
+                                            <span className="text-[9px] font-bold text-slate-400 mb-1 px-1">Typing...</span>
+                                            <div className="p-2 bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-none flex items-center gap-1.5">
+                                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
+                                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-100"></div>
+                                            </div>
                                         </div>
                                     )}
-
+                                    <div ref={qnaEndRef} />
                                 </div>
-                            ) : (
-                                /* Thread Conversation Chat */
-                                <div className="flex flex-col h-full overflow-hidden select-text">
-                                    <button
-                                        onClick={() => setSelectedThreadId(null)}
-                                        className="flex items-center gap-1.5 text-[10.5px] font-black text-slate-400 hover:text-slate-850 transition-colors mb-4 select-none uppercase tracking-wider"
-                                    >
-                                        ← Back to boards
-                                    </button>
 
-                                    <div className="border-b border-slate-100 pb-3.5 mb-4">
-                                        <span className="text-[9px] font-black text-slate-400 tracking-widest uppercase block mb-1">Ticket Subject</span>
-                                        <h5 className="font-bold text-[13px] text-slate-850 leading-snug">{activeThread.subject}</h5>
+                                <form onSubmit={handleChatReplySubmit} className="border-t border-slate-100 pt-3 mt-3 select-none shrink-0">
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={qnaChatInput}
+                                            onChange={(e) => setQnaChatInput(e.target.value)}
+                                            placeholder="Reply to secure thread..."
+                                            className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[12px] font-semibold focus:outline-none focus:bg-white focus:border-slate-400 transition-all placeholder-slate-400 shadow-inner"
+                                        />
+                                        <button type="submit" className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center shadow transition-colors cursor-pointer">
+                                            →
+                                        </button>
                                     </div>
-
-                                    <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-                                        {activeThread.messages.map((msg, idx) => (
-                                            <div key={idx} className={`flex flex-col max-w-[85%] ${msg.isUser ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-                                                <span className="text-[9px] font-black text-slate-400 mb-1 px-1">{msg.sender} • {msg.time}</span>
-                                                <div className={`p-3 rounded-2xl text-[12px] font-medium leading-relaxed shadow-sm ${msg.isUser
-                                                    ? 'bg-slate-900 text-white rounded-tr-none'
-                                                    : 'bg-slate-50 text-slate-700 border border-slate-200/80 rounded-tl-none'
-                                                    }`}>
-                                                    {msg.text}
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {isAdminTyping && (
-                                            <div className="flex flex-col max-w-[80%] mr-auto items-start animate-pulse">
-                                                <span className="text-[9px] font-bold text-slate-400 mb-1 px-1">Typing...</span>
-                                                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-none flex items-center gap-1.5">
-                                                    <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
-                                                    <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-100"></div>
-                                                </div>
-                                            </div>
-                                        )}
-                                        <div ref={qnaEndRef} />
-                                    </div>
-
-                                    <form onSubmit={handleChatReplySubmit} className="border-t border-slate-100 pt-3 mt-3 select-none">
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                value={qnaChatInput}
-                                                onChange={(e) => setQnaChatInput(e.target.value)}
-                                                placeholder="Reply to secure thread..."
-                                                className="w-full pl-4.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-[12px] font-semibold focus:outline-none focus:bg-white focus:border-slate-400 transition-all placeholder-slate-400 shadow-inner"
-                                            />
-                                            <button type="submit" className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7.5 h-7.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl flex items-center justify-center shadow transition-colors">
-                                                →
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            )}
-
-                        </div>
-                    )}
+                                </form>
+                            </div>
+                        )}
+                    </div>
 
                 </div>
-
             </aside>
 
             {/* Premium Glassmorphic Upload Modal */}
