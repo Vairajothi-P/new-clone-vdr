@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect, Suspense } from 'react';
+import React, { useState, useMemo, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 // Seed initial files and folders list with VDR hierarchical indexing
@@ -121,7 +121,9 @@ function DocumentsPageContent() {
     // Auto-open upload modal if URL parameters request it
     useEffect(() => {
         if (currentView === 'upload') {
-            setIsUploadModalOpen(true);
+            setTimeout(() => {
+                setIsUploadModalOpen(true);
+            }, 0);
         }
     }, [currentView]);
 
@@ -590,12 +592,14 @@ INTEGRITY LOCK STATUS: SECURE AND SEALED
 
     // Re-generate link dynamically when options change
     useEffect(() => {
-        if (isExportModalOpen) {
+    if (isExportModalOpen) {
+        setTimeout(() => {
             const randomHex = Math.random().toString(16).substr(2, 6);
             const link = `https://vdr.secure-share.net/d/${randomHex}?expires=${exportExpiresIn}&watermark=${exportWatermarkEnabled}`;
             setExportSecureLink(link);
-        }
-    }, [exportExpiresIn, exportWatermarkEnabled, isExportModalOpen]);
+        }, 0);
+    }
+}, [exportExpiresIn, exportWatermarkEnabled, isExportModalOpen]);
 
     const triggerFileSelect = () => {
         fileInputRef.current?.click();

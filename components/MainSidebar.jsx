@@ -2,13 +2,26 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiFolder, FiSettings, FiShield, FiHome } from 'react-icons/fi';
+import {
+  FaCog,
+  FaShieldAlt,
+  FaHome,
+  FaUsers
+} from "react-icons/fa";
+
+import {
+  FiShield,
+  FiFolder,
+  FiSettings,
+  FiHome
+} from "react-icons/fi";
 
 export default function MainSidebar() {
   const pathname = usePathname();
 
   const isDocumentsActive = pathname?.startsWith('/documents');
   const isSettingsActive = pathname?.startsWith('/settings');
+  const isGroupsActive = pathname?.startsWith('/groups');
 
   return (
     <aside className="w-16 md:w-20 bg-white border-r border-gray-200 flex flex-col justify-between items-center py-6 h-full shrink-0 select-none z-50 shadow-sm">
@@ -38,6 +51,24 @@ export default function MainSidebar() {
             </div>
             <span className="absolute left-16 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
               Documents Vault
+            </span>
+          </Link>
+          <Link
+            href="/groups"
+            className="group relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-300"
+          >
+            {isGroupsActive && (
+              <div className="absolute left-0 w-1 h-8 bg-gray-900 rounded-r-md" />
+            )}
+
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isGroupsActive
+                ? 'bg-gray-100 text-gray-900 shadow-inner font-semibold'
+                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}>
+              <FaUsers className="text-lg md:text-xl transition-transform duration-300 group-hover:scale-110" />
+            </div>
+            <span className="absolute left-16 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
+              VDR Settings
             </span>
           </Link>
           <Link
