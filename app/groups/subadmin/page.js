@@ -11,8 +11,9 @@ import {
 
 export default function ActivatePage() {
 
-  const [selectedMember, setSelectedMember] =
-    useState(null);
+  // MULTI SELECT MEMBERS
+  const [selectedMembers, setSelectedMembers] =
+    useState([]);
 
   const [permissionType, setPermissionType] =
     useState("");
@@ -21,6 +22,12 @@ export default function ActivatePage() {
     useState([]);
 
   const [showToast, setShowToast] =
+    useState(false);
+
+  const [showPermissionPage, setShowPermissionPage] =
+    useState(false);
+
+  const [openPermissionPopup, setOpenPermissionPopup] =
     useState(false);
 
   useEffect(() => {
@@ -61,14 +68,14 @@ export default function ActivatePage() {
     },
   ];
 
-  // File permission routes
- const workspacePermissions = [
-  "Documents",
-  "Groups",
-  "Settings",
-];
-
   // Workspace permissions
+  const workspacePermissions = [
+    "Documents",
+    "Groups",
+    "Settings",
+  ];
+
+  // File permissions
   const filePermissions = [
     "Create Workspace",
     "Edit Workspace",
@@ -77,7 +84,7 @@ export default function ActivatePage() {
     "View Reports",
   ];
 
-  // Checkbox change
+  // Permission checkbox
   const handleCheckboxChange = (value) => {
 
     if (
@@ -100,7 +107,7 @@ export default function ActivatePage() {
     }
   };
 
-  // Submit
+  // Final submit
   const handleSubmit = () => {
 
     if (!permissionType) {
@@ -117,13 +124,18 @@ export default function ActivatePage() {
       return;
     }
 
+    const selectedMemberData =
+      members.filter((member) =>
+        selectedMembers.includes(member.id)
+      );
+
     console.log({
-      member: selectedMember,
+      members: selectedMemberData,
       permissionType,
       permissions: selectedPermissions,
     });
 
-    // Toast show
+    // Toast
     setShowToast(true);
 
     setTimeout(() => {
@@ -133,7 +145,9 @@ export default function ActivatePage() {
     // Reset
     setSelectedPermissions([]);
     setPermissionType("");
-    setSelectedMember(null);
+    setSelectedMembers([]);
+
+    setOpenPermissionPopup(false);
   };
 
   return (
@@ -160,246 +174,321 @@ export default function ActivatePage() {
         </div>
       )}
 
-      {/* PAGE TITLE */}
+      {/* TITLE */}
       <div className="sticky top-0 pt-6 px-4 md:px-8 z-10 pb-4">
+
         <h1 className="text-black text-4xl font-bold mt-6">
           Sub Admin Members
         </h1>
+
       </div>
 
       {/* CONTENT */}
       <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-6 mt-8">
 
-        <div className="bg-white rounded-2xl shadow-md p-6 w-full">
+        {!showPermissionPage ? (
 
-          {/* BUTTONS */}
-          <div className="flex items-center gap-4 mb-6">
+          <div className="bg-white rounded-2xl shadow-md p-6 w-full">
 
-            <Button
-              className="
-                flex
-                items-center
-                bg-transparent
-                hover:bg-transparent
-                shadow-none
-                !text-black
-                font-bold
-              "
-            >
-              <FaUserPlus className="mr-2" />
-              <span>Invite</span>
-            </Button>
+            {/* BUTTONS */}
+            <div className="flex items-center gap-4 mb-6">
 
-            <Button
-              className="
-                flex
-                items-center
-                bg-transparent
-                hover:bg-transparent
-                shadow-none
-                !text-black
-                font-bold
-              "
-            >
-              <FaFileExport className="mr-2" />
-              <span>Export</span>
-            </Button>
-
-            <Button
-              className="
-                flex
-                items-center
-                bg-transparent
-                hover:bg-transparent
-                shadow-none
-                !text-black
-                font-bold
-              "
-            >
-              <FaCog className="mr-2" />
-              <span>Permission</span>
-            </Button>
-
-          </div>
-
-          {/* MOBILE VIEW */}
-          <div className="flex flex-col gap-4 md:hidden">
-
-            {members.map((member) => (
-
-              <div
-                key={member.id}
+              {/* Invite */}
+              <Button
                 className="
-                  border
-                  border-gray-200
-                  rounded-2xl
-                  p-4
-                  shadow-sm
+                  flex
+                  items-center
+                  bg-transparent
+                  hover:bg-transparent
+                  shadow-none
+                  !text-black
+                  font-bold
                 "
               >
+                <FaUserPlus className="mr-2" />
+                <span>Invite</span>
+              </Button>
 
-                <div className="flex flex-col gap-3">
+              {/* Export */}
+              <Button
+                className="
+                  flex
+                  items-center
+                  bg-transparent
+                  hover:bg-transparent
+                  shadow-none
+                  !text-black
+                  font-bold
+                "
+              >
+                <FaFileExport className="mr-2" />
+                <span>Export</span>
+              </Button>
 
-                  <div>
-                    <p className="text-sm text-gray-500">
+              {/* Permission */}
+              <Button
+                onClick={() =>
+                  setShowPermissionPage(true)
+                }
+                className="
+                  flex
+                  items-center
+                  bg-transparent
+                  hover:bg-transparent
+                  shadow-none
+                  !text-black
+                  font-bold
+                "
+              >
+                <FaCog className="mr-2" />
+                <span>Permission</span>
+              </Button>
+
+            </div>
+
+            {/* TABLE */}
+            <div className="hidden md:block overflow-x-auto">
+
+              <table className="w-full border-collapse">
+
+                <thead>
+                  <tr className="bg-gray-100">
+
+                    <th className="text-left p-4 font-semibold text-black">
                       Name
-                    </p>
+                    </th>
 
-                    <button
-                      onClick={() =>
-                        setSelectedMember(member)
-                      }
-                      className="
-                        text-black
-                        font-semibold
-                        hover:text-blue-600
-                      "
-                    >
-                      {member.name}
-                    </button>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-500">
+                    <th className="text-left p-4 font-semibold text-black">
                       Email
-                    </p>
+                    </th>
 
-                    <p className="text-gray-700 break-all">
-                      {member.email}
-                    </p>
-                  </div>
+                    <th className="text-left p-4 font-semibold text-black">
+                      Phone Number
+                    </th>
 
-                  <div>
-                    <p className="text-sm text-gray-500">
-                      Phone
-                    </p>
-
-                    <p className="text-gray-700">
-                      {member.phone}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">
+                    <th className="text-left p-4 font-semibold text-black">
                       Status
-                    </p>
-
-                    <div className="flex items-center gap-2">
-
-                      <div
-                        className={`w-3 h-3 rounded-full ${
-                          member.status === "Active"
-                            ? "bg-green-500"
-                            : "bg-red-500"
-                        }`}
-                      />
-
-                      <span className="text-gray-700">
-                        {member.status}
-                      </span>
-
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* DESKTOP TABLE */}
-          <div className="hidden md:block overflow-x-auto">
-
-            <table className="w-full border-collapse">
-
-              <thead>
-                <tr className="bg-gray-100">
-
-                  <th className="text-left p-4 font-semibold text-black">
-                    Name
-                  </th>
-
-                  <th className="text-left p-4 font-semibold text-black">
-                    Email
-                  </th>
-
-                  <th className="text-left p-4 font-semibold text-black">
-                    Phone Number
-                  </th>
-
-                  <th className="text-left p-4 font-semibold text-black">
-                    Status
-                  </th>
-
-                </tr>
-              </thead>
-
-              <tbody>
-
-                {members.map((member) => (
-
-                  <tr
-                    key={member.id}
-                    className="border-t border-gray-200"
-                  >
-
-                    <td className="p-4">
-
-                      <button
-                        onClick={() =>
-                          setSelectedMember(member)
-                        }
-                        className="
-                          text-gray-700
-                          hover:text-blue-600
-                          font-medium
-                        "
-                      >
-                        {member.name}
-                      </button>
-
-                    </td>
-
-                    <td className="p-4 text-gray-700">
-                      {member.email}
-                    </td>
-
-                    <td className="p-4 text-gray-700">
-                      {member.phone}
-                    </td>
-
-                    <td className="p-4">
-
-                      <div className="flex items-center gap-2">
-
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            member.status === "Active"
-                              ? "bg-green-500"
-                              : "bg-red-500"
-                          }`}
-                        />
-
-                        <span className="text-gray-700">
-                          {member.status}
-                        </span>
-
-                      </div>
-
-                    </td>
+                    </th>
 
                   </tr>
-                ))}
+                </thead>
 
-              </tbody>
+                <tbody>
 
-            </table>
+                  {members.map((member) => (
+
+                    <tr
+                      key={member.id}
+                      className="border-t border-gray-200"
+                    >
+
+                      <td className="p-4 text-gray-700">
+                        {member.name}
+                      </td>
+
+                      <td className="p-4 text-gray-700">
+                        {member.email}
+                      </td>
+
+                      <td className="p-4 text-gray-700">
+                        {member.phone}
+                      </td>
+
+                      <td className="p-4">
+
+                        <div className="flex items-center gap-2">
+
+                          <div
+                            className={`w-3 h-3 rounded-full ${
+                              member.status === "Active"
+                                ? "bg-green-500"
+                                : "bg-red-500"
+                            }`}
+                          />
+
+                          <span className="text-gray-700">
+                            {member.status}
+                          </span>
+
+                        </div>
+
+                      </td>
+
+                    </tr>
+                  ))}
+
+                </tbody>
+
+              </table>
+
+            </div>
 
           </div>
-        </div>
+
+        ) : (
+
+          /* PERMISSION PAGE */
+          <div
+            className="
+              bg-white
+              rounded-2xl
+              shadow-md
+              p-10
+              min-h-[500px]
+            "
+          >
+
+            {/* HEADER */}
+            <div className="flex items-start justify-between">
+
+              <div>
+
+                <h1 className="text-4xl font-bold text-black">
+                  Permission
+                </h1>
+
+                {/* MEMBER LIST */}
+                <div className="mt-8">
+
+                  <h2 className="text-xl font-semibold text-black mb-5">
+                    Select Member
+                  </h2>
+
+                  <div className="flex flex-wrap gap-4">
+
+                    {members.map((member) => (
+
+                      <label
+                        key={member.id}
+                        className="
+                          flex
+                          items-center
+                          gap-3
+                          rounded-2xl
+                          px-2
+                          py-4
+                          cursor-pointer
+                          hover:bg-gray-50
+                          transition-all
+                          min-w-[190px]
+                        "
+                      >
+
+                        {/* CHECKBOX */}
+                        <input
+                          type="checkbox"
+                          checked={selectedMembers.includes(
+                            member.id
+                          )}
+                          onChange={() => {
+
+                            if (
+                              selectedMembers.includes(
+                                member.id
+                              )
+                            ) {
+
+                              setSelectedMembers(
+                                selectedMembers.filter(
+                                  (id) =>
+                                    id !== member.id
+                                )
+                              );
+
+                            } else {
+
+                              setSelectedMembers([
+                                ...selectedMembers,
+                                member.id,
+                              ]);
+
+                            }
+                          }}
+                          className="
+                            w-5
+                            h-5
+                            accent-black
+                          "
+                        />
+
+                        {/* NAME */}
+                        <div className="flex flex-col">
+
+                          <span className="text-lg font-semibold text-black">
+                            {member.name}
+                          </span>
+
+                        </div>
+
+                      </label>
+                    ))}
+
+                  </div>
+
+                  {/* SUBMIT */}
+                  <button
+                    onClick={() => {
+
+                      if (
+                        selectedMembers.length === 0
+                      ) {
+
+                        alert(
+                          "Please select member"
+                        );
+
+                        return;
+                      }
+
+                      setOpenPermissionPopup(true);
+
+                    }}
+                    className="
+                      mt-8
+                      bg-black
+                      hover:bg-gray-800
+                      text-white
+                      px-8
+                      py-3
+                      rounded-xl
+                      font-semibold
+                    "
+                  >
+                    Submit
+                  </button>
+
+                </div>
+
+              </div>
+
+              {/* BACK BUTTON */}
+              <button
+                onClick={() =>
+                  setShowPermissionPage(false)
+                }
+                className="
+                  bg-black
+                  hover:bg-gray-800
+                  text-white
+                  px-6
+                  py-3
+                  rounded-xl
+                  font-semibold
+                "
+              >
+                Back
+              </button>
+
+            </div>
+
+          </div>
+
+        )}
+
       </div>
 
       {/* POPUP */}
-      {selectedMember && (
+      {openPermissionPopup && (
 
         <div
           className="
@@ -429,9 +518,13 @@ export default function ActivatePage() {
             {/* CLOSE */}
             <button
               onClick={() => {
-                setSelectedMember(null);
+
+                setOpenPermissionPopup(false);
+
                 setSelectedPermissions([]);
+
                 setPermissionType("");
+
               }}
               className="
                 absolute
@@ -448,16 +541,40 @@ export default function ActivatePage() {
               Permissions
             </h2>
 
-            {/* MEMBER */}
+            {/* SELECTED MEMBERS */}
             <div className="mb-6">
 
               <p className="text-sm text-gray-500">
-                Selected Member
+                Selected Members
               </p>
 
-              <h3 className="text-lg font-semibold text-black">
-                {selectedMember.name}
-              </h3>
+              <div className="flex flex-wrap gap-2 mt-3">
+
+                {members
+                  .filter((member) =>
+                    selectedMembers.includes(
+                      member.id
+                    )
+                  )
+                  .map((member) => (
+
+                    <span
+                      key={member.id}
+                      className="
+                        bg-gray-100
+                        px-4
+                        py-2
+                        rounded-xl
+                        text-black
+                        font-medium
+                      "
+                    >
+                      {member.name}
+                    </span>
+
+                  ))}
+
+              </div>
 
             </div>
 
@@ -471,11 +588,13 @@ export default function ActivatePage() {
               <select
                 value={permissionType}
                 onChange={(e) => {
+
                   setPermissionType(
                     e.target.value
                   );
 
                   setSelectedPermissions([]);
+
                 }}
                 className="
                   w-full
@@ -620,7 +739,7 @@ export default function ActivatePage() {
               </div>
             )}
 
-            {/* SUBMIT */}
+            {/* FINAL SUBMIT */}
             <button
               onClick={handleSubmit}
               className="
@@ -639,8 +758,10 @@ export default function ActivatePage() {
             </button>
 
           </div>
+
         </div>
       )}
+
     </div>
   );
 }
