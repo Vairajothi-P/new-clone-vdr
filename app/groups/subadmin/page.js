@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { supabase } from "@/utils/supabase/client";
 import Button from "../../../components/ui/Button";
 
 import {
@@ -30,6 +31,9 @@ export default function ActivatePage() {
   const [openPermissionPopup, setOpenPermissionPopup] =
     useState(false);
 
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     window.scrollTo({
       top: 0,
@@ -37,36 +41,57 @@ export default function ActivatePage() {
     });
   }, []);
 
-  const members = [
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john@gmail.com",
-      phone: "9876543210",
-      status: "Inactive",
-    },
-    {
-      id: 2,
-      name: "Alex Smith",
-      email: "alex@gmail.com",
-      phone: "9876543211",
-      status: "Active",
-    },
-    {
-      id: 3,
-      name: "Sara Lee",
-      email: "sara@gmail.com",
-      phone: "9876543212",
-      status: "Inactive",
-    },
-    {
-      id: 4,
-      name: "Sara Lee",
-      email: "sara@gmail.com",
-      phone: "9876543212",
-      status: "Active",
-    },
-  ];
+  // const members = [
+  //   {
+  //     id: 1,
+  //     name: "John Doe",
+  //     email: "john@gmail.com",
+  //     phone: "9876543210",
+  //     status: "Inactive",
+  //   },
+  //   {
+  //     id: 2,
+  //     name: "Alex Smith",
+  //     email: "alex@gmail.com",
+  //     phone: "9876543211",
+  //     status: "Active",
+  //   },
+  //   {
+  //     id: 3,
+  //     name: "Sara Lee",
+  //     email: "sara@gmail.com",
+  //     phone: "9876543212",
+  //     status: "Inactive",
+  //   },
+  //   {
+  //     id: 4,
+  //     name: "Sara Lee",
+  //     email: "sara@gmail.com",
+  //     phone: "9876543212",
+  //     status: "Active",
+  //   },
+  // ];
+
+  useEffect(() => {
+  fetchMembers();
+}, []);
+
+const fetchMembers = async () => {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    setMembers(data || []);
+  } catch (error) {
+    console.error("Error fetching members:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Workspace permissions
   const workspacePermissions = [
@@ -291,7 +316,7 @@ export default function ActivatePage() {
                       </td>
 
                       <td className="p-4 text-gray-700">
-                        {member.phone}
+                        {member.phone_number}
                       </td>
 
                       <td className="p-4">
