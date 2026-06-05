@@ -5,6 +5,69 @@ import { useState } from 'react';
 export default function BrandingPage() {
   const [activeTheme, setActiveTheme] = useState(1);
   const [brandName, setBrandName] = useState('Acme Corp');
+  const [logoUrl, setLogoUrl] = useState(null);
+
+  // User Profile States
+  const [adminName, setAdminName] = useState('John Doe');
+  const [adminEmail, setAdminEmail] = useState('admin@company.com');
+  const [adminPhone, setAdminPhone] = useState('+1 (555) 123-4567');
+
+  // Modal control & temporary inputs
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [tempName, setTempName] = useState('');
+  const [tempEmail, setTempEmail] = useState('');
+  const [tempPhone, setTempPhone] = useState('');
+
+  // Save branding settings (Mocked client-side)
+  const handlePublish = () => {
+    alert('Branding settings published successfully! (Saved in local state)');
+  };
+
+  // Convert uploaded logo to base64 for preview
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Logo size must be less than 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Open modal & copy current profile values
+  const handleEditProfileClick = () => {
+    setTempName(adminName);
+    setTempEmail(adminEmail);
+    setTempPhone(adminPhone);
+    setIsEditProfileOpen(true);
+  };
+
+  // Save profile edits to local state
+  const handleSaveProfile = () => {
+    if (!tempName.trim()) {
+      alert('Name cannot be empty.');
+      return;
+    }
+    setAdminName(tempName);
+    setAdminEmail(tempEmail);
+    setAdminPhone(tempPhone);
+    setIsEditProfileOpen(false);
+  };
+
+  // Get initials for profile avatar fallback
+  const getInitials = (name) => {
+    return name
+      .split(' ')
+      .map(part => part.charAt(0))
+      .join('')
+      .toUpperCase()
+      .substring(0, 2) || 'JD';
+  };
 
   // Modernized color palette with rich gradients
   const themes = [
@@ -29,7 +92,10 @@ export default function BrandingPage() {
             <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Branding & Identity</h1>
             <p className="text-gray-500 mt-2 text-[15px]">Design a workspace that feels native to your clients and partners.</p>
           </div>
-          <button className="px-6 py-2.5 bg-gradient-to-r from-gray-900 to-black text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-gray-900/20 hover:-translate-y-0.5 focus:ring-4 focus:ring-gray-200 transition-all duration-300">
+          <button 
+            onClick={handlePublish}
+            className="px-6 py-2.5 bg-gradient-to-r from-gray-900 to-black text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-gray-900/20 hover:-translate-y-0.5 focus:ring-4 focus:ring-gray-200 transition-all duration-300 flex items-center gap-2"
+          >
             Publish Changes
           </button>
         </div>
@@ -40,28 +106,42 @@ export default function BrandingPage() {
           
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="w-16 h-16 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-800 text-xl font-bold shadow-sm ring-4 ring-white">
-                JD
+              <div className="w-16 h-16 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-800 text-xl font-bold shadow-sm ring-4 ring-white overflow-hidden">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+                ) : (
+                  <span>{getInitials(adminName)}</span>
+                )}
               </div>
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm">
                 <div className="w-4 h-4 bg-green-500 rounded-full"></div>
               </div>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900 tracking-tight">John Doe</h2>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-[14px] text-gray-500 mt-1.5 font-medium">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-gray-900 tracking-tight">{brandName}</h2>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md border border-gray-200/50 uppercase tracking-wider">Workspace</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[14px] text-gray-500 mt-1.5 font-medium">
+                <span className="flex items-center gap-2 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  {adminName}
+                </span>
                 <span className="flex items-center gap-2 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                  admin@company.com
+                  {adminEmail}
                 </span>
                 <span className="flex items-center gap-2 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-500"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                  +1 (555) 123-4567
+                  {adminPhone}
                 </span>
               </div>
             </div>
           </div>
-          <button className="px-5 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all shadow-sm">
+          <button 
+            onClick={handleEditProfileClick}
+            className="px-5 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all shadow-sm cursor-pointer"
+          >
             Edit Profile
           </button>
         </div>
@@ -81,18 +161,44 @@ export default function BrandingPage() {
                 <label className="block text-[14px] font-bold text-gray-800 mb-3">Workspace Logo</label>
                 <div className="flex items-start gap-4">
                   <div className="relative group cursor-pointer">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-400 to-blue-600 rounded-2xl blur-md opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
-                    <div className="relative w-20 h-20 rounded-2xl border-2 border-dashed border-gray-300 bg-white/50 backdrop-blur-sm flex flex-col items-center justify-center text-gray-400 group-hover:border-blue-500 group-hover:bg-blue-50/50 transition-all duration-300">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:text-blue-500 transition-colors mb-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-                      <span className="text-[10px] font-bold tracking-wider uppercase group-hover:text-blue-600 transition-colors">Upload</span>
-                    </div>
+                    <input 
+                      type="file" 
+                      accept="image/png, image/svg+xml, image/jpeg" 
+                      onChange={handleLogoChange} 
+                      className="hidden" 
+                      id="logo-upload-input" 
+                    />
+                    <label htmlFor="logo-upload-input" className="cursor-pointer block">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-blue-400 to-blue-600 rounded-2xl blur-md opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
+                      <div className="relative w-20 h-20 rounded-2xl border-2 border-dashed border-gray-300 bg-white/50 backdrop-blur-sm flex flex-col items-center justify-center text-gray-400 group-hover:border-blue-500 group-hover:bg-blue-50/50 transition-all duration-300 overflow-hidden">
+                        {logoUrl ? (
+                          <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1.5" />
+                        ) : (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:text-blue-500 transition-colors mb-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                            <span className="text-[10px] font-bold tracking-wider uppercase group-hover:text-blue-600 transition-colors">Upload</span>
+                          </>
+                        )}
+                      </div>
+                    </label>
                   </div>
                   <div className="flex-1 pt-2">
                     <p className="text-[14px] text-gray-600 leading-relaxed">This logo will be featured on your login screen, shared links, and all outgoing email notifications.</p>
-                    <p className="text-[12px] font-medium text-gray-400 mt-3 flex items-center gap-1.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                      SVG or PNG • 512x512px • Max 2MB
-                    </p>
+                    <div className="flex items-center gap-4 mt-3">
+                      <p className="text-[12px] font-medium text-gray-400 flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        SVG or PNG • 512x512px • Max 2MB
+                      </p>
+                      {logoUrl && (
+                        <button 
+                          type="button" 
+                          onClick={() => setLogoUrl(null)} 
+                          className="text-[12px] font-bold text-red-500 hover:text-red-700 transition-colors cursor-pointer"
+                        >
+                          Remove Logo
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -159,6 +265,70 @@ export default function BrandingPage() {
 
         </div>
       </div>
+
+      {/* Edit Profile Modal Dialog */}
+      {isEditProfileOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-md overflow-hidden animate-in scale-in duration-300">
+            <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">Edit Profile</h3>
+              <button 
+                onClick={() => setIsEditProfileOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-[13px] font-bold text-gray-700 mb-1.5">Full Name</label>
+                <input 
+                  type="text" 
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-bold text-gray-700 mb-1.5">Email Address</label>
+                <input 
+                  type="email" 
+                  value={tempEmail}
+                  onChange={(e) => setTempEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-bold text-gray-700 mb-1.5">Phone Number</label>
+                <input 
+                  type="text" 
+                  value={tempPhone}
+                  onChange={(e) => setTempPhone(e.target.value)}
+                  className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
+              <button 
+                onClick={() => setIsEditProfileOpen(false)}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveProfile}
+                className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
