@@ -210,7 +210,7 @@ export default function ActivatePage() {
               </Button>
 
               {/* Export */}
-              <Button
+              {/* <Button
                 className="
                   flex
                   items-center
@@ -223,7 +223,7 @@ export default function ActivatePage() {
               >
                 <FaFileExport className="mr-2" />
                 <span>Export</span>
-              </Button>
+              </Button> */}
 
               {/* Permission */}
               <Button
