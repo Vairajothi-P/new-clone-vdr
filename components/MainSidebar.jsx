@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -18,6 +19,51 @@ import {
 
 export default function MainSidebar() {
   const pathname = usePathname();
+  const [user, setUser] = useState(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        if (typeof window !== 'undefined') {
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            // Validate that parsedUser has required fields
+            if (parsedUser && typeof parsedUser === 'object' && parsedUser.name && parsedUser.role) {
+              setUser(parsedUser);
+            } else {
+              // Clear invalid user data
+              localStorage.removeItem('users');
+              setUser(null);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user from localStorage:', error);
+        // Clear corrupted data
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('user');
+        }
+        setUser(null);
+      } finally {
+        setIsMounted(true);
+      }
+    };
+
+    loadUser();
+  }, []);
+
+  // Get initials from user name
+  const getInitials = (name) => {
+    if (!name || typeof name !== 'string') return 'U';
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   const isDocumentsActive = pathname?.startsWith('/documents');
   const isSettingsActive = pathname?.startsWith('/settings');
@@ -102,14 +148,18 @@ export default function MainSidebar() {
             Exit to Landing
           </span>
         </Link>
-        <div className="group relative w-10 h-10 flex items-center justify-center cursor-pointer">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gray-800 to-slate-900 flex items-center justify-center text-white text-xs font-bold border-2 border-gray-200 shadow-sm hover:border-gray-400 transition-all duration-300">
-            AS
+
+        {/* Dynamic User Profile */}
+        {isMounted && (
+          <div className="group relative w-10 h-10 flex items-center justify-center cursor-pointer">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gray-800 to-slate-900 flex items-center justify-center text-white text-xs font-bold border-2 border-gray-200 shadow-sm hover:border-gray-400 transition-all duration-300">
+              {user ? getInitials(user.name) : 'U'}
+            </div>
+            <span className="absolute left-16 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
+              {user ? `${user.name} (${user.role})` : 'User'}
+            </span>
           </div>
-          <span className="absolute left-16 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
-            Anushiya S. (Admin)
-          </span>
-        </div>
+        )}
       </div>
     </aside>
   );

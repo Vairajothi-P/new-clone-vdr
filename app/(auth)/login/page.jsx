@@ -4,20 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaGoogle, FaFacebook } from 'react-icons/fa';
-
-import {
-  FiShield,
-  FiFolder,
-  FiSettings,
-  FiHome
-} from "react-icons/fi";
-
-// Dummy user credentials for testing
-const DUMMY_USERS = [
-  { id: '1', email: 'admin@gmail.com', password: 'admin', name: 'John Doe', role: 'Admin' },
-  { id: '2', email: 'anushiya@example.com', password: 'password123', name: 'Anushiya S.', role: 'Manager' },
-  { id: '3', email: 'user@test.com', password: 'test123', name: 'Test User', role: 'Viewer' }
-];
+import { FiShield } from "react-icons/fi";
+import { supabase } from '@/utils/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,24 +27,52 @@ export default function LoginPage() {
     setSuccess('');
     setIsLoading(true);
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      // Fetch user from Supabase
+      const { data: user, error: fetchError } = await supabase
+        .from('users')
+        .select('id, email, password_hash, name, role')
+        .eq('email', email)
+        .single();
 
-    // Dummy validation
-    const user = DUMMY_USERS.find(u => u.email === email && u.password === password);
+      if (fetchError || !user) {
+        setError('Invalid email or password');
+        setIsLoading(false);
+        return;
+      }
 
-    if (!user) {
-      setError('Invalid email or password. Try: john.doe@example.com / password123');
+      // Simple password comparison
+      // Note: For production, use bcryptjs to compare hashed passwords
+      if (user.password_hash !== password) {
+        setError('Invalid email or password');
+        setIsLoading(false);
+        return;
+      }
+
+      setSuccess(`Welcome back, ${user.name}! 🎉`);
+      
+      // Store user info in localStorage
+      localStorage.setItem('user', JSON.stringify({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }));
+
+      // Remember me functionality
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+      }
+
+      // Redirect after success
+      setTimeout(() => {
+        router.push('/documents');
+      }, 1500);
+
+    } catch (err) {
+      setError('Login failed: ' + err.message);
       setIsLoading(false);
-      return;
     }
-
-    setSuccess(`Welcome back, ${user.name}! 🎉`);
-    
-    // Simulate redirect after success
-    setTimeout(() => {
-      router.push('/documents');
-    }, 1500);
   };
 
   return (
@@ -69,15 +85,15 @@ export default function LoginPage() {
       {/* Login Card */}
       <div className="relative w-full max-w-md">
         
-      {/* Header */}
+        {/* Header */}
         <div className="flex flex-col items-center justify-center gap-3 mb-8 text-center">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-gray-900 to-slate-800 flex items-center justify-center shadow-md shadow-gray-950/10">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-gray-900 to-slate-800 flex items-center justify-center shadow-md shadow-gray-950/10">
             <FiShield className="text-white text-2xl" strokeWidth={2.8} />
-        </div>
-        <div>
+          </div>
+          <div>
             <h1 className="text-4xl font-bold text-slate-900">Login</h1>
             <p className="text-gray-600 text-sm">Virtual Data Room Access</p>
-        </div>
+          </div>
         </div>
 
         {/* Form Container */}
@@ -113,14 +129,13 @@ export default function LoginPage() {
               <div className="relative">
                 <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
                 <input
-                  
                   id="email"
                   type="email"
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:bg-gray-800 placeholder-gray-400 text-gray-900"
+                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900"
                   required
                 />
               </div>
@@ -178,7 +193,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-gray-800 hover:to-gray-800 text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -198,34 +213,30 @@ export default function LoginPage() {
             <div className="flex-1 h-px bg-gray-200"></div>
           </div>
 
-          {/* Demo User Cards */}
-        <div className="space-y-3">
-        {/* Social Login Buttons */}
-        <button
-            type="button"
-            disabled={isLoading}
-            className="w-full py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 transition flex items-center justify-center gap-3 disabled:opacity-50"
-        >
-            <FaGoogle className="text-red-500 text-lg" />
-            <span className="text-gray-700 font-medium text-sm">Sign in with Google</span>
-        </button>
+          {/* Social Login Buttons */}
+          <div className="space-y-3">
+            <button
+              type="button"
+              disabled={isLoading}
+              className="w-full py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 transition flex items-center justify-center gap-3 disabled:opacity-50"
+            >
+              <FaGoogle className="text-red-500 text-lg" />
+              <span className="text-gray-700 font-medium text-sm">Sign in with Google</span>
+            </button>
 
-        <button
-            type="button"
-            disabled={isLoading}
-            className="w-full py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 transition flex items-center justify-center gap-3 disabled:opacity-50"
-        >
-            <FaFacebook className="text-blue-600 text-lg" />
-            <span className="text-gray-700 font-medium text-sm">Sign in with Facebook</span>
-        </button>
-
-        {/* Demo Credentials */}
-        
-        </div>
-                
+            <button
+              type="button"
+              disabled={isLoading}
+              className="w-full py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 transition flex items-center justify-center gap-3 disabled:opacity-50"
+            >
+              <FaFacebook className="text-blue-600 text-lg" />
+              <span className="text-gray-700 font-medium text-sm">Sign in with Facebook</span>
+            </button>
+          </div>
 
           {/* Sign Up Link */}
-          <p className="text-center text-gray-600 text-sm p-2"> Dont have an account?{' '}
+          <p className="text-center text-gray-600 text-sm p-2">
+            Don t have an account?{' '}
             <Link href="#" className="text-blue-600 hover:text-blue-700 font-semibold transition">
               Signup
             </Link>
