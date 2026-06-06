@@ -60,6 +60,52 @@ function DocumentsPageContent() {
     const [downloadedIds, setDownloadedIds] = useState(new Set());
     const [deletedIds, setDeletedIds] = useState(new Set());
 
+    // Fetch documents from DB on mount and merge with static seed data
+    useEffect(() => {
+        const fetchDocuments = async () => {
+            try {
+                const res = await fetch('/api/documents/list?company_id=11111111-1111-1111-1111-111111111111');
+                if (!res.ok) return;
+                const { documents } = await res.json();
+
+                if (!documents || documents.length === 0) return;
+
+                // Map DB rows to the shape the UI expects
+                const dbFiles = documents.map(doc => ({
+                    id: doc.id,
+                    parentId: doc.folder_id || null,
+                    index: doc.index || '99.0',
+                    name: doc.name,
+                    type: doc.name.split('.').pop().toLowerCase() || 'pdf',
+                    size: doc.file_size_bytes > 1024 * 1024
+                        ? `${(doc.file_size_bytes / (1024 * 1024)).toFixed(1)} MB`
+                        : `${(doc.file_size_bytes / 1024).toFixed(0)} KB`,
+                    uploadedBy: doc.uploaded_by || 'Anushiya S.',
+                    dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    security: doc.security || 'Encrypted',
+                }));
+
+                // Merge: keep static seed files + add DB files (avoid duplicates by id)
+                setFiles(prev => {
+                    const existingIds = new Set(prev.map(f => f.id));
+                    const newOnly = dbFiles.filter(f => !existingIds.has(f.id));
+                    return [...prev, ...newOnly];
+                });
+
+                // Restore bookmarked/downloaded states from DB
+                const bookmarked = new Set(documents.filter(d => d.is_bookmarked).map(d => d.id));
+                const downloaded = new Set(documents.filter(d => d.is_downloaded).map(d => d.id));
+                if (bookmarked.size > 0) setBookmarkedIds(bookmarked);
+                if (downloaded.size > 0) setDownloadedIds(downloaded);
+
+            } catch (err) {
+                console.error('Failed to fetch documents from DB:', err);
+            }
+        };
+
+        fetchDocuments();
+    }, []); // runs once on mount
+
     // Filter States
     const [activeTypeFilter, setActiveTypeFilter] = useState('all');
     const [activeSecurityFilter, setActiveSecurityFilter] = useState('all');
@@ -605,7 +651,76 @@ INTEGRITY LOCK STATUS: SECURE AND SEALED
         fileInputRef.current?.click();
     };
 
-    const handleFileChange = (e) => {
+    // const handleFileChange = (e) => {
+    //     const chosenFiles = Array.from(e.target.files);
+    //     if (chosenFiles.length === 0) return;
+
+    //     const newQueueItems = chosenFiles.map((file, idx) => ({
+    //         id: `up-${Date.now()}-${idx}`,
+    //         name: file.name,
+    //         size: file.size > 1024 * 1024
+    //             ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+    //             : `${(file.size / 1024).toFixed(0)} KB`,
+    //         progress: 0,
+    //         status: 'uploading'
+    //     }));
+
+    //     setUploadQueue(newQueueItems);
+    //     let currentIdx = 0;
+
+    //     const uploadNextFile = () => {
+    //         if (currentIdx >= newQueueItems.length) {
+    //             setTimeout(() => {
+    //                 const newFileObjects = newQueueItems.map((item, qIdx) => {
+    //                     const indexValue = generateNewIndex();
+    //                     const indexParts = indexValue.split('.');
+    //                     const lastNum = parseInt(indexParts[indexParts.length - 1]) || 0;
+    //                     const updatedIndex = [...indexParts.slice(0, -1), lastNum + qIdx].join('.');
+
+    //                     return {
+    //                         id: `file-${Date.now()}-${qIdx}`,
+    //                         parentId: currentFolderId,
+    //                         index: updatedIndex,
+    //                         name: item.name,
+    //                         type: item.name.split('.').pop().toLowerCase() || 'pdf',
+    //                         size: item.size,
+    //                         uploadedBy: 'Anushiya S.',
+    //                         dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    //                         security: 'Watermarked'
+    //                     };
+    //                 });
+
+    //                 setFiles(prev => [...prev, ...newFileObjects]);
+    //                 setUploadQueue([]);
+    //                 setIsUploadModalOpen(false);
+    //             }, 500);
+    //             return;
+    //         }
+
+    //         let currentProgress = 0;
+    //         const interval = setInterval(() => {
+    //             const targetItem = newQueueItems[currentIdx];
+    //             if (!targetItem) {
+    //                 clearInterval(interval);
+    //                 return;
+    //             }
+
+    //             currentProgress += 25;
+    //             setUploadQueue(prev => prev.map(item => item.id === targetItem.id ? { ...item, progress: currentProgress } : item));
+
+    //             if (currentProgress >= 100) {
+    //                 clearInterval(interval);
+    //                 setUploadQueue(prev => prev.map(item => item.id === targetItem.id ? { ...item, status: 'completed' } : item));
+    //                 currentIdx++;
+    //                 setTimeout(uploadNextFile, 200);
+    //             }
+    //         }, 150);
+    //     };
+
+    //     uploadNextFile();
+    // };
+
+    const handleFileChange = async (e) => {
         const chosenFiles = Array.from(e.target.files);
         if (chosenFiles.length === 0) return;
 
@@ -620,58 +735,99 @@ INTEGRITY LOCK STATUS: SECURE AND SEALED
         }));
 
         setUploadQueue(newQueueItems);
-        let currentIdx = 0;
 
-        const uploadNextFile = () => {
-            if (currentIdx >= newQueueItems.length) {
-                setTimeout(() => {
-                    const newFileObjects = newQueueItems.map((item, qIdx) => {
-                        const indexValue = generateNewIndex();
-                        const indexParts = indexValue.split('.');
-                        const lastNum = parseInt(indexParts[indexParts.length - 1]) || 0;
-                        const updatedIndex = [...indexParts.slice(0, -1), lastNum + qIdx].join('.');
+        for (let i = 0; i < chosenFiles.length; i++) {
+            const file = chosenFiles[i];
+            const queueItem = newQueueItems[i];
 
-                        return {
-                            id: `file-${Date.now()}-${qIdx}`,
-                            parentId: currentFolderId,
-                            index: updatedIndex,
-                            name: item.name,
-                            type: item.name.split('.').pop().toLowerCase() || 'pdf',
-                            size: item.size,
-                            uploadedBy: 'Anushiya S.',
-                            dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                            security: 'Watermarked'
-                        };
-                    });
+            try {
+                // Step 1: Read file as ArrayBuffer
+                const fileBuffer = await file.arrayBuffer();
 
-                    setFiles(prev => [...prev, ...newFileObjects]);
-                    setUploadQueue([]);
-                    setIsUploadModalOpen(false);
-                }, 500);
-                return;
+                // Step 2: Generate a fresh AES-256-GCM key per file
+                const cryptoKey = await window.crypto.subtle.generateKey(
+                    { name: 'AES-GCM', length: 256 },
+                    true, // extractable so we can export + store it
+                    ['encrypt', 'decrypt']
+                );
+
+                // Step 3: Encrypt the file bytes
+                const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV
+                const encryptedBuffer = await window.crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv },
+                    cryptoKey,
+                    fileBuffer
+                );
+
+                // Step 4: Export the raw key bytes and encode everything as base64
+                const rawKey = await window.crypto.subtle.exportKey('raw', cryptoKey);
+                const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
+                const ivBase64 = btoa(String.fromCharCode(...iv));
+                // Store as "iv:encryptedData" so decryption knows the IV
+                const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
+                const dekRef = `${ivBase64}:${keyBase64}`; // stored in dek_ref column
+
+                // Step 5: Build the index for this file
+                const newIndex = generateNewIndex();
+
+                // Step 6: Insert into Supabase documents table
+                const response = await fetch('/api/documents/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        company_id: '11111111-1111-1111-1111-111111111111', // replace with actual session company_id
+                        folder_id: currentFolderId,
+                        uploaded_by: '019c41d0-6ece-4768-8e51-721696a82f9f', // replace with actual session user id
+                        name: file.name,
+                        file_data: encryptedBase64,   // the encrypted file bytes as base64
+                        mime_type: file.type || 'application/octet-stream',
+                        file_size_bytes: file.size,
+                        dek_ref: dekRef,              // "iv:key" both base64
+                        index: newIndex,
+                        security: 'Encrypted',
+                        is_deleted: false,
+                        is_bookmarked: false,
+                        is_downloaded: false,
+                        version: 1,
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Upload failed: ${errorData.error || response.statusText}`);
+                }
+                const { id: docId } = await response.json();
+
+                // Step 7: Update progress to 100 and mark complete
+                setUploadQueue(prev => prev.map(item =>
+                    item.id === queueItem.id ? { ...item, progress: 100, status: 'completed' } : item
+                ));
+
+                // Step 8: Add to local React state for immediate UI update
+                setFiles(prev => [...prev, {
+                    id: docId,
+                    parentId: currentFolderId,
+                    index: newIndex,
+                    name: file.name,
+                    type: file.name.split('.').pop().toLowerCase() || 'pdf',
+                    size: queueItem.size,
+                    uploadedBy: 'Anushiya S.', // replace with session user name
+                    dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    security: 'Encrypted'
+                }]);
+
+            } catch (err) {
+                console.error('Encryption/upload failed for', file.name, err);
+                setUploadQueue(prev => prev.map(item =>
+                    item.id === queueItem.id ? { ...item, status: 'error' } : item
+                ));
             }
+        }
 
-            let currentProgress = 0;
-            const interval = setInterval(() => {
-                const targetItem = newQueueItems[currentIdx];
-                if (!targetItem) {
-                    clearInterval(interval);
-                    return;
-                }
-
-                currentProgress += 25;
-                setUploadQueue(prev => prev.map(item => item.id === targetItem.id ? { ...item, progress: currentProgress } : item));
-
-                if (currentProgress >= 100) {
-                    clearInterval(interval);
-                    setUploadQueue(prev => prev.map(item => item.id === targetItem.id ? { ...item, status: 'completed' } : item));
-                    currentIdx++;
-                    setTimeout(uploadNextFile, 200);
-                }
-            }, 150);
-        };
-
-        uploadNextFile();
+        setTimeout(() => {
+            setUploadQueue([]);
+            setIsUploadModalOpen(false);
+        }, 800);
     };
 
     const handleNewQuestionSubmit = (e) => {
