@@ -1,4 +1,4 @@
-import MainSidebar from '../../components/MainSidebar';
+import MainSidebar from '@/components/MainSidebar';
 import GroupsLayoutWrapper from '../../components/groups/GroupsLayoutWrapper';
 
 export default function GroupsLayout({ children }) {

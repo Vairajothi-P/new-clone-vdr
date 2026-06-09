@@ -3,10 +3,24 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+  FaCog,
+  FaShieldAlt,
+  FaHome,
+  FaUsers
+} from "react-icons/fa";
+
+import {
+  FiShield,
+  FiFolder,
+  FiSettings,
+  FiHome
+} from "react-icons/fi";
 
 export default function MainSidebar() {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
+  const isGroupsActive = pathname?.startsWith('/groups');
 
   // 🔥 Check the session when the sidebar loads
   useEffect(() => {
@@ -33,9 +47,9 @@ export default function MainSidebar() {
       <div className="flex flex-col gap-4">
         <Link
           href="/documents"
-          className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 ${pathname.startsWith('/documents')
-              ? 'bg-indigo-50 text-indigo-600 shadow-sm'
-              : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+          className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 ${pathname.startsWith('/settings')
+            ? 'bg-slate-900 text-white shadow-md'
+            : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
             }`}
           title="Documents"
         >
@@ -44,17 +58,35 @@ export default function MainSidebar() {
           </svg>
         </Link>
       </div>
+      <Link
+        href="/groups"
+        className="group relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-300"
+      >
+        {isGroupsActive && (
+          <div className="absolute left-0 w-1 h-8 bg-gray-900 rounded-r-md" />
+        )}
+
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isGroupsActive
+          ? 'bg-gray-100 text-gray-900 shadow-inner font-semibold'
+          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+          }`}>
+          <FaUsers className="text-lg md:text-xl transition-transform duration-300 group-hover:scale-110" />
+        </div>
+        <span className="absolute left-16 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
+          VDR Settings
+        </span>
+      </Link>
 
       {/* Bottom Actions */}
-      <div className="mt-auto flex flex-col items-center gap-4">
+      <div className="flex flex-col gap-4">
 
         {/* 🔥 SETTINGS BUTTON: ONLY RENDERS IF isAdmin is TRUE */}
         {isAdmin && (
           <Link
             href="/settings"
             className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 ${pathname.startsWith('/settings')
-                ? 'bg-slate-900 text-white shadow-md'
-                : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+              ? 'bg-slate-900 text-white shadow-md'
+              : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
               }`}
             title="Settings"
           >
@@ -64,8 +96,10 @@ export default function MainSidebar() {
             </svg>
           </Link>
         )}
+      </div>
 
-        {/* Profile / Logout Button (Visible to everyone) */}
+      {/* Profile / Logout Button (Visible to everyone) */}
+      <div className="mt-auto flex flex-col items-center gap-4">
         <button
           onClick={() => {
             localStorage.removeItem('vdr_session');
@@ -82,7 +116,7 @@ export default function MainSidebar() {
         </button>
 
       </div>
-    </aside>
+    </aside >
   );
 }
 
