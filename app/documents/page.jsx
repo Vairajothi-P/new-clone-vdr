@@ -96,8 +96,24 @@ function AdminView({ session, currentView, router }) {
                     uploadedBy: 'Admin',
                     dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     security: doc.security || 'Encrypted',
-                    is_bookmarked: doc.is_bookmarked, is_downloaded: doc.is_downloaded,
+                    is_bookmarked: doc.is_bookmarked,
+                    is_downloaded: doc.is_downloaded,
+
+                    // 🔥 ADD THIS HERE TOO
+                    file_path: doc.file_path,
+                    dek_ref: doc.dek_ref
                 }));
+                // const mappedDocs = (docsData || []).map(doc => ({
+                //     id: doc.id, parentId: doc.folder_id || null, index: doc.index || '99.0',
+                //     name: doc.name, type: doc.name.split('.').pop().toLowerCase() || 'file',
+                //     size: doc.file_size_bytes > 1024 * 1024
+                //         ? `${(doc.file_size_bytes / (1024 * 1024)).toFixed(1)} MB`
+                //         : `${(doc.file_size_bytes / 1024).toFixed(0)} KB`,
+                //     uploadedBy: 'Admin',
+                //     dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                //     security: doc.security || 'Encrypted',
+                //     is_bookmarked: doc.is_bookmarked, is_downloaded: doc.is_downloaded,
+                // }));
                 setFiles([...mappedFolders, ...mappedDocs]);
                 setBookmarkedIds(new Set((docsData || []).filter(d => d.is_bookmarked).map(d => d.id)));
                 setDownloadedIds(new Set((docsData || []).filter(d => d.is_downloaded).map(d => d.id)));
@@ -219,55 +235,120 @@ function AdminView({ session, currentView, router }) {
         finally { setIsMoveModalOpen(false); }
     };
 
+    // const handleFileChange = async (e) => {
+    //     const chosenFiles = Array.from(e.target.files);
+    //     if (chosenFiles.length === 0) return;
+    //     const queue = chosenFiles.map((file, idx) => ({
+    //         id: `up-${Date.now()}-${idx}`, name: file.name,
+    //         size: file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${(file.size / 1024).toFixed(0)} KB`,
+    //         progress: 0, status: 'uploading',
+    //     }));
+    //     setUploadQueue(queue);
+    //     for (let i = 0; i < chosenFiles.length; i++) {
+    //         const file = chosenFiles[i]; const qi = queue[i];
+    //         try {
+    //             const fileBuffer = await file.arrayBuffer();
+    //             const cryptoKey = await window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+    //             const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    //             const encryptedBuffer = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, fileBuffer);
+    //             const rawKey = await window.crypto.subtle.exportKey('raw', cryptoKey);
+    //             const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
+    //             const ivBase64 = btoa(String.fromCharCode(...iv));
+    //             const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
+    //             const newIndex = generateNewIndex();
+    //             const res = await fetch('/api/documents/upload', {
+    //                 method: 'POST', headers: { 'Content-Type': 'application/json' },
+    //                 body: JSON.stringify({
+    //                     company_id: session.company_id, folder_id: currentFolderId,
+    //                     uploaded_by: session.id, name: file.name, file_data: encryptedBase64,
+    //                     mime_type: file.type || 'application/octet-stream', file_size_bytes: file.size,
+    //                     dek_ref: `${ivBase64}:${keyBase64}`, index: newIndex, security: 'Encrypted',
+    //                 }),
+    //             });
+    //             if (!res.ok) throw new Error('Upload failed');
+    //             const { id: docId } = await res.json();
+    //             setUploadQueue(prev => prev.map(it => it.id === qi.id ? { ...it, progress: 100, status: 'completed' } : it));
+    //             setFiles(prev => [...prev, {
+    //                 id: docId, parentId: currentFolderId, index: newIndex, name: file.name,
+    //                 type: file.name.split('.').pop().toLowerCase() || 'file', size: qi.size,
+    //                 uploadedBy: session.name,
+    //                 dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    //                 security: 'Encrypted',
+    //             }]);
+    //         } catch (err) {
+    //             console.error('Upload failed:', err);
+    //             setUploadQueue(prev => prev.map(it => it.id === qi.id ? { ...it, status: 'error' } : it));
+    //         }
+    //     }
+    //     setTimeout(() => { setUploadQueue([]); setIsUploadModalOpen(false); }, 800);
+    //     e.target.value = '';
+    // };
     const handleFileChange = async (e) => {
         const chosenFiles = Array.from(e.target.files);
-        if (chosenFiles.length === 0) return;
-        const queue = chosenFiles.map((file, idx) => ({
-            id: `up-${Date.now()}-${idx}`, name: file.name,
-            size: file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${(file.size / 1024).toFixed(0)} KB`,
-            progress: 0, status: 'uploading',
-        }));
-        setUploadQueue(queue);
+        if (chosenFiles.length === 0 || !session) return;
+
+        setUploadQueue(chosenFiles.map((f, i) => ({ id: `up-${Date.now()}-${i}`, name: f.name, progress: 0, size: f.size > 1024 * 1024 ? `${(f.size / (1024 * 1024)).toFixed(1)} MB` : `${(f.size / 1024).toFixed(0)} KB`, status: 'uploading' })));
+
         for (let i = 0; i < chosenFiles.length; i++) {
-            const file = chosenFiles[i]; const qi = queue[i];
+            const file = chosenFiles[i];
             try {
+                // 1. Encrypt File
                 const fileBuffer = await file.arrayBuffer();
                 const cryptoKey = await window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
                 const iv = window.crypto.getRandomValues(new Uint8Array(12));
                 const encryptedBuffer = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, fileBuffer);
+
+                // 2. Export Keys (Small arrays, so spread operator is safe here)
                 const rawKey = await window.crypto.subtle.exportKey('raw', cryptoKey);
                 const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
                 const ivBase64 = btoa(String.fromCharCode(...iv));
-                const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
+                const dekRef = `${ivBase64}:${keyBase64}`;
                 const newIndex = generateNewIndex();
+
+                // 3. 🔥 UPLOAD BINARY BLOB TO BUCKET 
+                const storagePath = `${session.company_id}/${Date.now()}_${file.name}`;
+                const { error: storageErr } = await supabase.storage
+                    .from('vault-files')
+                    .upload(storagePath, new Blob([encryptedBuffer]), { contentType: 'application/octet-stream' });
+
+                if (storageErr) throw new Error("Bucket Upload Failed: " + storageErr.message);
+
+                // 4. 🔥 SEND METADATA TO DATABASE
                 const res = await fetch('/api/documents/upload', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        company_id: session.company_id, folder_id: currentFolderId,
-                        uploaded_by: session.id, name: file.name, file_data: encryptedBase64,
-                        mime_type: file.type || 'application/octet-stream', file_size_bytes: file.size,
-                        dek_ref: `${ivBase64}:${keyBase64}`, index: newIndex, security: 'Encrypted',
-                    }),
+                        company_id: session.company_id,
+                        folder_id: currentFolderId,
+                        uploaded_by: session.id,
+                        name: file.name,
+                        file_path: storagePath, // Save the path to the DB
+                        mime_type: file.type || 'application/octet-stream',
+                        file_size_bytes: file.size,
+                        dek_ref: dekRef,
+                        index: newIndex,
+                        security: 'Encrypted'
+                    })
                 });
-                if (!res.ok) throw new Error('Upload failed');
+
+                if (!res.ok) throw new Error('DB Sync failed');
                 const { id: docId } = await res.json();
-                setUploadQueue(prev => prev.map(it => it.id === qi.id ? { ...it, progress: 100, status: 'completed' } : it));
+
+                // Success Update
+                setUploadQueue(prev => prev.map((it, idx) => idx === i ? { ...it, progress: 100, status: 'completed' } : it));
                 setFiles(prev => [...prev, {
                     id: docId, parentId: currentFolderId, index: newIndex, name: file.name,
-                    type: file.name.split('.').pop().toLowerCase() || 'file', size: qi.size,
-                    uploadedBy: session.name,
-                    dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                    security: 'Encrypted',
+                    type: file.name.split('.').pop().toLowerCase() || 'file', size: file.size, uploadedBy: session.name,
+                    dateCreated: new Date().toLocaleDateString(), security: 'Encrypted', file_path: storagePath
                 }]);
+
             } catch (err) {
                 console.error('Upload failed:', err);
-                setUploadQueue(prev => prev.map(it => it.id === qi.id ? { ...it, status: 'error' } : it));
+                setUploadQueue(prev => prev.map((it, idx) => idx === i ? { ...it, status: 'error' } : it));
             }
         }
-        setTimeout(() => { setUploadQueue([]); setIsUploadModalOpen(false); }, 800);
-        e.target.value = '';
+        setTimeout(() => { setUploadQueue([]); setIsUploadModalOpen(false); }, 1500);
     };
-
     return (
         <div className="relative flex w-full h-full bg-[#F8F9FB] overflow-hidden text-slate-800 font-sans">
             <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} className="hidden" />
@@ -593,45 +674,96 @@ function UserView({ session, currentView }) {
                     dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     can_read: permMap[doc.id]?.can_read || false,
                     can_edit: permMap[doc.id]?.can_edit || false,
-                    file_data: doc.file_data,
+
+                    // 🔥 THE FIX IS RIGHT HERE: Add the file_path so the download button can see it!
+                    file_path: doc.file_path,
+
                     dek_ref: doc.dek_ref,
                     mime_type: doc.mime_type,
                 })));
+                // setFiles((docs || []).map(doc => ({
+                //     id: doc.id,
+                //     index: doc.index || '1.0',
+                //     name: doc.name,
+                //     type: doc.name.split('.').pop().toLowerCase() || 'file',
+                //     size: doc.file_size_bytes > 1024 * 1024
+                //         ? `${(doc.file_size_bytes / (1024 * 1024)).toFixed(1)} MB`
+                //         : `${(doc.file_size_bytes / 1024).toFixed(0)} KB`,
+                //     dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                //     can_read: permMap[doc.id]?.can_read || false,
+                //     can_edit: permMap[doc.id]?.can_edit || false,
+                //     file_data: doc.file_data,
+                //     dek_ref: doc.dek_ref,
+                //     mime_type: doc.mime_type,
+                // })));
             } catch (err) { console.error('User fetch failed:', err); }
             finally { setLoading(false); }
         })();
     }, [session]);
 
     // ── DOWNLOAD ──────────────────────────────────────────────────────────────
+    // const handleDownload = async (file) => {
+    //     setDownloading(prev => ({ ...prev, [file.id]: true }));
+    //     try {
+    //         // Decrypt using stored dek_ref (ivBase64:keyBase64) and file_data
+    //         const [ivBase64, keyBase64] = file.dek_ref.split(':');
+    //         const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+    //         const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
+    //         const encryptedBytes = Uint8Array.from(atob(file.file_data), c => c.charCodeAt(0));
+
+    //         const cryptoKey = await window.crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']);
+    //         const decryptedBuffer = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, cryptoKey, encryptedBytes);
+
+    //         const blob = new Blob([decryptedBuffer], { type: file.mime_type || 'application/octet-stream' });
+    //         const url = URL.createObjectURL(blob);
+    //         const a = document.createElement('a');
+    //         a.href = url; a.download = file.name;
+    //         document.body.appendChild(a); a.click();
+    //         document.body.removeChild(a); URL.revokeObjectURL(url);
+
+    //         // Mark as downloaded in DB
+    //         await supabase.from('documents').update({ is_downloaded: true }).eq('id', file.id);
+    //     } catch (err) {
+    //         console.error('Download/decrypt failed:', err);
+    //         alert('Download failed. Please try again.');
+    //     } finally {
+    //         setDownloading(prev => { const n = { ...prev }; delete n[file.id]; return n; });
+    //     }
+    // };
     const handleDownload = async (file) => {
         setDownloading(prev => ({ ...prev, [file.id]: true }));
         try {
-            // Decrypt using stored dek_ref (ivBase64:keyBase64) and file_data
-            const [ivBase64, keyBase64] = file.dek_ref.split(':');
-            const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
-            const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
-            const encryptedBytes = Uint8Array.from(atob(file.file_data), c => c.charCodeAt(0));
+            // 1. Fetch the raw encrypted file directly from the Supabase bucket
+            const { data: blob, error } = await supabase.storage
+                .from('vault-files')
+                .download(file.file_path);
 
-            const cryptoKey = await window.crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']);
-            const decryptedBuffer = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, cryptoKey, encryptedBytes);
+            if (error) throw error;
 
-            const blob = new Blob([decryptedBuffer], { type: file.mime_type || 'application/octet-stream' });
+            // 2. Download it EXACTLY as it is (Encrypted!)
+            // 🔥 CHANGED: Now appends the official .vdr extension
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = file.name;
-            document.body.appendChild(a); a.click();
-            document.body.removeChild(a); URL.revokeObjectURL(url);
+            a.href = url;
 
-            // Mark as downloaded in DB
+            // THE FIX IS HERE 👇
+            a.download = `${file.name}.vdr`;
+
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            // 3. Mark as downloaded in DB
             await supabase.from('documents').update({ is_downloaded: true }).eq('id', file.id);
+
         } catch (err) {
-            console.error('Download/decrypt failed:', err);
+            console.error('Download failed:', err);
             alert('Download failed. Please try again.');
         } finally {
             setDownloading(prev => { const n = { ...prev }; delete n[file.id]; return n; });
         }
     };
-
     const filteredFiles = files.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (loading) {
