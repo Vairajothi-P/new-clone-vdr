@@ -724,60 +724,28 @@ function UserView({ session, currentView }) {
         })();
     }, [session]);
 
-    // ── DOWNLOAD ──────────────────────────────────────────────────────────────
-    // const handleDownload = async (file) => {
-    //     setDownloading(prev => ({ ...prev, [file.id]: true }));
-    //     try {
-    //         // Decrypt using stored dek_ref (ivBase64:keyBase64) and file_data
-    //         const [ivBase64, keyBase64] = file.dek_ref.split(':');
-    //         const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
-    //         const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
-    //         const encryptedBytes = Uint8Array.from(atob(file.file_data), c => c.charCodeAt(0));
-
-    //         const cryptoKey = await window.crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']);
-    //         const decryptedBuffer = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, cryptoKey, encryptedBytes);
-
-    //         const blob = new Blob([decryptedBuffer], { type: file.mime_type || 'application/octet-stream' });
-    //         const url = URL.createObjectURL(blob);
-    //         const a = document.createElement('a');
-    //         a.href = url; a.download = file.name;
-    //         document.body.appendChild(a); a.click();
-    //         document.body.removeChild(a); URL.revokeObjectURL(url);
-
-    //         // Mark as downloaded in DB
-    //         await supabase.from('documents').update({ is_downloaded: true }).eq('id', file.id);
-    //     } catch (err) {
-    //         console.error('Download/decrypt failed:', err);
-    //         alert('Download failed. Please try again.');
-    //     } finally {
-    //         setDownloading(prev => { const n = { ...prev }; delete n[file.id]; return n; });
-    //     }
-    // };
     const handleDownload = async (file) => {
         setDownloading(prev => ({ ...prev, [file.id]: true }));
         try {
-            // 1. Fetch the raw encrypted file directly from the Supabase bucket
-            const { data: blob, error } = await supabase.storage
-                .from('vault-files')
-                .download(file.file_path);
+            // 🔥 THE FIX: We DO NOT download the heavy file from the bucket here.
+            // We generate a tiny "Keycard" file containing ONLY the Document ID.
+            // Electron will read this ID, verify permissions, and download the real file into RAM!
 
-            if (error) throw error;
+            const keycardContent = file.id;
+            const blob = new Blob([keycardContent], { type: 'text/plain' });
 
-            // 2. Download it EXACTLY as it is (Encrypted!)
-            // 🔥 CHANGED: Now appends the official .vdr extension
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
 
-            // THE FIX IS HERE 👇
-            a.download = `${file.name}.vdr`;
+            a.download = `${file.name}.vdr`; // Saves as OS-recognized Keycard
 
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            // 3. Mark as downloaded in DB
+            // Mark as downloaded in DB
             await supabase.from('documents').update({ is_downloaded: true }).eq('id', file.id);
 
         } catch (err) {
