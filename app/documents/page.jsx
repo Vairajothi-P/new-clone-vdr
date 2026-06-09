@@ -8,6 +8,7 @@
 import React, { useState, useMemo, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
+import fernet from 'fernet';
 
 export default function DocumentsPage() {
     return (
@@ -287,33 +288,55 @@ function AdminView({ session, currentView, router }) {
         const chosenFiles = Array.from(e.target.files);
         if (chosenFiles.length === 0 || !session) return;
 
-        setUploadQueue(chosenFiles.map((f, i) => ({ id: `up-${Date.now()}-${i}`, name: f.name, progress: 0, size: f.size > 1024 * 1024 ? `${(f.size / (1024 * 1024)).toFixed(1)} MB` : `${(f.size / 1024).toFixed(0)} KB`, status: 'uploading' })));
+        setUploadQueue(chosenFiles.map((f, i) => ({
+            id: `up-${Date.now()}-${i}`,
+            name: f.name,
+            progress: 0,
+            size: f.size > 1024 * 1024 ? `${(f.size / (1024 * 1024)).toFixed(1)} MB` : `${(f.size / 1024).toFixed(0)} KB`,
+            status: 'uploading'
+        })));
+
+        // Helper function to read file as Base64 (Required for Fernet)
+        const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                // Extract just the base64 string, removing the "data:application/pdf;base64," prefix
+                const b64 = reader.result.split(',')[1];
+                resolve(b64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
 
         for (let i = 0; i < chosenFiles.length; i++) {
             const file = chosenFiles[i];
             try {
-                // 1. Encrypt File
-                const fileBuffer = await file.arrayBuffer();
-                const cryptoKey = await window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
-                const iv = window.crypto.getRandomValues(new Uint8Array(12));
-                const encryptedBuffer = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, fileBuffer);
+                // 1. 🔥 Generate a 32-byte URL-safe Base64 Key for Fernet
+                const randomBytes = window.crypto.getRandomValues(new Uint8Array(32));
+                const fernetKey = btoa(String.fromCharCode(...randomBytes))
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=+$/, ''); // Make it URL-safe
 
-                // 2. Export Keys (Small arrays, so spread operator is safe here)
-                const rawKey = await window.crypto.subtle.exportKey('raw', cryptoKey);
-                const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
-                const ivBase64 = btoa(String.fromCharCode(...iv));
-                const dekRef = `${ivBase64}:${keyBase64}`;
+                // 2. 🔥 Read file as Base64 and Encrypt with Fernet
+                const base64Data = await readFileAsBase64(file);
+                const secret = new fernet.Secret(fernetKey);
+                const token = new fernet.Token({ secret: secret });
+                const encryptedString = token.encode(base64Data);
+
+                // 3. Prepare the encrypted string as a Blob for uploading
+                const encryptedBlob = new Blob([encryptedString], { type: 'text/plain' });
                 const newIndex = generateNewIndex();
 
-                // 3. 🔥 UPLOAD BINARY BLOB TO BUCKET 
+                // 4. Upload Fernet Encrypted Blob to Bucket
                 const storagePath = `${session.company_id}/${Date.now()}_${file.name}`;
                 const { error: storageErr } = await supabase.storage
                     .from('vault-files')
-                    .upload(storagePath, new Blob([encryptedBuffer]), { contentType: 'application/octet-stream' });
+                    .upload(storagePath, encryptedBlob, { contentType: 'text/plain' });
 
                 if (storageErr) throw new Error("Bucket Upload Failed: " + storageErr.message);
 
-                // 4. 🔥 SEND METADATA TO DATABASE
+                // 5. Send Metadata to Database (Save the Fernet Key as dek_ref)
                 const res = await fetch('/api/documents/upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -322,24 +345,24 @@ function AdminView({ session, currentView, router }) {
                         folder_id: currentFolderId,
                         uploaded_by: session.id,
                         name: file.name,
-                        file_path: storagePath, // Save the path to the DB
+                        file_path: storagePath,
                         mime_type: file.type || 'application/octet-stream',
                         file_size_bytes: file.size,
-                        dek_ref: dekRef,
+                        dek_ref: fernetKey, // 🔥 Only saving the Fernet key now!
                         index: newIndex,
-                        security: 'Encrypted'
+                        security: 'Fernet Encrypted'
                     })
                 });
 
                 if (!res.ok) throw new Error('DB Sync failed');
                 const { id: docId } = await res.json();
 
-                // Success Update
+                // 6. Success Update UI
                 setUploadQueue(prev => prev.map((it, idx) => idx === i ? { ...it, progress: 100, status: 'completed' } : it));
                 setFiles(prev => [...prev, {
                     id: docId, parentId: currentFolderId, index: newIndex, name: file.name,
                     type: file.name.split('.').pop().toLowerCase() || 'file', size: file.size, uploadedBy: session.name,
-                    dateCreated: new Date().toLocaleDateString(), security: 'Encrypted', file_path: storagePath
+                    dateCreated: new Date().toLocaleDateString(), security: 'Fernet Encrypted', file_path: storagePath
                 }]);
 
             } catch (err) {
