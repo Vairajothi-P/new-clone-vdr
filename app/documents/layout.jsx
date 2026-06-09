@@ -9,6 +9,7 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import MainSidebar from '@/components/MainSidebar';
 
 function LayoutContent({ children }) {
     const pathname = usePathname();
@@ -100,7 +101,7 @@ function LayoutContent({ children }) {
 
     return (
         <div className="flex w-full h-screen overflow-hidden bg-[#F8F9FB]">
-
+            <MainSidebar />
             {/* ── LEFT SIDEBAR ─────────────────────────────────────────────── */}
             <nav className="w-[220px] shrink-0 bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden">
 
