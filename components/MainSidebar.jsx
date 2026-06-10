@@ -73,7 +73,7 @@ export default function MainSidebar() {
           <FaUsers className="text-lg md:text-xl transition-transform duration-300 group-hover:scale-110" />
         </div>
         <span className="absolute left-16 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
-          VDR Settings
+          Groups
         </span>
       </Link>
 
