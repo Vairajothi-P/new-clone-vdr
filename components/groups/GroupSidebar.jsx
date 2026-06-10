@@ -440,9 +440,11 @@ export default function GroupsSidebar({ isOpen = true }) {
     useEffect(() => {
         const fetchGroups = async () => {
             setIsLoading(true);
+            const session = JSON.parse(localStorage.getItem('vdr_session'));
             const { data, error } = await supabase
                 .from('groups')
                 .select('*')
+                .eq('company_id', session?.company_id)   // ← add this
                 .order('created_at', { ascending: false });
 
             if (!error && data) {
