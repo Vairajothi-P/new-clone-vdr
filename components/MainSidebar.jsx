@@ -58,7 +58,7 @@ export default function MainSidebar() {
           </svg>
         </Link>
       </div>
-     <Link
+      <Link
         href="/groups"
         className="group relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-300"
       >
@@ -66,13 +66,15 @@ export default function MainSidebar() {
           <div className="absolute left-0 w-1 h-8 bg-gray-900 rounded-r-md" />
         )}
 
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
-          isGroupsActive
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isGroupsActive
             ? 'bg-gray-100 text-gray-900 shadow-inner font-semibold'
             : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-        }`}>
+          }`}>
           <FaUsers className="text-lg md:text-xl" />
         </div>
+        <span className="absolute left-16 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
+          Groups
+        </span>
       </Link>
 
       {/* Bottom Actions */}
