@@ -47,7 +47,7 @@ export default function MainSidebar() {
       <div className="flex flex-col gap-4">
         <Link
           href="/documents"
-          className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 ${pathname.startsWith('/settings')
+          className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 ${pathname.startsWith('/documents')
             ? 'bg-slate-900 text-white shadow-md'
             : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
             }`}
@@ -58,17 +58,18 @@ export default function MainSidebar() {
           </svg>
         </Link>
       </div>
+
       <Link
         href="/groups"
-        className="group relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-300"
+        className="group relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-300 mt-4"
       >
         {isGroupsActive && (
           <div className="absolute left-0 w-1 h-8 bg-gray-900 rounded-r-md" />
         )}
 
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isGroupsActive
-            ? 'bg-gray-100 text-gray-900 shadow-inner font-semibold'
-            : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+          ? 'bg-gray-100 text-gray-900 shadow-inner font-semibold'
+          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
           }`}>
           <FaUsers className="text-lg md:text-xl" />
         </div>
@@ -78,28 +79,35 @@ export default function MainSidebar() {
       </Link>
 
       {/* Bottom Actions */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 mt-auto">
 
-        {/* 🔥 SETTINGS BUTTON: ONLY RENDERS IF isAdmin is TRUE */}
-        {isAdmin && (
-          <Link
-            href="/settings"
-            className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 ${pathname.startsWith('/settings')
-              ? 'bg-slate-900 text-white shadow-md'
-              : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
-              }`}
-            title="Settings"
+        {/* 🔥 SETTINGS BUTTON: NOW ALWAYS VISIBLE (WITHOUT isAdmin WRAPPER) */}
+        <Link
+          href="/settings"
+          className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 ${pathname.startsWith('/settings')
+            ? 'bg-slate-900 text-white shadow-md'
+            : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+            }`}
+          title="Settings"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            className={pathname.startsWith('/settings') ? 'animate-[spin_4s_linear_infinite]' : ''}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className={pathname.startsWith('/settings') ? 'animate-[spin_4s_linear_infinite]' : ''}>
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-          </Link>
-        )}
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </Link>
       </div>
 
       {/* Profile / Logout Button (Visible to everyone) */}
-      <div className="mt-auto flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-4">
         <button
           onClick={() => {
             localStorage.removeItem('vdr_session');
@@ -119,6 +127,7 @@ export default function MainSidebar() {
     </aside >
   );
 }
+
 
 
 
