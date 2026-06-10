@@ -74,7 +74,7 @@ export default function Home() {
             <i className="fas fa-chart-line"></i> Dashboard
           </Link>
           <a href="/login" className="px-5 py-2 border-2 border-blue-600 text-blue-600 rounded-full font-semibold hover:bg-blue-50 transition-all duration-300">Login</a>
-          <Link href="/roles/super_admin/register" className="px-5 py-2 border-2 border-blue-600 text-blue-600 rounded-full font-semibold hover:bg-blue-50 transition-all duration-300">Register</Link>
+          <Link href="/register" className="px-5 py-2 border-2 border-blue-600 text-blue-600 rounded-full font-semibold hover:bg-blue-50 transition-all duration-300">Register</Link>
         </div>
       </nav>
 

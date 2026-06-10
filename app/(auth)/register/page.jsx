@@ -1,0 +1,261 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import {
+  FaUser,
+  FaEnvelope,
+  FaPhone,
+  FaLock,
+  FaEye,
+  FaEyeSlash,
+  FaCheckCircle,
+} from "react-icons/fa";
+import { FiShield } from "react-icons/fi";
+
+export default function RegisterPage() {
+  const [step, setStep] = useState(1);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    mobile: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleOtpChange = (value, index) => {
+    const updatedOtp = [...otp];
+    updatedOtp[index] = value;
+    setOtp(updatedOtp);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
+      <div className="absolute top-0 left-0 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
+
+      <div className="relative w-full max-w-md">
+        <div className="flex flex-col items-center gap-3 mb-6 text-center">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-gray-900 to-slate-800 flex items-center justify-center shadow-md">
+            <FiShield className="text-white text-2xl" />
+          </div>
+
+          <h1 className="text-4xl font-bold text-slate-900">
+            {step === 1
+              ? "Create Account"
+              : step === 2
+              ? "Verify OTP"
+              : "Success"}
+          </h1>
+
+          <p className="text-gray-600 text-sm">
+            Secure VDR Registration
+          </p>
+        </div>
+
+        <div className="flex justify-center mb-6">
+          <div className="flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
+              1
+            </div>
+
+            <div className="w-16 h-1 bg-gray-300 rounded"></div>
+
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
+              2
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-2xl p-8">
+
+          {step === 1 && (
+            <div className="space-y-5">
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Full Name
+                </label>
+
+                <div className="relative">
+                  <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="Enter your full name"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Email Address
+                </label>
+
+                <div className="relative">
+                  <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Enter your email address"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Mobile Number
+                </label>
+
+                <div className="relative">
+                  <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+
+                  <input
+                    type="tel"
+                    name="mobile"
+                    value={formData.mobile}
+                    onChange={handleChange}
+                    placeholder="Enter your mobile number"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Password
+                </label>
+
+                <div className="relative">
+                  <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Create password"
+                    className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2"
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Confirm Password
+                </label>
+
+                <div className="relative">
+                  <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    placeholder="Confirm password"
+                    className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2"
+                  >
+                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setStep(2)}
+                className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold transition"
+              >
+                Continue
+              </button>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h2 className="text-xl font-bold text-slate-900">
+                  Email Verification
+                </h2>
+
+                <p className="text-gray-600 mt-2">
+                  Enter the 6-digit OTP sent to your email address
+                </p>
+              </div>
+
+              <div className="flex justify-center gap-3">
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(e.target.value, index)}
+                    className="w-12 h-12 border border-gray-300 rounded-xl text-center text-xl font-bold"
+                  />
+                ))}
+              </div>
+
+              <button
+                onClick={() => setStep(3)}
+                className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold"
+              >
+                Verify OTP
+              </button>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="text-center py-6">
+              <FaCheckCircle className="text-green-500 text-7xl mx-auto" />
+
+              <h2 className="text-3xl font-bold mt-4 text-slate-900">
+                Registration Successful
+              </h2>
+
+              <p className="text-gray-600 mt-2">
+                Your account has been created successfully.
+              </p>
+
+              <Link
+                href="/login"
+                className="block mt-6 w-full py-3 bg-gray-800 text-white rounded-xl"
+              >
+                Go To Login
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
