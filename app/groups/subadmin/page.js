@@ -126,10 +126,10 @@ export default function ActivatePage() {
 
   // Final submit
   const handleSubmit = () => {
-    if (selectedMembers.length === 0) {
-      alert("Please select member");
-      return;
-    }
+    // if (selectedMembers.length === 0) {
+    //   alert("Please select member");
+    //   return;
+    // }
 
     if (selectedPermissions.length === 0) {
       alert("Please select permission type");
@@ -142,7 +142,7 @@ export default function ActivatePage() {
       );
 
     console.log({
-      members: selectedMemberData,
+      // members: selectedMemberData,
       permissions: selectedPermissions,
     });
 
@@ -155,7 +155,7 @@ export default function ActivatePage() {
 
     // Reset
     setSelectedPermissions([]);
-    setSelectedMembers([]);
+    // setSelectedMembers([]);
     setShowPermissionPage(false);
   };
 
@@ -313,7 +313,7 @@ export default function ActivatePage() {
 
                           <div
                             className={`w-3 h-3 rounded-full ${
-                              member.status === "Active"
+                              member.status === "active"
                                 ? "bg-green-500"
                                 : "bg-red-500"
                             }`}
