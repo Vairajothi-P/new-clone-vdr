@@ -41,6 +41,9 @@ export default function WatermarkPage() {
   const [rotation, setRotation] = useState(-30);
   const [positions, setPositions] = useState(DEFAULT_POSITIONS);
 
+  const [brandName, setBrandName] = useState('Company Name');
+  const [logoUrl, setLogoUrl] = useState(null);
+
   // ─── Fetch from DB on mount ───────────────────────────────────
   useEffect(() => {
     const fetchWatermark = async () => {
@@ -67,6 +70,19 @@ export default function WatermarkPage() {
         setAttributes({ ...DEFAULT_ATTRIBUTES, ...(data.attributes ?? {}) });
         setPositions({ ...DEFAULT_POSITIONS, ...(data.positions ?? {}) });
       }
+
+      // Fetch Workspace Settings for Brand Name and Logo
+      const { data: wsData } = await supabase
+        .from('workspace_settings')
+        .select('brand_name, logo_url')
+        .eq('company_id', COMPANY_ID)
+        .single();
+
+      if (wsData) {
+        setBrandName(wsData.brand_name || 'Company Name');
+        setLogoUrl(wsData.logo_url || null);
+      }
+
       setLoading(false);
     };
 
@@ -127,6 +143,7 @@ export default function WatermarkPage() {
     if (attributes.email)     parts.push('john@company.com');
     if (attributes.dateTime)  parts.push('2026-05-17 19:28');
     if (attributes.ipAddress) parts.push('192.168.1.100');
+    if (attributes.cmpname)   parts.push(brandName);
     return parts.filter(Boolean).join(' | ');
   };
 
@@ -347,17 +364,32 @@ export default function WatermarkPage() {
                     ].map(({ key, cls }) => (
                       <div key={key} className={`${cls} overflow-hidden`}>
                         {positions[key] && (
-                          <span
+                          <div
                             style={{
-                              fontSize: `${fontSize}px`,
-                              color: hexToRGBA(textColor, textOpacity),
                               transform: `rotate(${rotation}deg)`,
-                              whiteSpace: 'nowrap',
+                              opacity: textOpacity / 100,
                             }}
-                            className="font-bold origin-center transition-all duration-200"
+                            className="origin-center transition-all duration-200 flex items-center gap-3"
                           >
-                            {getWatermarkText()}
-                          </span>
+                            {activeType === 'dynamic' && attributes.cmplogo && logoUrl && (
+                               <img 
+                                 src={logoUrl} 
+                                 alt="Company Logo" 
+                                 style={{ height: `${fontSize * 1.5}px` }} 
+                                 className="object-contain" 
+                               />
+                            )}
+                            <span
+                              style={{
+                                fontSize: `${fontSize}px`,
+                                color: textColor,
+                                whiteSpace: 'nowrap',
+                              }}
+                              className="font-bold"
+                            >
+                              {getWatermarkText()}
+                            </span>
+                          </div>
                         )}
                       </div>
                     ))}
