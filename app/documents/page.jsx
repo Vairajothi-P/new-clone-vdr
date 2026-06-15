@@ -54,6 +54,607 @@ function DocumentsPageContent() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADMIN VIEW — full folder panel + file management
 // ═══════════════════════════════════════════════════════════════════════════════
+// function AdminView({ session, currentView, router }) {
+//     const [files, setFiles] = useState([]);
+//     const [currentFolderId, setCurrentFolderId] = useState(null);
+//     const [searchQuery, setSearchQuery] = useState('');
+//     const [selectedIds, setSelectedIds] = useState(new Set());
+//     const [typeFilter, setTypeFilter] = useState('all');
+//     const [bookmarkedIds, setBookmarkedIds] = useState(new Set());
+//     const [downloadedIds, setDownloadedIds] = useState(new Set());
+//     const [deletedIds, setDeletedIds] = useState(new Set());
+//     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+//     const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
+//     const [newFolderName, setNewFolderName] = useState('');
+//     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+//     const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+//     const [movingToFolderId, setMovingToFolderId] = useState(null);
+//     const [uploadQueue, setUploadQueue] = useState([]);
+//     const [isDeleting, setIsDeleting] = useState(false);
+//     const fileInputRef = useRef(null);
+
+//     // ── FETCH ─────────────────────────────────────────────────────────────────
+//     useEffect(() => {
+//         (async () => {
+//             try {
+//                 const [{ data: foldersData }, { data: docsData }] = await Promise.all([
+//                     supabase.from('folders').select('*').eq('company_id', session.company_id),
+//                     supabase.from('documents').select('*').eq('company_id', session.company_id).eq('is_deleted', false),
+//                 ]);
+//                 const mappedFolders = (foldersData || []).map(f => ({
+//                     id: f.id, parentId: f.parent_folder_id || null,
+//                     index: f.index_number ? `${f.index_number}.0` : '1.0',
+//                     name: f.name, type: 'folder', size: '--', uploadedBy: 'System',
+//                     dateCreated: new Date(f.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+//                     security: 'Encrypted',
+//                 }));
+//                 const mappedDocs = (docsData || []).map(doc => ({
+//                     id: doc.id, parentId: doc.folder_id || null, index: doc.index || '99.0',
+//                     name: doc.name, type: doc.name.split('.').pop().toLowerCase() || 'file',
+//                     size: doc.file_size_bytes > 1024 * 1024
+//                         ? `${(doc.file_size_bytes / (1024 * 1024)).toFixed(1)} MB`
+//                         : `${(doc.file_size_bytes / 1024).toFixed(0)} KB`,
+//                     uploadedBy: 'Admin',
+//                     dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+//                     security: doc.security || 'Encrypted',
+//                     is_bookmarked: doc.is_bookmarked,
+//                     is_downloaded: doc.is_downloaded,
+
+//                     // 🔥 ADD THIS HERE TOO
+//                     file_path: doc.file_path,
+//                     dek_ref: doc.dek_ref
+//                 }));
+//                 // const mappedDocs = (docsData || []).map(doc => ({
+//                 //     id: doc.id, parentId: doc.folder_id || null, index: doc.index || '99.0',
+//                 //     name: doc.name, type: doc.name.split('.').pop().toLowerCase() || 'file',
+//                 //     size: doc.file_size_bytes > 1024 * 1024
+//                 //         ? `${(doc.file_size_bytes / (1024 * 1024)).toFixed(1)} MB`
+//                 //         : `${(doc.file_size_bytes / 1024).toFixed(0)} KB`,
+//                 //     uploadedBy: 'Admin',
+//                 //     dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+//                 //     security: doc.security || 'Encrypted',
+//                 //     is_bookmarked: doc.is_bookmarked, is_downloaded: doc.is_downloaded,
+//                 // }));
+//                 setFiles([...mappedFolders, ...mappedDocs]);
+//                 setBookmarkedIds(new Set((docsData || []).filter(d => d.is_bookmarked).map(d => d.id)));
+//                 setDownloadedIds(new Set((docsData || []).filter(d => d.is_downloaded).map(d => d.id)));
+//             } catch (err) { console.error('Failed to fetch:', err); }
+//         })();
+//     }, [session]);
+
+//     // ── DERIVED ───────────────────────────────────────────────────────────────
+//     const breadcrumbPath = useMemo(() => {
+//         const path = []; let id = currentFolderId;
+//         while (id !== null) {
+//             const folder = files.find(f => f.id === id);
+//             if (folder) { path.unshift(folder); id = folder.parentId; } else break;
+//         }
+//         return path;
+//     }, [currentFolderId, files]);
+
+//     const currentItems = useMemo(() => {
+//         if (currentView === 'trash') return files.filter(f => deletedIds.has(f.id));
+//         if (currentView === 'bookmarks') return files.filter(f => bookmarkedIds.has(f.id) && !deletedIds.has(f.id));
+//         if (currentView === 'downloads') return files.filter(f => downloadedIds.has(f.id) && !deletedIds.has(f.id));
+//         return files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
+//     }, [currentFolderId, files, currentView, deletedIds, bookmarkedIds, downloadedIds]);
+
+//     const filteredItems = useMemo(() => {
+//         let items = currentItems;
+//         if (searchQuery.trim()) {
+//             const q = searchQuery.toLowerCase();
+//             items = items.filter(f => f.name.toLowerCase().includes(q) || f.index.includes(q));
+//         }
+//         if (typeFilter === 'folder') items = items.filter(f => f.type === 'folder');
+//         else if (typeFilter === 'file') items = items.filter(f => f.type !== 'folder');
+//         return [...items].sort((a, b) => {
+//             const pa = a.index.split('.').map(Number);
+//             const pb = b.index.split('.').map(Number);
+//             for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+//                 const d = (pa[i] || 0) - (pb[i] || 0);
+//                 if (d !== 0) return d;
+//             }
+//             return 0;
+//         });
+//     }, [currentItems, searchQuery, typeFilter]);
+
+//     const allFolders = useMemo(() => files.filter(f => f.type === 'folder' && !deletedIds.has(f.id)), [files, deletedIds]);
+//     const rootFolders = useMemo(() => allFolders.filter(f => f.parentId === null), [allFolders]);
+//     const getFolderChildCount = (folderId) => files.filter(f => f.parentId === folderId && !deletedIds.has(f.id)).length;
+//     const availableFoldersForMove = allFolders.filter(f => !selectedIds.has(f.id));
+//     const selectedItems = [...selectedIds].map(id => files.find(f => f.id === id)).filter(Boolean);
+//     const selectedHasFiles = selectedItems.some(f => f.type !== 'folder');
+//     const allChecked = filteredItems.length > 0 && selectedIds.size === filteredItems.length;
+//     const someChecked = selectedIds.size > 0 && selectedIds.size < filteredItems.length;
+
+//     const generateNewIndex = () => {
+//         const peers = files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
+//         if (currentFolderId === null) {
+//             const max = peers.reduce((m, it) => Math.max(m, parseInt(it.index.split('.')[0]) || 0), 0);
+//             return `${max + 1}.0`;
+//         }
+//         const parent = files.find(f => f.id === currentFolderId);
+//         const prefix = parent?.index?.endsWith('.0') ? parent.index.slice(0, -2) : (parent?.index ?? '1');
+//         const max = peers.reduce((m, it) => {
+//             const parts = it.index.split('.');
+//             return Math.max(m, parseInt(parts[parts.length - 1]) || 0);
+//         }, 0);
+//         return `${prefix}.${max + 1}`;
+//     };
+
+//     // ── HANDLERS ─────────────────────────────────────────────────────────────
+//     const handleToggleSelect = (id, e) => {
+//         e.stopPropagation();
+//         setSelectedIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+//     };
+//     const handleSelectAll = () => setSelectedIds(prev => prev.size === filteredItems.length ? new Set() : new Set(filteredItems.map(f => f.id)));
+//     const handleItemClick = (item) => {
+//         if (item.type === 'folder') {
+//             if (currentView !== 'files') router.push('/documents?view=files');
+//             setCurrentFolderId(item.id); setSelectedIds(new Set()); setSearchQuery(''); setTypeFilter('all');
+//         } else { setSelectedIds(new Set([item.id])); }
+//     };
+
+//     const handleCreateFolder = async (e) => {
+//         e.preventDefault();
+//         if (!newFolderName.trim()) return;
+//         const newIndex = generateNewIndex();
+//         const { data: dbFolder, error } = await supabase.from('folders').insert({
+//             company_id: session.company_id, parent_folder_id: currentFolderId,
+//             name: newFolderName.trim(), index_number: parseInt(newIndex.split('.')[0]) || 1, created_by: session.id,
+//         }).select().single();
+//         if (error) { alert('Failed to create folder'); return; }
+//         setFiles(prev => [...prev, {
+//             id: dbFolder.id, parentId: dbFolder.parent_folder_id || null, index: newIndex,
+//             name: dbFolder.name, type: 'folder', size: '--', uploadedBy: session.name,
+//             dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+//             security: 'Encrypted',
+//         }]);
+//         setNewFolderName(''); setIsNewFolderOpen(false);
+//     };
+
+//     const executeDelete = async () => {
+//         setIsDeleting(true);
+//         try {
+//             const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+//             const folderIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type === 'folder');
+//             if (docIds.length > 0) await supabase.from('documents').update({ is_deleted: true }).in('id', docIds);
+//             if (folderIds.length > 0) await supabase.from('folders').delete().in('id', folderIds);
+//             setDeletedIds(prev => { const next = new Set(prev); selectedIds.forEach(id => next.add(id)); return next; });
+//             setSelectedIds(new Set());
+//         } catch (err) { console.error('Delete failed:', err); }
+//         finally { setIsDeleting(false); setIsDeleteModalOpen(false); }
+//     };
+
+//     const executeMoveToFolder = async () => {
+//         try {
+//             const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+//             if (docIds.length > 0) await supabase.from('documents').update({ folder_id: movingToFolderId }).in('id', docIds);
+//             setFiles(prev => prev.map(f => selectedIds.has(f.id) && f.type !== 'folder' ? { ...f, parentId: movingToFolderId } : f));
+//             setSelectedIds(new Set());
+//         } catch (err) { console.error('Move failed:', err); }
+//         finally { setIsMoveModalOpen(false); }
+//     };
+
+//     // const handleFileChange = async (e) => {
+//     //     const chosenFiles = Array.from(e.target.files);
+//     //     if (chosenFiles.length === 0) return;
+//     //     const queue = chosenFiles.map((file, idx) => ({
+//     //         id: `up-${Date.now()}-${idx}`, name: file.name,
+//     //         size: file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${(file.size / 1024).toFixed(0)} KB`,
+//     //         progress: 0, status: 'uploading',
+//     //     }));
+//     //     setUploadQueue(queue);
+//     //     for (let i = 0; i < chosenFiles.length; i++) {
+//     //         const file = chosenFiles[i]; const qi = queue[i];
+//     //         try {
+//     //             const fileBuffer = await file.arrayBuffer();
+//     //             const cryptoKey = await window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+//     //             const iv = window.crypto.getRandomValues(new Uint8Array(12));
+//     //             const encryptedBuffer = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, fileBuffer);
+//     //             const rawKey = await window.crypto.subtle.exportKey('raw', cryptoKey);
+//     //             const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
+//     //             const ivBase64 = btoa(String.fromCharCode(...iv));
+//     //             const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
+//     //             const newIndex = generateNewIndex();
+//     //             const res = await fetch('/api/documents/upload', {
+//     //                 method: 'POST', headers: { 'Content-Type': 'application/json' },
+//     //                 body: JSON.stringify({
+//     //                     company_id: session.company_id, folder_id: currentFolderId,
+//     //                     uploaded_by: session.id, name: file.name, file_data: encryptedBase64,
+//     //                     mime_type: file.type || 'application/octet-stream', file_size_bytes: file.size,
+//     //                     dek_ref: `${ivBase64}:${keyBase64}`, index: newIndex, security: 'Encrypted',
+//     //                 }),
+//     //             });
+//     //             if (!res.ok) throw new Error('Upload failed');
+//     //             const { id: docId } = await res.json();
+//     //             setUploadQueue(prev => prev.map(it => it.id === qi.id ? { ...it, progress: 100, status: 'completed' } : it));
+//     //             setFiles(prev => [...prev, {
+//     //                 id: docId, parentId: currentFolderId, index: newIndex, name: file.name,
+//     //                 type: file.name.split('.').pop().toLowerCase() || 'file', size: qi.size,
+//     //                 uploadedBy: session.name,
+//     //                 dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+//     //                 security: 'Encrypted',
+//     //             }]);
+//     //         } catch (err) {
+//     //             console.error('Upload failed:', err);
+//     //             setUploadQueue(prev => prev.map(it => it.id === qi.id ? { ...it, status: 'error' } : it));
+//     //         }
+//     //     }
+//     //     setTimeout(() => { setUploadQueue([]); setIsUploadModalOpen(false); }, 800);
+//     //     e.target.value = '';
+//     // };
+//     const handleFileChange = async (e) => {
+//         const chosenFiles = Array.from(e.target.files);
+//         if (chosenFiles.length === 0 || !session) return;
+
+//         setUploadQueue(chosenFiles.map((f, i) => ({
+//             id: `up-${Date.now()}-${i}`,
+//             name: f.name,
+//             progress: 0,
+//             size: f.size > 1024 * 1024 ? `${(f.size / (1024 * 1024)).toFixed(1)} MB` : `${(f.size / 1024).toFixed(0)} KB`,
+//             status: 'uploading'
+//         })));
+
+//         // Helper function to read file as Base64 (Required for Fernet)
+//         const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
+//             const reader = new FileReader();
+//             reader.onload = () => {
+//                 // Extract just the base64 string, removing the "data:application/pdf;base64," prefix
+//                 const b64 = reader.result.split(',')[1];
+//                 resolve(b64);
+//             };
+//             reader.onerror = reject;
+//             reader.readAsDataURL(file);
+//         });
+
+//         for (let i = 0; i < chosenFiles.length; i++) {
+//             const file = chosenFiles[i];
+//             try {
+//                 // 1. 🔥 Generate a 32-byte URL-safe Base64 Key for Fernet
+//                 const randomBytes = window.crypto.getRandomValues(new Uint8Array(32));
+//                 const fernetKey = btoa(String.fromCharCode(...randomBytes))
+//                     .replace(/\+/g, '-')
+//                     .replace(/\//g, '_')
+//                     .replace(/=+$/, ''); // Make it URL-safe
+
+//                 // 2. 🔥 Read file as Base64 and Encrypt with Fernet
+//                 const base64Data = await readFileAsBase64(file);
+//                 const secret = new fernet.Secret(fernetKey);
+//                 const token = new fernet.Token({ secret: secret });
+//                 const encryptedString = token.encode(base64Data);
+
+//                 // 3. Prepare the encrypted string as a Blob for uploading
+//                 const encryptedBlob = new Blob([encryptedString], { type: 'text/plain' });
+//                 const newIndex = generateNewIndex();
+
+//                 // 4. Upload Fernet Encrypted Blob to Bucket
+//                 const storagePath = `${session.company_id}/${Date.now()}_${file.name}`;
+//                 const { error: storageErr } = await supabase.storage
+//                     .from('vault-files')
+//                     .upload(storagePath, encryptedBlob, { contentType: 'text/plain' });
+
+//                 if (storageErr) throw new Error("Bucket Upload Failed: " + storageErr.message);
+
+//                 // 5. Send Metadata to Database (Save the Fernet Key as dek_ref)
+//                 const res = await fetch('/api/documents/upload', {
+//                     method: 'POST',
+//                     headers: { 'Content-Type': 'application/json' },
+//                     body: JSON.stringify({
+//                         company_id: session.company_id,
+//                         folder_id: currentFolderId,
+//                         uploaded_by: session.id,
+//                         name: file.name,
+//                         file_path: storagePath,
+//                         mime_type: file.type || 'application/octet-stream',
+//                         file_size_bytes: file.size,
+//                         dek_ref: fernetKey, // 🔥 Only saving the Fernet key now!
+//                         index: newIndex,
+//                         security: 'Fernet Encrypted'
+//                     })
+//                 });
+
+//                 if (!res.ok) throw new Error('DB Sync failed');
+//                 const { id: docId } = await res.json();
+
+//                 // 6. Success Update UI
+//                 setUploadQueue(prev => prev.map((it, idx) => idx === i ? { ...it, progress: 100, status: 'completed' } : it));
+//                 setFiles(prev => [...prev, {
+//                     id: docId, parentId: currentFolderId, index: newIndex, name: file.name,
+//                     type: file.name.split('.').pop().toLowerCase() || 'file', size: file.size, uploadedBy: session.name,
+//                     dateCreated: new Date().toLocaleDateString(), security: 'Fernet Encrypted', file_path: storagePath
+//                 }]);
+
+//             } catch (err) {
+//                 console.error('Upload failed:', err);
+//                 setUploadQueue(prev => prev.map((it, idx) => idx === i ? { ...it, status: 'error' } : it));
+//             }
+//         }
+//         setTimeout(() => { setUploadQueue([]); setIsUploadModalOpen(false); }, 1500);
+//     };
+//     return (
+//         <div className="relative flex w-full h-full bg-[#F8F9FB] overflow-hidden text-slate-800 font-sans">
+//             <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+
+//             {/* ── FOLDER PANEL ─────────────────────────────────────────────── */}
+//             <aside className="w-56 shrink-0 border-r border-slate-200 bg-white flex flex-col h-full overflow-hidden">
+//                 <div className="px-4 pt-5 pb-3 border-b border-slate-100">
+//                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Folders</p>
+//                 </div>
+//                 <div className="flex-1 overflow-y-auto py-2 px-2">
+//                     <button
+//                         onClick={() => { setCurrentFolderId(null); setTypeFilter('all'); }}
+//                         className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[12.5px] font-semibold transition-all mb-0.5
+//                             ${currentFolderId === null && currentView === 'files' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+//                     >
+//                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 opacity-70"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
+//                         All Files
+//                     </button>
+//                     <div className="h-px bg-slate-100 my-2 mx-1" />
+//                     {rootFolders.length === 0
+//                         ? <p className="text-[11px] text-slate-400 text-center py-4 px-2">No folders yet</p>
+//                         : <FolderTree folders={allFolders} parentId={null} currentFolderId={currentFolderId}
+//                             onSelect={(id) => {
+//                                 if (currentView !== 'files') router.push('/documents?view=files');
+//                                 setCurrentFolderId(id); setSelectedIds(new Set()); setTypeFilter('all');
+//                             }}
+//                             getChildCount={getFolderChildCount} />
+//                     }
+//                 </div>
+//                 <div className="p-3 border-t border-slate-100">
+//                     <button onClick={() => setIsNewFolderOpen(true)}
+//                         className="w-full flex items-center justify-center gap-2 py-2 text-[11.5px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all border border-dashed border-slate-200">
+//                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+//                         New Folder
+//                     </button>
+//                 </div>
+//             </aside>
+
+//             {/* ── MAIN ─────────────────────────────────────────────────────── */}
+//             <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+
+//                 {/* Header */}
+//                 <div className="flex items-center justify-between px-7 pt-6 pb-4 border-b border-slate-200 bg-white">
+//                     <div className="flex items-center gap-2 min-w-0">
+//                         <span className="text-[13px] font-black text-slate-400 uppercase tracking-widest shrink-0">
+//                             {currentView === 'trash' ? 'Trash' : currentView === 'bookmarks' ? 'Bookmarks' : currentView === 'downloads' ? 'Downloads' : 'Files'}
+//                         </span>
+//                         {currentView === 'files' && breadcrumbPath.map((item, idx) => {
+//                             const isLast = idx === breadcrumbPath.length - 1;
+//                             return (
+//                                 <React.Fragment key={item.id}>
+//                                     <span className="text-slate-300 font-light">/</span>
+//                                     <button onClick={() => !isLast && setCurrentFolderId(item.id)}
+//                                         className={`text-[13px] font-black truncate max-w-[140px] transition-colors ${isLast ? 'text-slate-800' : 'text-slate-400 hover:text-slate-700 underline underline-offset-2'}`}>
+//                                         {item.name}
+//                                     </button>
+//                                 </React.Fragment>
+//                             );
+//                         })}
+//                         {currentFolderId !== null && (
+//                             <button onClick={() => { const parent = files.find(f => f.id === currentFolderId); setCurrentFolderId(parent?.parentId ?? null); }}
+//                                 className="ml-1 text-[11px] font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 transition-colors">
+//                                 <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15,18 9,12 15,6" /></svg>
+//                                 Back
+//                             </button>
+//                         )}
+//                     </div>
+//                     <div className="relative w-56">
+//                         <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+//                         <input type="text" placeholder="Search files..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+//                             className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[12.5px] font-semibold text-slate-700 focus:outline-none focus:border-slate-400 focus:bg-white transition-all" />
+//                     </div>
+//                 </div>
+
+//                 {/* Toolbar */}
+//                 <div className="flex items-center justify-between px-7 py-3 bg-white border-b border-slate-100 gap-4">
+//                     <div className="flex items-center gap-2 flex-wrap">
+//                         <button onClick={() => setIsUploadModalOpen(true)}
+//                             className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white text-[12px] font-bold rounded-xl transition-all">
+//                             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+//                             Upload
+//                         </button>
+//                         <button onClick={() => setIsNewFolderOpen(true)}
+//                             className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-[12px] font-bold rounded-xl hover:bg-slate-50 transition-all">
+//                             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+//                             Add Folder
+//                         </button>
+//                         {selectedIds.size > 0 && (
+//                             <>
+//                                 <div className="w-px h-5 bg-slate-200 mx-1" />
+//                                 <span className="text-[11.5px] font-bold text-slate-500 px-1">{selectedIds.size} selected</span>
+//                                 {selectedHasFiles && (
+//                                     <button onClick={() => { setMovingToFolderId(null); setIsMoveModalOpen(true); }}
+//                                         className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 text-blue-700 text-[12px] font-bold rounded-xl hover:bg-blue-100 transition-all">
+//                                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="5 9 2 12 5 15" /><polyline points="9 5 12 2 15 5" /><line x1="2" y1="12" x2="22" y2="12" /><line x1="12" y1="2" x2="12" y2="22" /></svg>
+//                                         Move to Folder
+//                                     </button>
+//                                 )}
+//                                 <button onClick={() => setIsDeleteModalOpen(true)}
+//                                     className="flex items-center gap-2 px-4 py-2 bg-rose-50 border border-rose-100 text-rose-600 text-[12px] font-bold rounded-xl hover:bg-rose-100 transition-all">
+//                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
+//                                     Delete
+//                                 </button>
+//                             </>
+//                         )}
+//                     </div>
+//                     <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 shrink-0">
+//                         {[{ key: 'all', label: 'All' }, { key: 'folder', label: 'Folders' }, { key: 'file', label: 'Files' }].map(tab => (
+//                             <button key={tab.key} onClick={() => setTypeFilter(tab.key)}
+//                                 className={`px-3.5 py-1.5 text-[11.5px] font-bold rounded-lg transition-all ${typeFilter === tab.key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+//                                 {tab.label}
+//                             </button>
+//                         ))}
+//                     </div>
+//                 </div>
+
+//                 {/* New folder inline form */}
+//                 {isNewFolderOpen && (
+//                     <form onSubmit={handleCreateFolder} className="flex items-center gap-3 px-7 py-3 bg-amber-50/60 border-b border-amber-100">
+//                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
+//                         <input type="text" placeholder="Folder name..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
+//                             className="flex-1 max-w-xs px-4 py-1.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-800 focus:outline-none focus:border-slate-400" autoFocus />
+//                         <button type="submit" className="px-4 py-1.5 bg-slate-900 text-white text-[12px] font-bold rounded-xl">Create</button>
+//                         <button type="button" onClick={() => { setIsNewFolderOpen(false); setNewFolderName(''); }} className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-500 text-[12px] font-bold rounded-xl">Cancel</button>
+//                     </form>
+//                 )}
+
+//                 {/* File table */}
+//                 <div className="flex-1 overflow-auto px-7 py-5">
+//                     <div className="rounded-2xl border border-slate-200 bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)] overflow-hidden">
+//                         <table className="w-full min-w-[700px] border-collapse text-left">
+//                             <thead>
+//                                 <tr className="border-b border-slate-100 bg-slate-50/60">
+//                                     <th className="py-3.5 px-4 w-10">
+//                                         <input type="checkbox" checked={allChecked} ref={el => { if (el) el.indeterminate = someChecked; }} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
+//                                     </th>
+//                                     <th className="py-3.5 px-3 w-20 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Index</th>
+//                                     <th className="py-3.5 px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</th>
+//                                     <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Size</th>
+//                                     <th className="py-3.5 px-3 w-36 text-[10px] font-black text-slate-400 uppercase tracking-widest">Uploaded By</th>
+//                                     <th className="py-3.5 px-3 w-32 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+//                                     <th className="py-3.5 px-3 w-10"></th>
+//                                 </tr>
+//                             </thead>
+//                             <tbody className="divide-y divide-slate-50">
+//                                 {filteredItems.length === 0 ? (
+//                                     <tr><td colSpan="7" className="py-24 text-center">
+//                                         <div className="flex flex-col items-center gap-3 text-slate-400">
+//                                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="opacity-40"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+//                                             <span className="text-[13px] font-bold">{searchQuery ? 'No results found' : 'This folder is empty'}</span>
+//                                         </div>
+//                                     </td></tr>
+//                                 ) : filteredItems.map(item => {
+//                                     const isChecked = selectedIds.has(item.id);
+//                                     const childCount = item.type === 'folder' ? getFolderChildCount(item.id) : null;
+//                                     return (
+//                                         <tr key={item.id} onClick={() => handleItemClick(item)}
+//                                             className={`group cursor-pointer transition-all duration-150 ${isChecked ? 'bg-slate-50 border-l-[3px] border-slate-900' : 'border-l-[3px] border-transparent hover:bg-slate-50/60'}`}>
+//                                             <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
+//                                                 <input type="checkbox" checked={isChecked} onChange={e => handleToggleSelect(item.id, e)} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
+//                                             </td>
+//                                             <td className="py-3.5 px-3 text-center font-mono text-[11.5px] font-semibold text-slate-400">{item.index}</td>
+//                                             <td className="py-3.5 px-3">
+//                                                 <div className="flex items-center gap-3">
+//                                                     {renderFileIcon(item.type)}
+//                                                     <div className="min-w-0">
+//                                                         <p className="font-semibold text-[13px] text-slate-700 truncate">{item.name}</p>
+//                                                         {item.type === 'folder' && <p className="text-[11px] text-slate-400 font-medium">{childCount} item{childCount !== 1 ? 's' : ''}</p>}
+//                                                     </div>
+//                                                 </div>
+//                                             </td>
+//                                             <td className="py-3.5 px-3 text-center text-[12.5px] font-medium text-slate-400">{item.size}</td>
+//                                             <td className="py-3.5 px-3 text-[12.5px] font-semibold text-slate-600">{item.uploadedBy}</td>
+//                                             <td className="py-3.5 px-3 text-[12px] font-bold text-slate-400">{item.dateCreated}</td>
+//                                             <td className="py-3.5 px-3">
+//                                                 {item.type === 'folder' && (
+//                                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-300 group-hover:text-slate-500 transition-colors"><polyline points="9 18 15 12 9 6" /></svg>
+//                                                 )}
+//                                             </td>
+//                                         </tr>
+//                                     );
+//                                 })}
+//                             </tbody>
+//                         </table>
+//                     </div>
+//                     <div className="flex items-center justify-between mt-3 px-1">
+//                         <p className="text-[11.5px] text-slate-400 font-semibold">
+//                             {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}{typeFilter !== 'all' && ` · filtered by ${typeFilter}s`}
+//                         </p>
+//                         {selectedIds.size > 0 && (
+//                             <button onClick={() => setSelectedIds(new Set())} className="text-[11.5px] text-slate-400 font-semibold hover:text-slate-700 transition-colors">Clear selection</button>
+//                         )}
+//                     </div>
+//                 </div>
+//             </div>
+
+//             {/* Upload Modal */}
+//             {isUploadModalOpen && (
+//                 <Modal onClose={() => setIsUploadModalOpen(false)}>
+//                     <h3 className="text-[16px] font-black text-slate-800 mb-5">Secure Upload</h3>
+//                     <div onClick={() => fileInputRef.current?.click()}
+//                         className="flex flex-col items-center justify-center gap-3 p-10 border-2 border-dashed border-slate-200 bg-slate-50 rounded-2xl cursor-pointer hover:border-slate-400 hover:bg-slate-100 transition-all">
+//                         <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center">
+//                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+//                         </div>
+//                         <div className="text-center">
+//                             <p className="font-bold text-[13.5px] text-slate-800">Click to browse files</p>
+//                             <p className="text-[11.5px] text-slate-400 mt-0.5">Files are AES-256 encrypted on upload</p>
+//                         </div>
+//                     </div>
+//                     {uploadQueue.length > 0 && (
+//                         <div className="mt-4 space-y-2">
+//                             {uploadQueue.map(item => (
+//                                 <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+//                                     <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center text-[8px] font-black text-slate-500 shrink-0">{item.name.split('.').pop().toUpperCase()}</div>
+//                                     <div className="flex-1 min-w-0">
+//                                         <p className="text-[12px] font-semibold text-slate-700 truncate">{item.name}</p>
+//                                         <p className="text-[10.5px] text-slate-400">{item.size}</p>
+//                                     </div>
+//                                     {item.status === 'completed' && <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>}
+//                                     {item.status === 'error' && <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>}
+//                                     {item.status === 'uploading' && <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin shrink-0" />}
+//                                 </div>
+//                             ))}
+//                         </div>
+//                     )}
+//                 </Modal>
+//             )}
+
+//             {/* Delete Modal */}
+//             {isDeleteModalOpen && (
+//                 <Modal onClose={() => setIsDeleteModalOpen(false)} maxWidth="max-w-sm">
+//                     <div className="flex flex-col items-center gap-4 text-center">
+//                         <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center">
+//                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
+//                         </div>
+//                         <div>
+//                             <h3 className="text-[15px] font-black text-slate-800">Delete {selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''}?</h3>
+//                             <p className="text-[12.5px] text-slate-500 mt-1">This will move them to Trash. You can restore later.</p>
+//                         </div>
+//                         <div className="flex gap-2 w-full">
+//                             <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-700 text-[12.5px] font-bold rounded-xl hover:bg-slate-200 transition-all">Cancel</button>
+//                             <button onClick={executeDelete} disabled={isDeleting} className="flex-1 py-2.5 bg-rose-600 text-white text-[12.5px] font-bold rounded-xl hover:bg-rose-700 transition-all disabled:opacity-60">
+//                                 {isDeleting ? 'Deleting...' : 'Delete'}
+//                             </button>
+//                         </div>
+//                     </div>
+//                 </Modal>
+//             )}
+
+//             {/* Move Modal */}
+//             {isMoveModalOpen && (
+//                 <Modal onClose={() => setIsMoveModalOpen(false)} maxWidth="max-w-sm">
+//                     <h3 className="text-[15px] font-black text-slate-800 mb-4">Move {selectedIds.size} file{selectedIds.size !== 1 ? 's' : ''} to…</h3>
+//                     <div className="space-y-1 max-h-64 overflow-y-auto mb-4">
+//                         <button onClick={() => setMovingToFolderId(null)}
+//                             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold transition-all ${movingToFolderId === null ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}>
+//                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 opacity-60"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
+//                             Root (no folder)
+//                         </button>
+//                         {availableFoldersForMove.map(folder => (
+//                             <button key={folder.id} onClick={() => setMovingToFolderId(folder.id)}
+//                                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold transition-all ${movingToFolderId === folder.id ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}>
+//                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" className="shrink-0"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
+//                                 <span className="truncate">{folder.name}</span>
+//                                 <span className="ml-auto text-[10.5px] opacity-50 font-mono shrink-0">{folder.index}</span>
+//                             </button>
+//                         ))}
+//                         {availableFoldersForMove.length === 0 && <p className="text-[12px] text-slate-400 text-center py-6">No folders available. Create one first.</p>}
+//                     </div>
+//                     <div className="flex gap-2">
+//                         <button onClick={() => setIsMoveModalOpen(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-700 text-[12.5px] font-bold rounded-xl hover:bg-slate-200 transition-all">Cancel</button>
+//                         <button onClick={executeMoveToFolder} className="flex-1 py-2.5 bg-slate-900 text-white text-[12.5px] font-bold rounded-xl hover:bg-slate-700 transition-all">Move Here</button>
+//                     </div>
+//                 </Modal>
+//             )}
+//         </div>
+//     );
+// }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN VIEW — full folder panel + file management
+// ═══════════════════════════════════════════════════════════════════════════════
 function AdminView({ session, currentView, router }) {
     const [files, setFiles] = useState([]);
     const [currentFolderId, setCurrentFolderId] = useState(null);
@@ -104,17 +705,7 @@ function AdminView({ session, currentView, router }) {
                     file_path: doc.file_path,
                     dek_ref: doc.dek_ref
                 }));
-                // const mappedDocs = (docsData || []).map(doc => ({
-                //     id: doc.id, parentId: doc.folder_id || null, index: doc.index || '99.0',
-                //     name: doc.name, type: doc.name.split('.').pop().toLowerCase() || 'file',
-                //     size: doc.file_size_bytes > 1024 * 1024
-                //         ? `${(doc.file_size_bytes / (1024 * 1024)).toFixed(1)} MB`
-                //         : `${(doc.file_size_bytes / 1024).toFixed(0)} KB`,
-                //     uploadedBy: 'Admin',
-                //     dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                //     security: doc.security || 'Encrypted',
-                //     is_bookmarked: doc.is_bookmarked, is_downloaded: doc.is_downloaded,
-                // }));
+
                 setFiles([...mappedFolders, ...mappedDocs]);
                 setBookmarkedIds(new Set((docsData || []).filter(d => d.is_bookmarked).map(d => d.id)));
                 setDownloadedIds(new Set((docsData || []).filter(d => d.is_downloaded).map(d => d.id)));
@@ -236,54 +827,6 @@ function AdminView({ session, currentView, router }) {
         finally { setIsMoveModalOpen(false); }
     };
 
-    // const handleFileChange = async (e) => {
-    //     const chosenFiles = Array.from(e.target.files);
-    //     if (chosenFiles.length === 0) return;
-    //     const queue = chosenFiles.map((file, idx) => ({
-    //         id: `up-${Date.now()}-${idx}`, name: file.name,
-    //         size: file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${(file.size / 1024).toFixed(0)} KB`,
-    //         progress: 0, status: 'uploading',
-    //     }));
-    //     setUploadQueue(queue);
-    //     for (let i = 0; i < chosenFiles.length; i++) {
-    //         const file = chosenFiles[i]; const qi = queue[i];
-    //         try {
-    //             const fileBuffer = await file.arrayBuffer();
-    //             const cryptoKey = await window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
-    //             const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    //             const encryptedBuffer = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, fileBuffer);
-    //             const rawKey = await window.crypto.subtle.exportKey('raw', cryptoKey);
-    //             const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
-    //             const ivBase64 = btoa(String.fromCharCode(...iv));
-    //             const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
-    //             const newIndex = generateNewIndex();
-    //             const res = await fetch('/api/documents/upload', {
-    //                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-    //                 body: JSON.stringify({
-    //                     company_id: session.company_id, folder_id: currentFolderId,
-    //                     uploaded_by: session.id, name: file.name, file_data: encryptedBase64,
-    //                     mime_type: file.type || 'application/octet-stream', file_size_bytes: file.size,
-    //                     dek_ref: `${ivBase64}:${keyBase64}`, index: newIndex, security: 'Encrypted',
-    //                 }),
-    //             });
-    //             if (!res.ok) throw new Error('Upload failed');
-    //             const { id: docId } = await res.json();
-    //             setUploadQueue(prev => prev.map(it => it.id === qi.id ? { ...it, progress: 100, status: 'completed' } : it));
-    //             setFiles(prev => [...prev, {
-    //                 id: docId, parentId: currentFolderId, index: newIndex, name: file.name,
-    //                 type: file.name.split('.').pop().toLowerCase() || 'file', size: qi.size,
-    //                 uploadedBy: session.name,
-    //                 dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    //                 security: 'Encrypted',
-    //             }]);
-    //         } catch (err) {
-    //             console.error('Upload failed:', err);
-    //             setUploadQueue(prev => prev.map(it => it.id === qi.id ? { ...it, status: 'error' } : it));
-    //         }
-    //     }
-    //     setTimeout(() => { setUploadQueue([]); setIsUploadModalOpen(false); }, 800);
-    //     e.target.value = '';
-    // };
     const handleFileChange = async (e) => {
         const chosenFiles = Array.from(e.target.files);
         if (chosenFiles.length === 0 || !session) return;
@@ -372,6 +915,7 @@ function AdminView({ session, currentView, router }) {
         }
         setTimeout(() => { setUploadQueue([]); setIsUploadModalOpen(false); }, 1500);
     };
+
     return (
         <div className="relative flex w-full h-full bg-[#F8F9FB] overflow-hidden text-slate-800 font-sans">
             <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} className="hidden" />
@@ -412,8 +956,6 @@ function AdminView({ session, currentView, router }) {
 
             {/* ── MAIN ─────────────────────────────────────────────────────── */}
             <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
-
-                {/* Header */}
                 <div className="flex items-center justify-between px-7 pt-6 pb-4 border-b border-slate-200 bg-white">
                     <div className="flex items-center gap-2 min-w-0">
                         <span className="text-[13px] font-black text-slate-400 uppercase tracking-widest shrink-0">
@@ -439,10 +981,26 @@ function AdminView({ session, currentView, router }) {
                             </button>
                         )}
                     </div>
-                    <div className="relative w-56">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                        <input type="text" placeholder="Search files..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[12.5px] font-semibold text-slate-700 focus:outline-none focus:border-slate-400 focus:bg-white transition-all" />
+
+                    {/* Elegant side-by-side spacing with matching theme */}
+                    <div className="flex items-center gap-3">
+                        <a
+                            href="https://docs.google.com/uc?export=download&id=1_P4RNa4fb1tcfUiud0LvY5l7phens3hL"
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white text-[12px] font-bold rounded-xl transition-all shadow-sm shrink-0"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            </svg>
+                            Electron App
+                        </a>
+
+                        <div className="relative w-56">
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                            <input type="text" placeholder="Search files..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                                className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[12.5px] font-semibold text-slate-700 focus:outline-none focus:border-slate-400 focus:bg-white transition-all" />
+                        </div>
                     </div>
                 </div>
 
@@ -567,6 +1125,8 @@ function AdminView({ session, currentView, router }) {
                     </div>
                 </div>
             </div>
+
+            {/* ── ALL MODALS MOVED INSIDE THE MAIN RETURN JSX BLOCK ── */}
 
             {/* Upload Modal */}
             {isUploadModalOpen && (
@@ -769,7 +1329,7 @@ function UserView({ session, currentView }) {
         <div className="flex flex-col w-full h-full bg-[#F8F9FB] overflow-hidden text-slate-800 font-sans">
 
             {/* Header */}
-            <div className="flex items-center justify-between px-7 pt-6 pb-4 border-b border-slate-200 bg-white">
+            {/* <div className="flex items-center justify-between px-7 pt-6 pb-4 border-b border-slate-200 bg-white">
                 <div>
                     <span className="text-[13px] font-black text-slate-400 uppercase tracking-widest">My Documents</span>
                     <p className="text-[11px] text-slate-400 mt-0.5">{files.length} file{files.length !== 1 ? 's' : ''} shared with you</p>
@@ -779,8 +1339,35 @@ function UserView({ session, currentView }) {
                     <input type="text" placeholder="Search files..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                         className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[12.5px] font-semibold text-slate-700 focus:outline-none focus:border-slate-400 focus:bg-white transition-all" />
                 </div>
-            </div>
+            </div> */}
+            {/* ── CLEANED USERVIEW HEADER BLOCK ── */}
+            <div className="flex items-center justify-between px-7 pt-6 pb-4 border-b border-slate-200 bg-white">
+                <div>
+                    <span className="text-[13px] font-black text-slate-400 uppercase tracking-widest">My Documents</span>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{files.length} file{files.length !== 1 ? 's' : ''} shared with you</p>
+                </div>
 
+                {/* Elegant side-by-side spacing with matching theme */}
+                <div className="flex items-center gap-3">
+                    <a
+                        href="https://docs.google.com/uc?export=download&id=1_P4RNa4fb1tcfUiud0LvY5l7phens3hL"
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white text-[12px] font-bold rounded-xl transition-all shadow-sm shrink-0"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        </svg>
+                        Electron App
+                    </a>
+
+                    <div className="relative w-56">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                        <input type="text" placeholder="Search files..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                            className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[12.5px] font-semibold text-slate-700 focus:outline-none focus:border-slate-400 focus:bg-white transition-all" />
+                    </div>
+                </div>
+            </div>
             {/* Table */}
             <div className="flex-1 overflow-auto px-7 py-5">
                 {filteredFiles.length === 0 ? (
