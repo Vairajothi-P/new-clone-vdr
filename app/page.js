@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import Link from "next/link";
-import "@fortawesome/fontawesome-free/css/all.min.css";
 import { FaFolderOpen } from "react-icons/fa";
 
 export default function Home() {
