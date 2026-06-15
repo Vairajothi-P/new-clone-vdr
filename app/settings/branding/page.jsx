@@ -168,6 +168,21 @@ export default function BrandingPage() {
     { id: 5, label: 'Rose Gold', colors: ['bg-gradient-to-tr from-rose-400 to-pink-500', 'bg-rose-700'] },
   ];
 
+  // Dynamic Theme Classes
+  const getThemeStyles = (themeId) => {
+    switch (themeId) {
+      case 0: return { border: 'border-orange-500', bg: 'bg-orange-50/30', ring: 'ring-orange-500', text: 'text-orange-700', fill: 'bg-orange-500', gradient: 'from-orange-50', hoverBorder: 'group-hover:border-orange-500', hoverText: 'group-hover:text-orange-600', focusRing: 'focus:ring-orange-500/10 focus:border-orange-500', publishBtn: 'from-amber-500 to-orange-600 shadow-orange-500/20' };
+      case 1: return { border: 'border-blue-500', bg: 'bg-blue-50/30', ring: 'ring-blue-500', text: 'text-blue-700', fill: 'bg-blue-500', gradient: 'from-blue-50', hoverBorder: 'group-hover:border-blue-500', hoverText: 'group-hover:text-blue-600', focusRing: 'focus:ring-blue-500/10 focus:border-blue-500', publishBtn: 'from-blue-500 to-blue-700 shadow-blue-500/20' };
+      case 2: return { border: 'border-teal-500', bg: 'bg-teal-50/30', ring: 'ring-teal-500', text: 'text-teal-700', fill: 'bg-teal-500', gradient: 'from-teal-50', hoverBorder: 'group-hover:border-teal-500', hoverText: 'group-hover:text-teal-600', focusRing: 'focus:ring-teal-500/10 focus:border-teal-500', publishBtn: 'from-teal-400 to-teal-600 shadow-teal-500/20' };
+      case 3: return { border: 'border-purple-500', bg: 'bg-purple-50/30', ring: 'ring-purple-500', text: 'text-purple-700', fill: 'bg-purple-500', gradient: 'from-purple-50', hoverBorder: 'group-hover:border-purple-500', hoverText: 'group-hover:text-purple-600', focusRing: 'focus:ring-purple-500/10 focus:border-purple-500', publishBtn: 'from-purple-500 to-purple-700 shadow-purple-500/20' };
+      case 4: return { border: 'border-slate-500', bg: 'bg-slate-50/30', ring: 'ring-slate-500', text: 'text-slate-700', fill: 'bg-slate-700', gradient: 'from-slate-100', hoverBorder: 'group-hover:border-slate-500', hoverText: 'group-hover:text-slate-600', focusRing: 'focus:ring-slate-500/10 focus:border-slate-500', publishBtn: 'from-slate-700 to-black shadow-slate-900/20' };
+      case 5: return { border: 'border-rose-500', bg: 'bg-rose-50/30', ring: 'ring-rose-500', text: 'text-rose-700', fill: 'bg-rose-500', gradient: 'from-rose-50', hoverBorder: 'group-hover:border-rose-500', hoverText: 'group-hover:text-rose-600', focusRing: 'focus:ring-rose-500/10 focus:border-rose-500', publishBtn: 'from-rose-400 to-rose-600 shadow-rose-500/20' };
+      default: return { border: 'border-blue-500', bg: 'bg-blue-50/30', ring: 'ring-blue-500', text: 'text-blue-700', fill: 'bg-blue-500', gradient: 'from-blue-50', hoverBorder: 'group-hover:border-blue-500', hoverText: 'group-hover:text-blue-600', focusRing: 'focus:ring-blue-500/10 focus:border-blue-500', publishBtn: 'from-blue-500 to-blue-700 shadow-blue-500/20' };
+    }
+  };
+
+  const currentThemeStyles = getThemeStyles(activeTheme);
+
   if (loading) {
     return (
       <div className="relative min-h-screen bg-[#F8FAFC] flex items-center justify-center">
@@ -181,7 +196,7 @@ export default function BrandingPage() {
 
   return (
     <div className="relative min-h-screen bg-[#F8FAFC]">
-      <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-50 to-transparent pointer-events-none"></div>
+      <div className={`absolute top-0 left-0 w-full h-96 bg-gradient-to-b ${currentThemeStyles.gradient} to-transparent pointer-events-none transition-colors duration-500`}></div>
       
       <div className="relative p-4 md:p-6 max-w-5xl mx-auto w-full space-y-5 animate-in slide-in-from-bottom-4 fade-in duration-700">
         
@@ -194,7 +209,7 @@ export default function BrandingPage() {
           <button 
             onClick={handlePublish}
             disabled={saving}
-            className="px-6 py-2.5 bg-gradient-to-r from-gray-900 to-black text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-gray-900/20 hover:-translate-y-0.5 focus:ring-4 focus:ring-gray-200 transition-all duration-300 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            className={`px-6 py-2.5 bg-gradient-to-r ${currentThemeStyles.publishBtn} text-white text-sm font-medium rounded-xl hover:shadow-lg hover:-translate-y-0.5 focus:ring-4 focus:ring-gray-200 transition-all duration-500 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed`}
           >
             {saving ? (
               <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Saving…</>
@@ -204,32 +219,32 @@ export default function BrandingPage() {
 
         {/* User Profile Card */}
         <div className="relative overflow-hidden bg-white/80 backdrop-blur-xl border border-gray-200/80 rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group hover:border-gray-300 transition-all duration-500">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-full blur-3xl -z-10 group-hover:scale-110 transition-transform duration-700"></div>
+          <div className={`absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/10 ${currentThemeStyles.bg} rounded-full blur-3xl -z-10 group-hover:scale-110 transition-transform duration-700`}></div>
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="w-16 h-16 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-800 text-xl font-bold shadow-sm ring-4 ring-white overflow-hidden">
-                {logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" /> : <span>{getInitials(adminName)}</span>}
+              <div className={`w-16 h-16 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-800 text-xl font-bold shadow-sm ring-4 ring-white overflow-hidden transition-colors duration-500`}>
+                {logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" /> : <span className={currentThemeStyles.text}>{getInitials(adminName)}</span>}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm">
-                <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+              <div className={`absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm`}>
+                <div className={`w-4 h-4 ${currentThemeStyles.fill} rounded-full transition-colors duration-500`}></div>
               </div>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-gray-900 tracking-tight">{brandName || 'My Workspace'}</h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md border border-gray-200/50 uppercase tracking-wider">Workspace</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 ${currentThemeStyles.bg} ${currentThemeStyles.text} rounded-md border border-gray-200/50 uppercase tracking-wider transition-colors duration-500`}>Workspace</span>
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[14px] text-gray-500 mt-1.5 font-medium">
                 <span className="flex items-center gap-2 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={currentThemeStyles.text}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   {adminName || '—'}
                 </span>
                 <span className="flex items-center gap-2 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={currentThemeStyles.text}><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
                   {adminEmail || '—'}
                 </span>
                 <span className="flex items-center gap-2 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-500"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={currentThemeStyles.text}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                   {adminPhone || '—'}
                 </span>
               </div>
@@ -237,7 +252,7 @@ export default function BrandingPage() {
           </div>
           <button 
             onClick={handleEditProfileClick}
-            className="px-5 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all shadow-sm cursor-pointer"
+            className={`px-5 py-2.5 bg-white border border-gray-200 ${currentThemeStyles.text} text-sm font-semibold rounded-xl hover:${currentThemeStyles.bg} hover:border-gray-300 focus:ring-4 focus:ring-gray-100 transition-all shadow-sm cursor-pointer`}
           >
             Edit Profile
           </button>
@@ -258,14 +273,14 @@ export default function BrandingPage() {
                   <div className="relative group cursor-pointer">
                     <input type="file" accept="image/png, image/svg+xml, image/jpeg" onChange={handleLogoChange} className="hidden" id="logo-upload-input" />
                     <label htmlFor="logo-upload-input" className="cursor-pointer block">
-                      <div className="absolute inset-0 bg-gradient-to-tr from-blue-400 to-blue-600 rounded-2xl blur-md opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
-                      <div className="relative w-20 h-20 rounded-2xl border-2 border-dashed border-gray-300 bg-white/50 backdrop-blur-sm flex flex-col items-center justify-center text-gray-400 group-hover:border-blue-500 group-hover:bg-blue-50/50 transition-all duration-300 overflow-hidden">
+                      <div className={`absolute inset-0 bg-gradient-to-tr ${currentThemeStyles.fill} opacity-0 group-hover:opacity-20 rounded-2xl blur-md transition-opacity duration-500`}></div>
+                      <div className={`relative w-20 h-20 rounded-2xl border-2 border-dashed border-gray-300 bg-white/50 backdrop-blur-sm flex flex-col items-center justify-center text-gray-400 ${currentThemeStyles.hoverBorder} group-hover:${currentThemeStyles.bg} transition-all duration-300 overflow-hidden`}>
                         {logoUrl ? (
                           <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1.5" />
                         ) : (
                           <>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:text-blue-500 transition-colors mb-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-                            <span className="text-[10px] font-bold tracking-wider uppercase group-hover:text-blue-600 transition-colors">Upload</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${currentThemeStyles.hoverText} transition-colors mb-1`}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                            <span className={`text-[10px] font-bold tracking-wider uppercase ${currentThemeStyles.hoverText} transition-colors`}>Upload</span>
                           </>
                         )}
                       </div>
@@ -297,7 +312,7 @@ export default function BrandingPage() {
                     type="text" 
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
-                    className="w-full pl-4 pr-10 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder-gray-400 shadow-inner"
+                    className={`w-full pl-4 pr-10 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 ${currentThemeStyles.focusRing} transition-all placeholder-gray-400 shadow-inner`}
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 bg-green-50 p-1 rounded-md transition-opacity" style={{ opacity: brandName.length > 0 ? 1 : 0 }}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -315,30 +330,34 @@ export default function BrandingPage() {
             </div>
             <div className="p-6 flex-1">
               <div className="grid grid-cols-2 gap-4">
-                {themes.map((theme) => (
-                  <button
-                    key={theme.id}
-                    onClick={() => setActiveTheme(theme.id)}
-                    className={`group relative flex flex-col items-start gap-2 p-3 rounded-2xl border transition-all duration-300 ${
-                      activeTheme === theme.id 
-                        ? 'border-blue-500 bg-blue-50/30 shadow-md ring-1 ring-blue-500 scale-[1.02]' 
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className="w-full h-10 rounded-xl flex overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
-                      <div className={`w-2/3 h-full ${theme.colors[0]}`}></div>
-                      <div className={`w-1/3 h-full ${theme.colors[1]}`}></div>
-                    </div>
-                    <div className="flex items-center justify-between w-full">
-                      <span className={`text-[13px] font-bold ${activeTheme === theme.id ? 'text-blue-700' : 'text-gray-700'}`}>{theme.label}</span>
-                      {activeTheme === theme.id && (
-                        <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-sm">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                {themes.map((theme) => {
+                  const isActive = activeTheme === theme.id;
+                  const styles = getThemeStyles(theme.id);
+                  return (
+                    <button
+                      key={theme.id}
+                      onClick={() => setActiveTheme(theme.id)}
+                      className={`group relative flex flex-col items-start gap-2 p-3 rounded-2xl border transition-all duration-300 ${
+                        isActive 
+                          ? `${styles.border} ${styles.bg} shadow-md ring-1 ${styles.ring} scale-[1.02]` 
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="w-full h-10 rounded-xl flex overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
+                        <div className={`w-2/3 h-full ${theme.colors[0]}`}></div>
+                        <div className={`w-1/3 h-full ${theme.colors[1]}`}></div>
+                      </div>
+                      <div className="flex items-center justify-between w-full">
+                        <span className={`text-[13px] font-bold ${isActive ? styles.text : 'text-gray-700'}`}>{theme.label}</span>
+                        {isActive && (
+                          <div className={`w-5 h-5 rounded-full ${styles.fill} text-white flex items-center justify-center shadow-sm`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -358,20 +377,20 @@ export default function BrandingPage() {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-[13px] font-bold text-gray-700 mb-1.5">Full Name</label>
-                <input type="text" value={tempName} onChange={(e) => setTempName(e.target.value)} className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
+                <input type="text" value={tempName} onChange={(e) => setTempName(e.target.value)} className={`w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 ${currentThemeStyles.focusRing} transition-all`} />
               </div>
               <div>
                 <label className="block text-[13px] font-bold text-gray-700 mb-1.5">Email Address</label>
-                <input type="email" value={tempEmail} onChange={(e) => setTempEmail(e.target.value)} className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
+                <input type="email" value={tempEmail} onChange={(e) => setTempEmail(e.target.value)} className={`w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 ${currentThemeStyles.focusRing} transition-all`} />
               </div>
               <div>
                 <label className="block text-[13px] font-bold text-gray-700 mb-1.5">Phone Number</label>
-                <input type="text" value={tempPhone} onChange={(e) => setTempPhone(e.target.value)} className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
+                <input type="text" value={tempPhone} onChange={(e) => setTempPhone(e.target.value)} className={`w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 ${currentThemeStyles.focusRing} transition-all`} />
               </div>
             </div>
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
               <button onClick={() => setIsEditProfileOpen(false)} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors cursor-pointer">Cancel</button>
-              <button onClick={handleSaveProfile} disabled={saving} className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
+              <button onClick={handleSaveProfile} disabled={saving} className={`px-5 py-2 ${currentThemeStyles.fill} text-white text-sm font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2`}>
                 {saving ? <><div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />Saving…</> : 'Save Changes'}
               </button>
             </div>
@@ -381,3 +400,4 @@ export default function BrandingPage() {
     </div>
   );
 }
+
