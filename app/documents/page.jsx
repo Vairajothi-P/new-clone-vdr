@@ -673,6 +673,7 @@ function AdminView({ session, currentView, router }) {
     const [uploadQueue, setUploadQueue] = useState([]);
     const [isDeleting, setIsDeleting] = useState(false);
     const fileInputRef = useRef(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     // ── FETCH ─────────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -827,6 +828,32 @@ function AdminView({ session, currentView, router }) {
         finally { setIsMoveModalOpen(false); }
     };
 
+    const toggleBookmark = async (item, e) => {
+        e.stopPropagation();
+        const isBookmarked = bookmarkedIds.has(item.id);
+        const newBookmarked = new Set(bookmarkedIds);
+        if (isBookmarked) {
+            newBookmarked.delete(item.id);
+        } else {
+            newBookmarked.add(item.id);
+        }
+        setBookmarkedIds(newBookmarked);
+
+        if (item.type !== 'folder') {
+            try {
+                const { error } = await supabase
+                    .from('documents')
+                    .update({ is_bookmarked: !isBookmarked })
+                    .eq('id', item.id);
+                if (error) throw error;
+            } catch (err) {
+                console.error('Failed to toggle bookmark:', err);
+                // Rollback
+                setBookmarkedIds(bookmarkedIds);
+            }
+        }
+    };
+
     const handleFileChange = async (e) => {
         const chosenFiles = Array.from(e.target.files);
         if (chosenFiles.length === 0 || !session) return;
@@ -921,38 +948,48 @@ function AdminView({ session, currentView, router }) {
             <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} className="hidden" />
 
             {/* ── FOLDER PANEL ─────────────────────────────────────────────── */}
-            <aside className="w-56 shrink-0 border-r border-slate-200 bg-white flex flex-col h-full overflow-hidden">
-                <div className="px-4 pt-5 pb-3 border-b border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Folders</p>
-                </div>
-                <div className="flex-1 overflow-y-auto py-2 px-2">
-                    <button
-                        onClick={() => { setCurrentFolderId(null); setTypeFilter('all'); }}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[12.5px] font-semibold transition-all mb-0.5
-                            ${currentFolderId === null && currentView === 'files' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 opacity-70"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
-                        All Files
-                    </button>
-                    <div className="h-px bg-slate-100 my-2 mx-1" />
-                    {rootFolders.length === 0
-                        ? <p className="text-[11px] text-slate-400 text-center py-4 px-2">No folders yet</p>
-                        : <FolderTree folders={allFolders} parentId={null} currentFolderId={currentFolderId}
-                            onSelect={(id) => {
-                                if (currentView !== 'files') router.push('/documents?view=files');
-                                setCurrentFolderId(id); setSelectedIds(new Set()); setTypeFilter('all');
-                            }}
-                            getChildCount={getFolderChildCount} />
-                    }
-                </div>
-                <div className="p-3 border-t border-slate-100">
-                    <button onClick={() => setIsNewFolderOpen(true)}
-                        className="w-full flex items-center justify-center gap-2 py-2 text-[11.5px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all border border-dashed border-slate-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                        New Folder
-                    </button>
+            <aside className={`transition-all duration-300 ease-in-out shrink-0 border-slate-200 bg-white flex flex-col h-full overflow-hidden ${isSidebarOpen ? 'w-56 border-r' : 'w-0 border-r-0'}`}>
+                <div className="w-56 flex flex-col h-full">
+                    <div className="px-4 pt-5 pb-3 border-b border-slate-100">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Folders</p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto py-2 px-2">
+                        <button
+                            onClick={() => { setCurrentFolderId(null); setTypeFilter('all'); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[12.5px] font-semibold transition-all mb-0.5
+                                ${currentFolderId === null && currentView === 'files' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 opacity-70"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
+                            All Files
+                        </button>
+                        <div className="h-px bg-slate-100 my-2 mx-1" />
+                        {rootFolders.length === 0
+                            ? <p className="text-[11px] text-slate-400 text-center py-4 px-2">No folders yet</p>
+                            : <FolderTree folders={allFolders} parentId={null} currentFolderId={currentFolderId}
+                                onSelect={(id) => {
+                                    if (currentView !== 'files') router.push('/documents?view=files');
+                                    setCurrentFolderId(id); setSelectedIds(new Set()); setTypeFilter('all');
+                                }}
+                                getChildCount={getFolderChildCount} />
+                        }
+                    </div>
+                    <div className="p-3 border-t border-slate-100">
+                        <button onClick={() => setIsNewFolderOpen(true)}
+                            className="w-full flex items-center justify-center gap-2 py-2 text-[11.5px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all border border-dashed border-slate-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                            New Folder
+                        </button>
+                    </div>
                 </div>
             </aside>
+
+            {/* Toggle button — same style as groups page, centered vertically */}
+            <div
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className={`absolute top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-7 h-7 bg-white border border-gray-200 rounded-full shadow-[0_2px_8px_rgb(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgb(0,0,0,0.12)] cursor-pointer text-gray-500 hover:text-gray-900 hover:scale-105 hover:bg-gray-50 transition-all duration-300 ${isSidebarOpen ? 'left-[210px]' : 'left-[-14px]'} ${!isSidebarOpen ? 'rotate-180' : ''}`}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+            </div>
 
             {/* ── MAIN ─────────────────────────────────────────────────────── */}
             <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
@@ -1071,18 +1108,19 @@ function AdminView({ session, currentView, router }) {
                                     <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Size</th>
                                     <th className="py-3.5 px-3 w-36 text-[10px] font-black text-slate-400 uppercase tracking-widest">Uploaded By</th>
                                     <th className="py-3.5 px-3 w-32 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                                    <th className="py-3.5 px-3 w-16 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Starred</th>
                                     <th className="py-3.5 px-3 w-10"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
                                 {filteredItems.length === 0 ? (
-                                    <tr><td colSpan="7" className="py-24 text-center">
+                                    <tr><td colSpan="8" className="py-24 text-center">
                                         <div className="flex flex-col items-center gap-3 text-slate-400">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="opacity-40"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
                                             <span className="text-[13px] font-bold">{searchQuery ? 'No results found' : 'This folder is empty'}</span>
                                         </div>
                                     </td></tr>
-                                ) : filteredItems.map(item => {
+                                ) : filteredItems.map((item, idx) => {
                                     const isChecked = selectedIds.has(item.id);
                                     const childCount = item.type === 'folder' ? getFolderChildCount(item.id) : null;
                                     return (
@@ -1091,7 +1129,7 @@ function AdminView({ session, currentView, router }) {
                                             <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
                                                 <input type="checkbox" checked={isChecked} onChange={e => handleToggleSelect(item.id, e)} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
                                             </td>
-                                            <td className="py-3.5 px-3 text-center font-mono text-[11.5px] font-semibold text-slate-400">{item.index}</td>
+                                            <td className="py-3.5 px-3 text-center font-mono text-[11.5px] font-semibold text-slate-400">{idx + 1}</td>
                                             <td className="py-3.5 px-3">
                                                 <div className="flex items-center gap-3">
                                                     {renderFileIcon(item.type)}
@@ -1104,6 +1142,22 @@ function AdminView({ session, currentView, router }) {
                                             <td className="py-3.5 px-3 text-center text-[12.5px] font-medium text-slate-400">{item.size}</td>
                                             <td className="py-3.5 px-3 text-[12.5px] font-semibold text-slate-600">{item.uploadedBy}</td>
                                             <td className="py-3.5 px-3 text-[12px] font-bold text-slate-400">{item.dateCreated}</td>
+                                            <td className="py-3.5 px-3 text-center" onClick={e => e.stopPropagation()}>
+                                                <button
+                                                    onClick={(e) => toggleBookmark(item, e)}
+                                                    className="text-slate-300 hover:text-amber-500 hover:scale-110 active:scale-95 transition-all focus:outline-none"
+                                                >
+                                                    {bookmarkedIds.has(item.id) ? (
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2">
+                                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                        </svg>
+                                                    ) : (
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40 hover:opacity-100">
+                                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                            </td>
                                             <td className="py-3.5 px-3">
                                                 {item.type === 'folder' && (
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-300 group-hover:text-slate-500 transition-colors"><polyline points="9 18 15 12 9 6" /></svg>
@@ -1263,6 +1317,8 @@ function UserView({ session, currentView }) {
 
                     dek_ref: doc.dek_ref,
                     mime_type: doc.mime_type,
+                    is_bookmarked: doc.is_bookmarked,
+                    is_downloaded: doc.is_downloaded,
                 })));
                 // setFiles((docs || []).map(doc => ({
                 //     id: doc.id,
@@ -1315,7 +1371,34 @@ function UserView({ session, currentView }) {
             setDownloading(prev => { const n = { ...prev }; delete n[file.id]; return n; });
         }
     };
-    const filteredFiles = files.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const toggleBookmark = async (file, e) => {
+        e.stopPropagation();
+        const isBookmarked = file.is_bookmarked;
+        setFiles(prev => prev.map(f => f.id === file.id ? { ...f, is_bookmarked: !isBookmarked } : f));
+        try {
+            const { error } = await supabase
+                .from('documents')
+                .update({ is_bookmarked: !isBookmarked })
+                .eq('id', file.id);
+            if (error) throw error;
+        } catch (err) {
+            console.error('Failed to toggle bookmark:', err);
+            setFiles(prev => prev.map(f => f.id === file.id ? { ...f, is_bookmarked: isBookmarked } : f));
+        }
+    };
+
+    const filteredFiles = useMemo(() => {
+        let items = files;
+        if (currentView === 'bookmarks') {
+            items = items.filter(f => f.is_bookmarked);
+        } else if (currentView === 'downloads') {
+            items = items.filter(f => f.is_downloaded);
+        }
+        if (searchQuery.trim()) {
+            items = items.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+        return items;
+    }, [files, currentView, searchQuery]);
 
     if (loading) {
         return (
@@ -1388,11 +1471,12 @@ function UserView({ session, currentView }) {
                                     <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Size</th>
                                     <th className="py-3.5 px-3 w-28 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Access</th>
                                     <th className="py-3.5 px-3 w-32 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                                    <th className="py-3.5 px-3 w-16 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Starred</th>
                                     <th className="py-3.5 px-3 w-32 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {filteredFiles.map(file => {
+                                {filteredFiles.map((file, idx) => {
                                     const isDownloading = downloading[file.id];
                                     // Access badge
                                     let accessLabel = 'Read Only';
@@ -1401,7 +1485,7 @@ function UserView({ session, currentView }) {
 
                                     return (
                                         <tr key={file.id} className="hover:bg-slate-50/60 transition-all duration-150">
-                                            <td className="py-3.5 px-4 text-center font-mono text-[11.5px] font-semibold text-slate-400">{file.index}</td>
+                                            <td className="py-3.5 px-4 text-center font-mono text-[11.5px] font-semibold text-slate-400">{idx + 1}</td>
                                             <td className="py-3.5 px-3">
                                                 <div className="flex items-center gap-3">
                                                     {renderFileIcon(file.type)}
@@ -1419,6 +1503,22 @@ function UserView({ session, currentView }) {
                                                 </span>
                                             </td>
                                             <td className="py-3.5 px-3 text-[12px] font-bold text-slate-400">{file.dateCreated}</td>
+                                            <td className="py-3.5 px-3 text-center" onClick={e => e.stopPropagation()}>
+                                                <button
+                                                    onClick={(e) => toggleBookmark(file, e)}
+                                                    className="text-slate-300 hover:text-amber-500 hover:scale-110 active:scale-95 transition-all focus:outline-none"
+                                                >
+                                                    {file.is_bookmarked ? (
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2">
+                                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                        </svg>
+                                                    ) : (
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40 hover:opacity-100">
+                                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                            </td>
                                             <td className="py-3.5 px-3 text-center">
                                                 <button
                                                     onClick={() => handleDownload(file)}
