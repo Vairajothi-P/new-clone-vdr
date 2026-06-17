@@ -169,7 +169,7 @@ export default function LoginPage() {
                 />
                 <span className="text-gray-600">Remember me</span>
               </label>
-              <Link href="/forgot-password" className="text-blue-600 hover:text-blue-700 font-medium transition">Forgot Password?</Link>
+              {/* <Link href="/forgot-password" className="text-blue-600 hover:text-blue-700 font-medium transition">Forgot Password?</Link> */}
             </div>
 
             <button
@@ -194,7 +194,7 @@ export default function LoginPage() {
             <div className="flex-1 h-px bg-gray-200"></div>
           </div>
 
-          <div className="space-y-3">
+          {/* <div className="space-y-3">
             <button type="button" disabled={isLoading} className="w-full py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 transition flex items-center justify-center gap-3 disabled:opacity-50">
               <FaGoogle className="text-red-500 text-lg" />
               <span className="text-gray-700 font-medium text-sm">Sign in with Google</span>
@@ -203,7 +203,7 @@ export default function LoginPage() {
               <FaFacebook className="text-blue-600 text-lg" />
               <span className="text-gray-700 font-medium text-sm">Sign in with Facebook</span>
             </button>
-          </div>
+          </div> */}
 
           <p className="text-center text-gray-600 text-sm p-2">
             Don t have an account?{' '}

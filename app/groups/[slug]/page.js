@@ -5,25 +5,13 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { FaUserPlus, FaCog } from "react-icons/fa";
 
-// ─── Permission sections config ───────────────────────────────────────────────
 const PERMISSION_SECTIONS = [
-    // {
-    //     label: "Documents",
-    //     scope: "document",
-    //     description: "Control what this group can do with documents",
-    //     subPerms: [
-    //         { key: "can_view",     label: "View",     desc: "Can open and read documents" },
-    //         { key: "can_edit",     label: "Edit",     desc: "Can modify document content" },
-    //         { key: "can_download", label: "Download", desc: "Can save documents locally" },
-    //         { key: "can_delete",   label: "Delete",   desc: "Can remove documents" },
-    //     ],
-    // },
     {
         label: "Groups",
         scope: "group",
         description: "Control group management access",
         subPerms: [
-            { key: "can_add_members",    label: "Add Members",    desc: "Can invite & add users to groups" },
+            { key: "can_add_members", label: "Add Members", desc: "Can invite & add users to groups" },
             { key: "can_remove_members", label: "Remove Members", desc: "Can remove users from groups" },
         ],
     },
@@ -31,44 +19,41 @@ const PERMISSION_SECTIONS = [
         label: "Settings",
         scope: "settings",
         description: "Grant access to workspace settings",
-        subPerms: [], // no sub-permissions, master toggle only
+        subPerms: [],
     },
 ];
 
 const DEFAULT_PERMS = {
-    can_view:            false,
-    can_edit:            false,
-    can_download:        false,
-    can_delete:          false,
-    can_add_members:     false,
-    can_remove_members:  false,
+    can_view: false,
+    can_edit: false,
+    can_download: false,
+    can_delete: false,
+    can_add_members: false,
+    can_remove_members: false,
 };
 
 export default function DynamicGroupPage() {
-    const params    = useParams();
+    const params = useParams();
     const groupSlug = params.slug;
 
-    const [members,   setMembers]   = useState([]);
+    const [members, setMembers] = useState([]);
     const [groupData, setGroupData] = useState(null);
-    const [loading,   setLoading]   = useState(true);
+    const [loading, setLoading] = useState(true);
 
     const [showPermissionPage, setShowPermissionPage] = useState(false);
-    const [showInviteModal,    setShowInviteModal]    = useState(false);
-    const [inviteEmail,        setInviteEmail]        = useState("");
-    const [inviteDescription,  setInviteDescription]  = useState("");
-    const [showToast,  setShowToast]  = useState(false);
-    const [toastMsg,   setToastMsg]   = useState("");
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [inviteEmail, setInviteEmail] = useState("");
+    const [inviteDescription, setInviteDescription] = useState("");
+    const [showToast, setShowToast] = useState(false);
+    const [toastMsg, setToastMsg] = useState("");
 
-    // { [scope]: { enabled, ...permKeys, existingId } }
-    const [perms,       setPerms]       = useState({});
-    const [permsLoading,setPermsLoading]= useState(false);
-    const [saving,      setSaving]      = useState(false);
+    const [perms, setPerms] = useState({});
+    const [permsLoading, setPermsLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
 
-    // 🔥 Session state - initialized from localStorage in useEffect only
-    const [session,     setSession]     = useState(null);
-    const [companyId,   setCompanyId]   = useState(null);
+    const [session, setSession] = useState(null);
+    const [companyId, setCompanyId] = useState(null);
 
-    // ── Load session from localStorage (client-side only) ─────────────────────
     useEffect(() => {
         const rawSession = localStorage.getItem("vdr_session");
         if (rawSession) {
@@ -78,34 +63,41 @@ export default function DynamicGroupPage() {
         }
     }, []);
 
-    // ── Fetch group + members ─────────────────────────────────────────────────
     useEffect(() => {
-        if (!groupSlug || !companyId) return; // 🔥 Wait for companyId to load
-        
+        if (!groupSlug || !companyId) return;
+
         const fetchGroupMembers = async () => {
+            setMembers([]);
             setLoading(true);
             try {
-                const searchName = decodeURIComponent(groupSlug)
-                    .replace(/[-_]/g, " ").trim().toLowerCase();
-
                 const { data: groups, error: groupsError } = await supabase
-                    .from("groups").select("*").eq("company_id", companyId);
-                if (groupsError) { setMembers([]); return; }
+                    .from("groups")
+                    .select("*")
+                    .eq("company_id", companyId)
+                    .eq("id", groupSlug);
 
-                const group = groups.find(
-                    g => g.name?.toLowerCase().replace(/[-_]/g, " ").trim() === searchName
-                );
-                if (!group) { setMembers([]); return; }
+                if (groupsError || !groups?.length) { setMembers([]); return; }
+
+                const group = groups[0];
                 setGroupData(group);
+
+                const { data: ugRows } = await supabase
+                    .from("user_groups")
+                    .select("user_id")
+                    .eq("group_id", group.id);
+
+                const userIds = ugRows?.map(r => r.user_id) || [];
+                if (!userIds.length) { setMembers([]); return; }
 
                 const { data: users, error: usersError } = await supabase
                     .from("users")
                     .select("id, name, email, phone_number, status")
-                    .eq("role", group.name.trim())
+                    .in("id", userIds)
                     .eq("company_id", companyId);
 
                 if (usersError) { setMembers([]); return; }
                 setMembers(users || []);
+
             } catch (err) {
                 console.error(err);
                 setMembers([]);
@@ -113,10 +105,10 @@ export default function DynamicGroupPage() {
                 setLoading(false);
             }
         };
+
         fetchGroupMembers();
     }, [groupSlug, companyId]);
 
-    // ── Load existing permissions when permission page opens ──────────────────
     useEffect(() => {
         if (!showPermissionPage || !groupData) return;
         const loadPerms = async () => {
@@ -125,7 +117,7 @@ export default function DynamicGroupPage() {
                 const { data, error } = await supabase
                     .from("permissions")
                     .select("*")
-                    .eq("group_id",   groupData.id)
+                    .eq("group_id", groupData.id)
                     .eq("company_id", groupData.company_id);
                 if (error) throw error;
 
@@ -133,14 +125,10 @@ export default function DynamicGroupPage() {
                 PERMISSION_SECTIONS.forEach(({ scope }) => {
                     const row = data?.find(r => r.scope === scope);
                     built[scope] = {
-                        enabled:           !!row,
-                        // can_view:          row?.can_view          ?? false,
-                        // can_edit:          row?.can_edit          ?? false,
-                        // can_download:      row?.can_download      ?? false,
-                        // can_delete:        row?.can_delete        ?? false,
-                        can_add_members:   row?.can_add_members   ?? false,
-                        can_remove_members:row?.can_remove_members?? false,
-                        existingId:        row?.id                ?? null,
+                        enabled: !!row,
+                        can_add_members: row?.can_add_members ?? false,
+                        can_remove_members: row?.can_remove_members ?? false,
+                        existingId: row?.id ?? null,
                     };
                 });
                 setPerms(built);
@@ -153,7 +141,6 @@ export default function DynamicGroupPage() {
         loadPerms();
     }, [showPermissionPage, groupData]);
 
-    // ── Toggle master section checkbox ────────────────────────────────────────
     const toggleSection = (scope) => {
         setPerms(prev => {
             const current = prev[scope] || { ...DEFAULT_PERMS, enabled: false, existingId: null };
@@ -162,7 +149,6 @@ export default function DynamicGroupPage() {
                 [scope]: {
                     ...current,
                     enabled: !current.enabled,
-                    // reset sub-perms when disabling
                     ...(!current.enabled ? {} : {
                         can_view: false, can_edit: false, can_download: false,
                         can_delete: false, can_add_members: false, can_remove_members: false,
@@ -172,7 +158,6 @@ export default function DynamicGroupPage() {
         });
     };
 
-    // ── Toggle a single sub-permission ────────────────────────────────────────
     const toggleSubPerm = (scope, key) => {
         setPerms(prev => ({
             ...prev,
@@ -180,7 +165,6 @@ export default function DynamicGroupPage() {
         }));
     };
 
-    // ── Submit ────────────────────────────────────────────────────────────────
     const handleSubmitPermissions = async () => {
         if (!groupData) return;
         setSaving(true);
@@ -199,18 +183,18 @@ export default function DynamicGroupPage() {
                 }
 
                 const payload = {
-                    company_id:          groupData.company_id,
-                    group_id:            groupData.id,
+                    company_id: groupData.company_id,
+                    group_id: groupData.id,
                     scope,
-                    can_view:            scope === "settings" ? true : false,
-                    can_edit:            s.can_edit            || false,
-                    can_download:        s.can_download        || false,
-                    can_delete:          s.can_delete          || false,
-                    can_add_members:     s.can_add_members     || false,
-                    can_remove_members:  s.can_remove_members  || false,
-                    can_print:           false,
-                    folder_id:           null,
-                    document_id:         null,
+                    can_view: scope === "settings" ? true : false,
+                    can_edit: s.can_edit || false,
+                    can_download: s.can_download || false,
+                    can_delete: s.can_delete || false,
+                    can_add_members: s.can_add_members || false,
+                    can_remove_members: s.can_remove_members || false,
+                    can_print: false,
+                    folder_id: null,
+                    document_id: null,
                 };
 
                 if (s.existingId) {
@@ -239,7 +223,6 @@ export default function DynamicGroupPage() {
         }
     };
 
-    // ── Invite submit ─────────────────────────────────────────────────────────
     const handleInviteSubmit = async () => {
         if (!inviteEmail.trim()) { alert("Please enter a candidate email."); return; }
         try {
@@ -272,40 +255,38 @@ export default function DynamicGroupPage() {
         setTimeout(() => setShowToast(false), 3000);
     };
 
-    // ─────────────────────────────────────────────────────────────────────────
     return (
         <div className="flex-1 flex flex-col h-screen overflow-hidden font-sans">
 
             {/* TOAST */}
             {showToast && (
-                <div className="fixed top-8 right-8 bg-black text-white px-8 py-4 rounded-2xl shadow-2xl z-[100] animate-bounce font-black uppercase text-xs tracking-widest">
+                <div className="fixed top-8 right-8 bg-black text-white px-8 py-4 rounded-2xl shadow-2xl z-[100] animate-bounce font-black font-sans uppercase text-xs tracking-widest">
                     {toastMsg}
                 </div>
             )}
 
             {/* HEADER */}
             <div className="pt-12 px-12 pb-8">
-                <h1 className="text-5xl font-black text-black uppercase tracking-tighter">
+                <h1 className="text-5xl font-black font-sans text-black uppercase tracking-tighter">
                     {groupData ? `${groupData.name} Members` : "Loading..."}
                 </h1>
-                <p className="text-gray-400 mt-2 font-black text-xs tracking-[0.3em] uppercase">
+                <p className="text-gray-400 mt-2 font-black font-sans text-xs tracking-[0.3em] uppercase">
                     {groupData?.description || "Administration & Access Management"}
                 </p>
             </div>
 
             <div className="flex-1 overflow-y-auto px-12 pb-12 mt-4 font-sans">
 
-                {/* ── MEMBERS LIST ─────────────────────────────────────────── */}
                 {!showPermissionPage ? (
                     <div className="bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 p-12">
                         <div className="flex items-center gap-12 mb-12">
                             <button onClick={() => setShowInviteModal(true)}
-                                className="flex items-center gap-3 text-black font-black uppercase text-[11px] tracking-[0.2em] hover:opacity-50 transition-all">
+                                className="flex items-center gap-3 text-black font-black font-sans uppercase text-[11px] tracking-[0.2em] hover:opacity-50 transition-all">
                                 <FaUserPlus size={22} className="text-slate-900" />
                                 <span>Invite Member</span>
                             </button>
                             <button onClick={() => setShowPermissionPage(true)}
-                                className="flex items-center gap-3 text-black font-black uppercase text-[11px] tracking-[0.2em] hover:opacity-50 transition-all">
+                                className="flex items-center gap-3 text-black font-black font-sans uppercase text-[11px] tracking-[0.2em] hover:opacity-50 transition-all">
                                 <FaCog size={22} className="text-slate-900" />
                                 <span>Edit Permission</span>
                             </button>
@@ -315,25 +296,25 @@ export default function DynamicGroupPage() {
                             <table className="w-full text-left">
                                 <thead>
                                     <tr className="border-b-4 border-gray-50">
-                                        <th className="py-6 font-black text-black text-[10px] uppercase tracking-[0.3em]">Name</th>
-                                        <th className="py-6 font-black text-black text-[10px] uppercase tracking-[0.3em]">Email Address</th>
-                                        <th className="py-6 font-black text-black text-[10px] uppercase tracking-[0.3em]">Phone Number</th>
-                                        <th className="py-6 font-black text-black text-[10px] uppercase tracking-[0.3em]">Status</th>
+                                        <th className="py-6 font-black font-sans text-black text-[10px] uppercase tracking-[0.3em]">Name</th>
+                                        <th className="py-6 font-black font-sans text-black text-[10px] uppercase tracking-[0.3em]">Email Address</th>
+                                        <th className="py-6 font-black font-sans text-black text-[10px] uppercase tracking-[0.3em]">Phone Number</th>
+                                        <th className="py-6 font-black font-sans text-black text-[10px] uppercase tracking-[0.3em]">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {loading ? (
-                                        <tr><td colSpan="4" className="py-24 text-center font-black text-gray-200 uppercase tracking-[0.5em] text-xl">Decrypting...</td></tr>
+                                        <tr><td colSpan="4" className="py-24 text-center font-black font-sans text-gray-200 uppercase tracking-[0.5em] text-xl">Decrypting...</td></tr>
                                     ) : members.length === 0 ? (
-                                        <tr><td colSpan="4" className="py-24 text-center font-black text-gray-300 uppercase tracking-widest">No members assigned to this sector</td></tr>
+                                        <tr><td colSpan="4" className="py-24 text-center font-black font-sans text-gray-300 uppercase tracking-widest">No members assigned to this sector</td></tr>
                                     ) : (
                                         members.map((member) => (
                                             <tr key={member.id} className="group hover:bg-gray-50/80 transition-all duration-300">
-                                                <td className="py-7 font-black text-black text-base tracking-tight">{member.name}</td>
-                                                <td className="py-7 text-gray-500 font-bold text-sm tracking-wide">{member.email}</td>
-                                                <td className="py-7 text-gray-500 font-bold text-sm tracking-wide">{member.phone_number}</td>
+                                                <td className="py-7 font-black font-sans text-black text-base tracking-tight">{member.name}</td>
+                                                <td className="py-7 text-gray-500 font-bold font-sans text-sm tracking-wide">{member.email}</td>
+                                                <td className="py-7 text-gray-500 font-bold font-sans text-sm tracking-wide">{member.phone_number}</td>
                                                 <td className="py-7 text-sm">
-                                                    <span className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.15em] ${member.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                                    <span className={`px-5 py-2 rounded-full text-[10px] font-black font-sans uppercase tracking-[0.15em] ${member.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                                                         {member.status}
                                                     </span>
                                                 </td>
@@ -346,24 +327,23 @@ export default function DynamicGroupPage() {
                     </div>
 
                 ) : (
-                    /* ── PERMISSION PAGE ──────────────────────────────────── */
                     <div className="bg-white rounded-[2.5rem] p-16 shadow-2xl border border-gray-100">
 
                         <div className="flex justify-between items-start mb-14">
                             <div>
-                                <h2 className="text-5xl font-black text-black uppercase tracking-tighter">Group Permissions</h2>
-                                <p className="text-gray-400 font-black mt-3 uppercase text-[10px] tracking-[0.4em] border-b-2 border-black/10 pb-4 inline-block">
+                                <h2 className="text-5xl font-black font-sans text-black uppercase tracking-tighter">Group Permissions</h2>
+                                <p className="text-gray-400 font-black font-sans mt-3 uppercase text-[10px] tracking-[0.4em] border-b-2 border-black/10 pb-4 inline-block">
                                     Configuring access for @{groupData?.name}
                                 </p>
                             </div>
                             <button onClick={() => setShowPermissionPage(false)}
-                                className="bg-black text-white px-12 py-4 rounded-[1.2rem] font-black uppercase tracking-[0.2em] text-[10px] hover:scale-105 transition-all shadow-xl">
+                                className="bg-black text-white px-12 py-4 rounded-[1.2rem] font-black font-sans uppercase tracking-[0.2em] text-[10px] hover:scale-105 transition-all shadow-xl">
                                 Back to List
                             </button>
                         </div>
 
                         {permsLoading ? (
-                            <div className="py-24 text-center font-black text-gray-200 uppercase tracking-[0.5em] text-xl">Loading...</div>
+                            <div className="py-24 text-center font-black font-sans text-gray-200 uppercase tracking-[0.5em] text-xl">Loading...</div>
                         ) : (
                             <div className="space-y-5">
                                 {PERMISSION_SECTIONS.map(({ label, scope, description, subPerms }) => {
@@ -374,10 +354,8 @@ export default function DynamicGroupPage() {
                                         <div key={scope}
                                             className={`rounded-2xl border-2 transition-all duration-300 overflow-hidden ${s.enabled ? "border-black" : "border-gray-100"}`}>
 
-                                            {/* ── Master toggle row ── */}
                                             <div className="flex items-center justify-between px-8 py-6">
                                                 <div className="flex items-center gap-5">
-                                                    {/* Checkbox */}
                                                     <div onClick={() => toggleSection(scope)}
                                                         className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer shrink-0 ${s.enabled ? "bg-black border-black" : "bg-white border-gray-300 hover:border-black"}`}>
                                                         {s.enabled && (
@@ -387,25 +365,23 @@ export default function DynamicGroupPage() {
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="font-black text-sm uppercase tracking-widest text-black">{label} Access</p>
-                                                        <p className="font-bold text-[10px] uppercase tracking-widest text-gray-400 mt-0.5">{description}</p>
+                                                        <p className="font-black font-sans text-sm uppercase tracking-widest text-black">{label} Access</p>
+                                                        <p className="font-bold font-sans text-[10px] uppercase tracking-widest text-gray-400 mt-0.5">{description}</p>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex items-center gap-4">
-                                                    {/* For Settings: show a note since no sub-perms */}
                                                     {!hasSubPerms && s.enabled && (
-                                                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 border border-gray-200 rounded-full px-3 py-1">
+                                                        <span className="text-[9px] font-black font-sans uppercase tracking-widest text-gray-400 border border-gray-200 rounded-full px-3 py-1">
                                                             Full Access
                                                         </span>
                                                     )}
-                                                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${s.enabled ? "bg-black text-white" : "bg-gray-100 text-gray-400"}`}>
+                                                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black font-sans uppercase tracking-widest ${s.enabled ? "bg-black text-white" : "bg-gray-100 text-gray-400"}`}>
                                                         {s.enabled ? "Enabled" : "Disabled"}
                                                     </span>
                                                 </div>
                                             </div>
 
-                                            {/* ── Sub-permissions ── */}
                                             {s.enabled && hasSubPerms && (
                                                 <div className="px-8 pb-7 pt-1 border-t-2 border-gray-50">
                                                     <div className={`grid gap-4 ${subPerms.length === 4 ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"}`}>
@@ -413,7 +389,7 @@ export default function DynamicGroupPage() {
                                                             <div key={key} onClick={() => toggleSubPerm(scope, key)}
                                                                 className={`flex flex-col gap-3 p-5 rounded-2xl border-2 cursor-pointer transition-all select-none ${s[key] ? "border-black bg-black/5" : "border-gray-100 bg-white hover:border-gray-300"}`}>
                                                                 <div className="flex items-center justify-between">
-                                                                    <span className={`font-black text-[11px] uppercase tracking-widest ${s[key] ? "text-black" : "text-gray-500"}`}>
+                                                                    <span className={`font-black font-sans text-[11px] uppercase tracking-widest ${s[key] ? "text-black" : "text-gray-500"}`}>
                                                                         {subLabel}
                                                                     </span>
                                                                     <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all shrink-0 ${s[key] ? "bg-black border-black" : "bg-white border-gray-300"}`}>
@@ -424,7 +400,7 @@ export default function DynamicGroupPage() {
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                                <span className="font-bold text-[9px] uppercase tracking-wider text-gray-400">{desc}</span>
+                                                                <span className="font-bold font-sans text-[9px] uppercase tracking-wider text-gray-400">{desc}</span>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -437,7 +413,7 @@ export default function DynamicGroupPage() {
                         )}
 
                         <button onClick={handleSubmitPermissions} disabled={saving || permsLoading}
-                            className="mt-14 bg-black text-white px-16 py-5 rounded-[1.5rem] font-black uppercase tracking-[0.3em] text-[11px] shadow-2xl hover:bg-gray-800 transition-all block mx-auto disabled:opacity-40 disabled:cursor-not-allowed">
+                            className="mt-14 bg-black text-white px-16 py-5 rounded-[1.5rem] font-black font-sans uppercase tracking-[0.3em] text-[11px] shadow-2xl hover:bg-gray-800 transition-all block mx-auto disabled:opacity-40 disabled:cursor-not-allowed">
                             {saving ? "Saving..." : "Save Permissions"}
                         </button>
                     </div>
@@ -449,24 +425,24 @@ export default function DynamicGroupPage() {
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100] p-6">
                     <div className="bg-white w-full max-w-xl rounded-[3rem] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] p-12 relative">
                         <button onClick={() => setShowInviteModal(false)}
-                            className="absolute top-8 right-10 text-3xl text-gray-300 hover:text-black font-light">✕</button>
-                        <h2 className="text-4xl font-black text-black uppercase tracking-tighter mb-2">Member Invite</h2>
-                        <p className="text-gray-400 font-black mb-10 text-[10px] tracking-[0.3em] uppercase">
+                            className="absolute top-8 right-10 text-3xl text-gray-300 hover:text-black font-light font-sans">✕</button>
+                        <h2 className="text-4xl font-black font-sans text-black uppercase tracking-tighter mb-2">Member Invite</h2>
+                        <p className="text-gray-400 font-black font-sans mb-10 text-[10px] tracking-[0.3em] uppercase">
                             Sector: <span className="text-black">@{groupData?.name}</span>
                         </p>
                         <div className="space-y-8">
                             <div>
-                                <label className="block text-[10px] font-black text-black uppercase tracking-widest mb-3">Candidate Email</label>
+                                <label className="block text-[10px] font-black font-sans text-black uppercase tracking-widest mb-3">Candidate Email</label>
                                 <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} type="email" placeholder="USER@VDR.COM"
-                                    className="w-full bg-gray-50 border-none rounded-2xl p-5 font-black text-black text-sm outline-none focus:ring-4 focus:ring-black/5 placeholder:text-gray-300" />
+                                    className="w-full bg-gray-50 border-none rounded-2xl p-5 font-black font-sans text-black text-sm outline-none focus:ring-4 focus:ring-black/5 placeholder:text-gray-300" />
                             </div>
                             <div>
-                                <label className="block text-[10px] font-black text-black uppercase tracking-widest mb-3">Brief Message</label>
+                                <label className="block text-[10px] font-black font-sans text-black uppercase tracking-widest mb-3">Brief Message</label>
                                 <textarea value={inviteDescription} onChange={e => setInviteDescription(e.target.value)} rows="4" placeholder="DESCRIBE THE ROLE..."
-                                    className="w-full bg-gray-50 border-none rounded-2xl p-5 font-bold text-black text-sm outline-none focus:ring-4 focus:ring-black/5 resize-none placeholder:text-gray-300" />
+                                    className="w-full bg-gray-50 border-none rounded-2xl p-5 font-bold font-sans text-black text-sm outline-none focus:ring-4 focus:ring-black/5 resize-none placeholder:text-gray-300" />
                             </div>
                             <button onClick={handleInviteSubmit}
-                                className="w-full bg-black text-white py-6 rounded-2xl font-black uppercase tracking-[0.3em] text-xs shadow-2xl hover:scale-[1.02] active:scale-95 transition-all">
+                                className="w-full bg-black text-white py-6 rounded-2xl font-black font-sans uppercase tracking-[0.3em] text-xs shadow-2xl hover:scale-[1.02] active:scale-95 transition-all">
                                 Dispatch Invitation
                             </button>
                         </div>

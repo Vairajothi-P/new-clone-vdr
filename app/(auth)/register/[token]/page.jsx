@@ -1,365 +1,3 @@
-// "use client";
-
-// import { useState, useEffect } from "react";
-// import Link from "next/link";
-// import { useParams, useRouter } from "next/navigation";
-// import { supabase } from "@/utils/supabase/client";
-// import {
-//     FaUser,
-//     FaEnvelope,
-//     FaPhone,
-//     FaLock,
-//     FaEye,
-//     FaEyeSlash,
-//     FaCheckCircle,
-// } from "react-icons/fa";
-// import { FiShield } from "react-icons/fi";
-
-// export default function TokenRegisterPage() {
-//     const params = useParams();
-//     const token = params.token;
-//     const router = useRouter();
-
-//     const [step, setStep] = useState(1);
-//     const [showPassword, setShowPassword] = useState(false);
-//     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-//     const [loadingInvite, setLoadingInvite] = useState(true);
-//     const [errorState, setErrorState] = useState(null);
-
-//     // Invitation Details Storage
-//     const [invitationDetails, setInvitationDetails] = useState(null);
-
-//     const [formData, setFormData] = useState({
-//         name: "",
-//         email: "",
-//         mobile: "",
-//         password: "",
-//         confirmPassword: "",
-//     });
-
-//     const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-
-//     // 1. Fetch Invitation Details on Load
-//     useEffect(() => {
-//         const checkInvitation = async () => {
-//             if (!token) return;
-
-//             setLoadingInvite(true);
-//             try {
-//                 const { data: invitation, error } = await supabase
-//                     .from("invitations")
-//                     .select("*, groups(name,company_id),inviter:users!invitations_invited_by_fkey(company_id)")
-//                     .eq("token", token)
-//                     .single();
-
-//                 if (error || !invitation) {
-//                     setErrorState("Invalid Invitation");
-//                     return;
-//                 }
-
-//                 if (invitation.status !== "pending") {
-//                     setErrorState("Invitation Already Used");
-//                     return;
-//                 }
-
-//                 setInvitationDetails(invitation);
-//                 setFormData((prev) => ({
-//                     ...prev,
-//                     email: invitation.email,
-//                 }));
-//             } catch (err) {
-//                 console.error("Check invitation error:", err);
-//                 setErrorState("An error occurred while verifying the invitation.");
-//             } finally {
-//                 setLoadingInvite(false);
-//             }
-//         };
-
-//         checkInvitation();
-//     }, [token]);
-
-//     const handleChange = (e) => {
-//         setFormData({ ...formData, [e.target.name]: e.target.value });
-//     };
-
-//     const handleOtpChange = (value, index) => {
-//         const updatedOtp = [...otp];
-//         updatedOtp[index] = value;
-//         setOtp(updatedOtp);
-//     };
-
-//     // 2. Perform database user registration and complete invitation status update
-//     const handleFinalSubmit = async () => {
-//         if (formData.password !== formData.confirmPassword) {
-//             alert("Passwords do not match.");
-//             return;
-//         }
-
-//         try {
-//             const targetRole = invitationDetails?.groups?.name || "external_user";
-
-//             // Insert User
-//             const { data: newUser, error: userError } = await supabase
-//                 .from("users")
-//                 .insert({
-//                     name: formData.name,
-//                     email: formData.email,
-//                     phone_number: formData.mobile,
-//                     password_hash: formData.password,
-//                     role: targetRole,
-//                     status: "active",
-//                 });
-
-//             if (userError) {
-//                 throw new Error(userError.message);
-//             }
-
-//             // Update Invitation Status
-//             await supabase
-//                 .from("invitations")
-//                 .update({ status: "accepted" })
-//                 .eq("id", invitationDetails.id);
-
-//             setStep(3); // Success Screen
-//         } catch (err) {
-//             console.error("Registration Error:", err);
-//             alert("Failed to complete registration: " + err.message);
-//         }
-//     };
-
-//     if (loadingInvite) {
-//         return (
-//             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-//                 <p className="text-slate-500 font-semibold animate-pulse">Verifying invitation token...</p>
-//             </div>
-//         );
-//     }
-
-//     if (errorState) {
-//         return (
-//             <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
-//                 <h1 className="text-3xl font-bold text-slate-800">{errorState}</h1>
-//                 <Link href="/login" className="text-blue-600 hover:underline">Go to Login</Link>
-//             </div>
-//         );
-//     }
-
-//     return (
-//         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
-//             <div className="absolute top-0 left-0 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
-//             <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
-
-//             <div className="relative w-full max-w-md">
-//                 <div className="flex flex-col items-center gap-3 mb-6 text-center">
-//                     <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-gray-900 to-slate-800 flex items-center justify-center shadow-md">
-//                         <FiShield className="text-white text-2xl" />
-//                     </div>
-
-//                     <h1 className="text-4xl font-bold text-slate-900">
-//                         {step === 1
-//                             ? "Create Account"
-//                             : step === 2
-//                                 ? "Verify OTP"
-//                                 : "Success"}
-//                     </h1>
-
-//                     <p className="text-gray-600 text-sm">
-//                         {invitationDetails ? `Accepting Invitation for sector @${invitationDetails.groups.name}` : "Secure VDR Registration"}
-//                     </p>
-//                 </div>
-
-//                 <div className="flex justify-center mb-6">
-//                     <div className="flex items-center gap-4">
-//                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
-//                             1
-//                         </div>
-
-//                         <div className="w-16 h-1 bg-gray-300 rounded"></div>
-
-//                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
-//                             2
-//                         </div>
-//                     </div>
-//                 </div>
-
-//                 <div className="bg-white rounded-3xl shadow-2xl p-8">
-//                     {step === 1 && (
-//                         <div className="space-y-5">
-//                             <div>
-//                                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                                     Full Name
-//                                 </label>
-//                                 <div className="relative">
-//                                     <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-//                                     <input
-//                                         type="text"
-//                                         name="name"
-//                                         value={formData.name}
-//                                         onChange={handleChange}
-//                                         placeholder="Enter your full name"
-//                                         className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                                         required
-//                                     />
-//                                 </div>
-//                             </div>
-
-//                             <div>
-//                                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                                     Email Address
-//                                 </label>
-//                                 <div className="relative">
-//                                     <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-//                                     <input
-//                                         type="email"
-//                                         name="email"
-//                                         value={formData.email}
-//                                         onChange={handleChange}
-//                                         disabled={true}
-//                                         className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-slate-500"
-//                                         required
-//                                     />
-//                                 </div>
-//                             </div>
-
-//                             <div>
-//                                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                                     Mobile Number
-//                                 </label>
-//                                 <div className="relative">
-//                                     <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-//                                     <input
-//                                         type="tel"
-//                                         name="mobile"
-//                                         value={formData.mobile}
-//                                         onChange={handleChange}
-//                                         placeholder="Enter your mobile number"
-//                                         className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                                         required
-//                                     />
-//                                 </div>
-//                             </div>
-
-//                             <div>
-//                                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                                     Password
-//                                 </label>
-//                                 <div className="relative">
-//                                     <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-//                                     <input
-//                                         type={showPassword ? "text" : "password"}
-//                                         name="password"
-//                                         value={formData.password}
-//                                         onChange={handleChange}
-//                                         placeholder="Create password"
-//                                         className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                                         required
-//                                     />
-//                                     <button
-//                                         type="button"
-//                                         onClick={() => setShowPassword(!showPassword)}
-//                                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
-//                                     >
-//                                         {showPassword ? <FaEyeSlash /> : <FaEye />}
-//                                     </button>
-//                                 </div>
-//                             </div>
-
-//                             <div>
-//                                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                                     Confirm Password
-//                                 </label>
-//                                 <div className="relative">
-//                                     <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-//                                     <input
-//                                         type={showConfirmPassword ? "text" : "password"}
-//                                         name="confirmPassword"
-//                                         value={formData.confirmPassword}
-//                                         onChange={handleChange}
-//                                         placeholder="Confirm password"
-//                                         className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                                         required
-//                                     />
-//                                     <button
-//                                         type="button"
-//                                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-//                                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
-//                                     >
-//                                         {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-//                                     </button>
-//                                 </div>
-//                             </div>
-
-//                             <button
-//                                 onClick={() => {
-//                                     if (!formData.name || !formData.email || !formData.mobile || !formData.password) {
-//                                         alert("Please fill all required fields.");
-//                                         return;
-//                                     }
-//                                     setStep(2);
-//                                 }}
-//                                 className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold transition"
-//                             >
-//                                 Continue
-//                             </button>
-//                         </div>
-//                     )}
-
-//                     {step === 2 && (
-//                         <div className="space-y-6">
-//                             <div className="text-center">
-//                                 <h2 className="text-xl font-bold text-slate-900">
-//                                     Email Verification
-//                                 </h2>
-//                                 <p className="text-gray-600 mt-2">
-//                                     Enter the 6-digit OTP sent to your email address
-//                                 </p>
-//                             </div>
-
-//                             <div className="flex justify-center gap-3">
-//                                 {otp.map((digit, index) => (
-//                                     <input
-//                                         key={index}
-//                                         maxLength={1}
-//                                         value={digit}
-//                                         onChange={(e) => handleOtpChange(e.target.value, index)}
-//                                         className="w-12 h-12 border border-gray-300 rounded-xl text-center text-xl font-bold text-slate-900"
-//                                     />
-//                                 ))}
-//                             </div>
-
-//                             <button
-//                                 onClick={handleFinalSubmit}
-//                                 className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold"
-//                             >
-//                                 Verify & Create Account
-//                             </button>
-//                         </div>
-//                     )}
-
-//                     {step === 3 && (
-//                         <div className="text-center py-6">
-//                             <FaCheckCircle className="text-green-500 text-7xl mx-auto" />
-//                             <h2 className="text-3xl font-bold mt-4 text-slate-900">
-//                                 Registration Successful
-//                             </h2>
-//                             <p className="text-gray-600 mt-2">
-//                                 Your account has been created successfully.
-//                             </p>
-//                             <Link
-//                                 href="/login"
-//                                 className="block mt-6 w-full py-3 bg-gray-800 text-white rounded-xl"
-//                             >
-//                                 Go To Login
-//                             </Link>
-//                         </div>
-//                     )}
-//                 </div>
-//             </div>
-//         </div>
-//     );
-// }
-
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -451,6 +89,120 @@ export default function TokenRegisterPage() {
     };
 
     // 2. Perform database user registration and complete invitation status update
+    // const handleFinalSubmit = async () => {
+    //     if (formData.password !== formData.confirmPassword) {
+    //         alert("Passwords do not match.");
+    //         return;
+    //     }
+
+    //     try {
+    //         // const targetRole = invitationDetails?.groups?.name || "external_user";
+    //         // ✅ Check if group name matches a valid role enum
+    //         const VALID_ROLES = ["admin", "sub_admin", "super_admin", "external_user"];
+    //         const groupName = invitationDetails?.groups?.name || "";
+    //         const normalizedName = groupName.trim().toLowerCase().replace(/\s+/g, "_");
+    //         const targetRole = VALID_ROLES.includes(normalizedName) ? normalizedName : "external_user";
+
+
+    //         // 💡 Company ID-ஐ எடுக்கிறோம் (Group லிருந்தோ அல்லது Invite செய்தவர் லிருந்தோ)
+    //         const targetCompany =
+    //             invitationDetails?.groups?.company_id ||
+    //             invitationDetails?.inviter?.company_id ||
+    //             "11111111-1111-1111-1111-111111111111"; // Fallback Company ID
+
+    //         // Insert User
+    //         const { data: newUser, error: userError } = await supabase
+    //             .from("users")
+    //             .insert({
+    //                 name: formData.name,
+    //                 email: formData.email,
+    //                 phone_number: formData.mobile,
+    //                 password_hash: formData.password,
+    //                 role: targetRole,
+    //                 company_id: targetCompany, // ✅ Company ID இங்கே சேர்க்கப்பட்டுள்ளது
+    //                 status: "active",
+    //             });
+
+    //         if (userError) {
+    //             throw new Error(userError.message);
+    //         }
+
+    //         // Update Invitation Status
+    //         await supabase
+    //             .from("invitations")
+    //             .update({ status: "accepted" })
+    //             .eq("id", invitationDetails.id);
+
+    //         setStep(3); // Success Screen
+    //     } catch (err) {
+    //         console.error("Registration Error:", err);
+    //         alert("Failed to complete registration: " + err.message);
+    //     }
+    // };
+
+
+    // const handleFinalSubmit = async () => {
+    //     if (formData.password !== formData.confirmPassword) {
+    //         alert("Passwords do not match.");
+    //         return;
+    //     }
+
+    //     try {
+    //         // Check if group name is a system role
+    //         const VALID_ROLES = ["admin", "sub_admin", "super_admin", "external_user"];
+    //         const groupName = invitationDetails?.groups?.name || "";
+    //         const normalizedName = groupName.trim().toLowerCase().replace(/\s+/g, "_");
+    //         const isSystemGroup = VALID_ROLES.includes(normalizedName);
+
+    //         // System group → use role. Custom group → external_user
+    //         const targetRole = isSystemGroup ? normalizedName : "external_user";
+
+    //         const targetCompany =
+    //             invitationDetails?.groups?.company_id ||
+    //             "11111111-1111-1111-1111-111111111111";
+
+    //         // 1. Insert user
+    //         const { data: newUser, error: userError } = await supabase
+    //             .from("users")
+    //             .insert({
+    //                 name: formData.name,
+    //                 email: invitationDetails.email,
+    //                 phone_number: formData.mobile,
+    //                 password_hash: formData.password,
+    //                 role: targetRole,
+    //                 company_id: targetCompany,
+    //                 status: "active",
+    //             })
+    //             .select("id")
+    //             .single();
+
+    //         if (userError) throw new Error(userError.message);
+
+    //         // 2. Custom group only → insert user_groups link
+    //         if (!isSystemGroup) {
+    //             const { error: ugError } = await supabase
+    //                 .from("user_groups")
+    //                 .upsert(
+    //                     { user_id: newUser.id, group_id: invitationDetails.group_id },
+    //                     { onConflict: "user_id,group_id" }
+    //                 );
+    //             if (ugError) throw new Error(ugError.message);
+    //         }
+
+    //         // 3. Mark invitation accepted
+    //         await supabase
+    //             .from("invitations")
+    //             .update({ status: "accepted" })
+    //             .eq("id", invitationDetails.id);
+
+    //         setStep(3);
+
+    //     } catch (err) {
+    //         console.error("Registration Error:", err);
+    //         alert("Failed to complete registration: " + err.message);
+    //     }
+    // };
+
     const handleFinalSubmit = async () => {
         if (formData.password !== formData.confirmPassword) {
             alert("Passwords do not match.");
@@ -458,43 +210,56 @@ export default function TokenRegisterPage() {
         }
 
         try {
-            const targetRole = invitationDetails?.groups?.name || "external_user";
+            // Set role based on group name (if it matches enum, use it; else external_user)
+            const VALID_ROLES = ["admin", "sub_admin", "super_admin", "external_user"];
+            const groupName = invitationDetails?.groups?.name || "";
+            const normalizedName = groupName.trim().toLowerCase().replace(/\s+/g, "_");
+            const targetRole = VALID_ROLES.includes(normalizedName) ? normalizedName : "external_user";
 
-            // 💡 Company ID-ஐ எடுக்கிறோம் (Group லிருந்தோ அல்லது Invite செய்தவர் லிருந்தோ)
             const targetCompany =
                 invitationDetails?.groups?.company_id ||
-                invitationDetails?.inviter?.company_id ||
-                "11111111-1111-1111-1111-111111111111"; // Fallback Company ID
+                "11111111-1111-1111-1111-111111111111";
 
-            // Insert User
+            // 1. Insert user
             const { data: newUser, error: userError } = await supabase
                 .from("users")
                 .insert({
                     name: formData.name,
-                    email: formData.email,
+                    email: invitationDetails.email,
                     phone_number: formData.mobile,
                     password_hash: formData.password,
                     role: targetRole,
-                    company_id: targetCompany, // ✅ Company ID இங்கே சேர்க்கப்பட்டுள்ளது
+                    company_id: targetCompany,
                     status: "active",
-                });
+                })
+                .select("id")
+                .single();
 
-            if (userError) {
-                throw new Error(userError.message);
-            }
+            if (userError) throw new Error(userError.message);
 
-            // Update Invitation Status
+            // 2. ALWAYS insert into user_groups (ALL group types)
+            const { error: ugError } = await supabase
+                .from("user_groups")
+                .upsert(
+                    { user_id: newUser.id, group_id: invitationDetails.group_id },
+                    { onConflict: "user_id,group_id" }
+                );
+            if (ugError) throw new Error(ugError.message);
+
+            // 3. Mark invitation accepted
             await supabase
                 .from("invitations")
                 .update({ status: "accepted" })
                 .eq("id", invitationDetails.id);
 
-            setStep(3); // Success Screen
+            setStep(3);
+
         } catch (err) {
             console.error("Registration Error:", err);
             alert("Failed to complete registration: " + err.message);
         }
     };
+
 
     if (loadingInvite) {
         return (
