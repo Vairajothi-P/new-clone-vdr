@@ -72,7 +72,7 @@ function AccessPageContent() {
                 supabase.from('folders').select('*').eq('company_id', session.company_id),
                 supabase.from('documents').select('id, name, folder_id, index').eq('company_id', session.company_id).eq('is_deleted', false).order('created_at', { ascending: true }),
                 // Fetching exactly the columns we know exist in your DB now
-                supabase.from('permissions').select('id, document_id, folder_id, scope, group_id, can_view, can_edit, can_upload, can_download_secure, can_download_original').eq('company_id', session.company_id),
+                supabase.from('permissions').select('id, document_id, folder_id, scope, group_id, can_view, can_edit, can_upload, can_download_secure, can_download_original, can_delete').eq('company_id', session.company_id),
                 supabase.from('user_groups').select('user_id, group_id'),
                 supabase.from('users').select('id, name, email')
             ]);
@@ -154,13 +154,13 @@ function AccessPageContent() {
 
         const key = `${groupId}_${type}_${targetId}`;
         const saveKey = `${key}_${field}`;
-        const current = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false, perm_id: null };
+        const current = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false, can_delete: false, perm_id: null };
 
         let targetState = overrideTarget !== null ? overrideTarget : !current[field];
         let updated = { ...current, [field]: targetState };
 
         // CASCADE LOGIC
-        if (['can_edit', 'can_upload', 'can_download_secure', 'can_download_original'].includes(field) && updated[field]) updated.can_view = true;
+        if (['can_edit', 'can_upload', 'can_download_secure', 'can_download_original', 'can_delete'].includes(field) && updated[field]) updated.can_view = true;
         if (field === 'can_download_original' && updated.can_download_original) updated.can_download_secure = true;
         if (field === 'can_view' && updated.can_view && type === 'doc') updated.can_download_secure = true;
         if (field === 'can_view' && !updated.can_view) {
@@ -175,7 +175,7 @@ function AccessPageContent() {
 
         // 🚨 STRICT DB WRITING LOGIC 🚨
         try {
-            const allFalse = !updated.can_view && !updated.can_edit && !updated.can_upload && !updated.can_download_secure && !updated.can_download_original;
+            const allFalse = !updated.can_view && !updated.can_edit && !updated.can_upload && !updated.can_download_secure && !updated.can_download_original && !updated.can_delete;
 
             // This payload exactly matches the columns in your database
             const dbPayload = {
@@ -184,6 +184,7 @@ function AccessPageContent() {
                 can_upload: updated.can_upload,
                 can_download_secure: updated.can_download_secure,
                 can_download_original: updated.can_download_original,
+                can_delete: updated.can_delete,
                 updated_at: new Date().toISOString()
             };
 
@@ -348,7 +349,7 @@ function AccessPageContent() {
                                 <thead>
                                     <tr className="bg-slate-100/50 border-b border-slate-200">
                                         <th colSpan="2" className="py-2.5 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Apply to All Below →</th>
-                                        {['can_view', 'can_edit', 'can_upload', 'can_download_secure', 'can_download_original'].map(field => {
+                                        {['can_view', 'can_edit', 'can_upload', 'can_download_secure', 'can_download_original', 'can_delete'].map(field => {
                                             const isAllChecked = field === 'can_upload'
                                                 ? (displayFolders.length > 0 && displayFolders.every(f => permissions[`${selectedGroup}_fol_${f.id}`]?.can_upload))
                                                 : (displayDocs.length > 0 && displayDocs.every(d => permissions[`${selectedGroup}_doc_${d.id}`]?.[field]));
@@ -411,6 +412,29 @@ function AccessPageContent() {
                                                 </div>
                                             </div>
                                         </th>
+                                        <th className="py-3.5 px-3 w-24 text-center">
+                                            <div className="inline-block relative group cursor-pointer">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    width="16"
+                                                    height="16"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors"
+                                                >
+                                                    <path d="M3 6h18" />
+                                                    <path d="M8 6V4h8v2" />
+                                                    <path d="M19 6l-1 14H6L5 6" />
+                                                </svg>
+
+                                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                    Delete
+                                                    <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                </div>
+                                            </div>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -419,7 +443,8 @@ function AccessPageContent() {
                                         const toggles = [
                                             { field: 'can_view', color: 'bg-slate-900' }, { field: 'can_edit', color: 'bg-blue-600' },
                                             { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' },
-                                            { field: 'can_download_original', color: 'bg-orange-500' }
+                                            { field: 'can_download_original', color: 'bg-orange-500' },
+                                            { field: 'can_delete', color: 'bg-red-600' },
                                         ];
 
                                         return (
@@ -462,7 +487,7 @@ function AccessPageContent() {
 
                                     {displayDocs.map((doc) => {
                                         const key = `${selectedGroup}_doc_${doc.id}`;
-                                        const perm = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false };
+                                        const perm = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false, can_delete: false };
                                         const ext = doc.name.split('.').pop().toLowerCase();
                                         const iconClass = { pdf: 'bg-rose-50 border-rose-100 text-rose-600', xlsx: 'bg-emerald-50 border-emerald-100 text-emerald-600', docx: 'bg-indigo-50 border-indigo-100 text-indigo-600' }[ext] || 'bg-slate-50 border-slate-200 text-slate-400';
 
@@ -478,7 +503,7 @@ function AccessPageContent() {
                                                     </div>
                                                 </td>
 
-                                                {[{ field: 'can_view', color: 'bg-slate-900' }, { field: 'can_edit', color: 'bg-blue-600' }, { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' }, { field: 'can_download_original', color: 'bg-orange-500' }].map(({ field, color }) => {
+                                                {[{ field: 'can_view', color: 'bg-slate-900' }, { field: 'can_edit', color: 'bg-blue-600' }, { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' }, { field: 'can_download_original', color: 'bg-orange-500' }, { field: 'can_delete', color: 'bg-red-600' },].map(({ field, color }) => {
                                                     if (field === 'can_upload') {
                                                         return (
                                                             <td key={field} className="py-3.5 px-3 text-center">

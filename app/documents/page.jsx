@@ -4,6 +4,7 @@ import React, { useState, useMemo, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
 import fernet from 'fernet';
+import { FaEye, FaEdit, FaUpload, FaShieldAlt, FaDownload, FaTrash } from 'react-icons/fa';
 
 export default function DocumentsPage() {
     return (
@@ -77,6 +78,7 @@ function UnifiedWorkspace() {
                                 myPerms[key].can_upload = myPerms[key].can_upload || p.can_upload;
                                 myPerms[key].can_download_secure = myPerms[key].can_download_secure || p.can_download_secure;
                                 myPerms[key].can_download_original = myPerms[key].can_download_original || p.can_download_original;
+                                myPerms[key].can_delete = myPerms[key].can_delete || p.can_delete;
                             }
                         });
                     }
@@ -102,6 +104,7 @@ function UnifiedWorkspace() {
                     }));
 
                 // Docs Map
+                // Docs Map
                 const mappedDocs = (docsData || [])
                     .filter(doc => isGodMode || myPerms[`doc_${doc.id}`]?.can_view)
                     .map(doc => ({
@@ -113,9 +116,10 @@ function UnifiedWorkspace() {
                         deletedBy: userMap[doc.deleted_by] || 'Unknown',
                         deletedAt: doc.deleted_at ? new Date(doc.deleted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '--',
                         is_bookmarked: doc.is_bookmarked, is_downloaded: doc.is_downloaded, is_deleted: doc.is_deleted,
-                        file_path: doc.file_path, dek_ref: doc.dek_ref, mime_type: doc.mime_type
+                        file_path: doc.file_path,
+                        original_file_path: doc.original_file_path, // 🔥 ADDED THIS
+                        dek_ref: doc.dek_ref, mime_type: doc.mime_type
                     }));
-
                 setMergedPerms(myPerms);
                 setFiles([...mappedFolders, ...mappedDocs]);
                 setBookmarkedIds(new Set([...(docsData || []).filter(d => d.is_bookmarked).map(d => d.id), ...(foldersData || []).filter(f => f.is_bookmarked).map(f => f.id)]));
@@ -162,10 +166,12 @@ function UnifiedWorkspace() {
     const selectedItemsArray = files.filter(f => selectedIds.has(f.id));
 
     // Nav Bar Logic Flags
+    const selectionEnabled = !['bookmarks', 'downloads'].includes(currentView);
     const canUploadHere = currentFolderId === null ? canUser('can_upload') : canUser('can_upload', { type: 'folder', id: currentFolderId });
     const canEditSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => canUser('can_edit', item));
     const canDownloadSecureSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => item.type !== 'folder' && canUser('can_download_secure', item));
     const canDownloadOriginalSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => item.type !== 'folder' && canUser('can_download_original', item));
+    const canDeleteSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => canUser('can_delete', item)); // 🔥 Added Delete Flag
 
     // ── HANDLERS ─────────────────────────────────────────────────────────────
     const handleToggleSelect = (id, e) => {
@@ -199,9 +205,154 @@ function UnifiedWorkspace() {
     };
 
     // ... (File Upload & Fernet Encryption Logic remains exactly the same) ...
-    // Placeholder to keep code compact, insert your existing handleFileChange here
-    const handleFileChange = async (e) => { /* Your Fernet logic */ };
-    const handleCreateFolder = async (e) => { /* Your Folder create logic */ };
+    
+
+    const handleFileChange = async (e) => {
+        const chosenFiles = Array.from(e.target.files);
+        if (chosenFiles.length === 0 || !session) return;
+
+        setUploadQueue(chosenFiles.map((f, i) => ({
+            id: `up-${Date.now()}-${i}`, name: f.name, progress: 0, status: 'uploading',
+            size: f.size > 1024 * 1024 ? `${(f.size / (1024 * 1024)).toFixed(1)} MB` : `${(f.size / 1024).toFixed(0)} KB`
+        })));
+        setIsUploadModalOpen(true);
+
+        const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+        for (let i = 0; i < chosenFiles.length; i++) {
+            const file = chosenFiles[i];
+            try {
+                // 1. Define Dual Paths
+                const secureStoragePath = `${session.company_id}/secure_${Date.now()}_${file.name}`;
+                const originalStoragePath = `${session.company_id}/original_${Date.now()}_${file.name}`;
+
+                // 2. Upload RAW Original to new bucket
+                const { error: origErr } = await supabase.storage.from('original-files').upload(originalStoragePath, file);
+                if (origErr) throw new Error("Original Upload Failed: " + origErr.message);
+
+                // 3. Encrypt and Upload SECURE to vault-files
+                const randomBytes = window.crypto.getRandomValues(new Uint8Array(32));
+                const fernetKey = btoa(String.fromCharCode(...randomBytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                const base64Data = await readFileAsBase64(file);
+                const secret = new fernet.Secret(fernetKey);
+                const token = new fernet.Token({ secret: secret });
+                const encryptedString = token.encode(base64Data);
+
+                const encryptedBlob = new Blob([encryptedString], { type: 'text/plain' });
+                const { error: secureErr } = await supabase.storage.from('vault-files').upload(secureStoragePath, encryptedBlob, { contentType: 'text/plain' });
+                if (secureErr) throw new Error("Secure Upload Failed: " + secureErr.message);
+
+                // 4. Hit API Route (Saves standard metadata)
+                const res = await fetch('/api/documents/upload', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        company_id: session.company_id, folder_id: currentFolderId, uploaded_by: session.id,
+                        name: file.name, file_path: secureStoragePath, mime_type: file.type || 'application/octet-stream',
+                        file_size_bytes: file.size, dek_ref: fernetKey, index: '99', security: 'Fernet Encrypted'
+                    })
+                });
+
+                if (!res.ok) throw new Error('DB API Sync failed');
+                const { id: docId } = await res.json();
+
+                // 5. Explicitly update the original path in DB just in case the API doesn't know about it yet
+                await supabase.from('documents').update({ original_file_path: originalStoragePath }).eq('id', docId);
+
+                // 6. Update UI
+                setUploadQueue(prev => prev.map((it, idx) => idx === i ? { ...it, progress: 100, status: 'completed' } : it));
+                setFiles(prev => [...prev, {
+                    id: docId, parentId: currentFolderId, index: '99', name: file.name,
+                    type: file.name.split('.').pop().toLowerCase() || 'file',
+                    size: file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${(file.size / 1024).toFixed(0)} KB`,
+                    uploadedBy: session.name, dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    file_path: secureStoragePath, original_file_path: originalStoragePath, dek_ref: fernetKey, mime_type: file.type
+                }]);
+            } catch (err) {
+                console.error('Upload failed:', err);
+                alert("Upload error for " + file.name + ": " + err.message);
+                setUploadQueue(prev => prev.map((it, idx) => idx === i ? { ...it, status: 'error' } : it));
+            }
+        }
+        setTimeout(() => { setUploadQueue([]); setIsUploadModalOpen(false); e.target.value = ''; }, 1500);
+    };
+
+    const handleCreateFolder = async (e) => {
+        e.preventDefault();
+        if (!newFolderName.trim()) return;
+        try {
+            const peers = files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
+            const newIndex = currentFolderId === null ? (peers.reduce((m, it) => Math.max(m, parseInt(it.index) || 0), 0) + 1).toString() : '99';
+
+            const { data: dbFolder, error } = await supabase.from('folders').insert({
+                company_id: session.company_id, parent_folder_id: currentFolderId,
+                name: newFolderName.trim(), index_number: parseInt(newIndex) || 1, created_by: session.id,
+            }).select().single();
+
+            if (error) throw error; // Fails loudly if RLS blocks it!
+
+            setFiles(prev => [...prev, {
+                id: dbFolder.id, parentId: dbFolder.parent_folder_id || null, index: newIndex.toString(),
+                name: dbFolder.name, type: 'folder', size: '--', uploadedBy: session.name,
+                dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            }]);
+            setNewFolderName(''); setIsNewFolderOpen(false);
+        } catch (err) {
+            alert("Failed to create folder: " + err.message);
+        }
+    };
+    //const handleCreateFolder = async (e) => { /* Your Folder create logic */ };
+
+    // const executeDownload = async (type) => {
+    //     setIsDownloadMenuOpen(false);
+    //     for (let id of selectedIds) {
+    //         const file = files.find(f => f.id === id);
+    //         if (!file || file.type === 'folder') continue;
+
+    //         setDownloading(prev => ({ ...prev, [file.id]: true }));
+    //         try {
+    //             if (type === 'secure') {
+    //                 // Generates the .vdr keycard for your Electron App
+    //                 const blob = new Blob([file.id], { type: 'text/plain' });
+    //                 const url = URL.createObjectURL(blob);
+    //                 const a = document.createElement('a'); a.href = url; a.download = `${file.name}.vdr`;
+    //                 document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    //                 await supabase.from('documents').update({ is_downloaded: true }).eq('id', file.id);
+    //             }
+    //             else if (type === 'original') {
+    //                 // NEW FAST PATH: Direct Original Bucket Download!
+    //                 if (file.original_file_path) {
+    //                     const { data, error } = await supabase.storage.from('original-files').download(file.original_file_path);
+    //                     if (error) throw error;
+    //                     const url = URL.createObjectURL(data);
+    //                     const a = document.createElement('a'); a.href = url; a.download = file.name;
+    //                     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    //                 } else {
+    //                     // FALLBACK: For old files uploaded before we added the dual-bucket feature
+    //                     const { data, error } = await supabase.storage.from('vault-files').download(file.file_path);
+    //                     if (error) throw error;
+    //                     const text = await data.text();
+    //                     const secret = new fernet.Secret(file.dek_ref);
+    //                     const token = new fernet.Token({ secret: secret, token: text, ttl: 0 });
+    //                     const decryptedBase64 = token.decode();
+    //                     const byteCharacters = atob(decryptedBase64);
+    //                     const byteNumbers = new Array(byteCharacters.length);
+    //                     for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+    //                     const blob = new Blob([new Uint8Array(byteNumbers)], { type: file.mime_type || 'application/octet-stream' });
+    //                     const url = URL.createObjectURL(blob);
+    //                     const a = document.createElement('a'); a.href = url; a.download = file.name;
+    //                     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    //                 }
+    //             }
+    //         } catch (err) { alert(`Download failed for ${file.name}: ${err.message}`); }
+    //         finally { setDownloading(prev => { const n = { ...prev }; delete n[file.id]; return n; }); }
+    //     }
+    // };
+
 
     const executeDownload = async (type) => {
         setIsDownloadMenuOpen(false);
@@ -212,27 +363,39 @@ function UnifiedWorkspace() {
             setDownloading(prev => ({ ...prev, [file.id]: true }));
             try {
                 if (type === 'secure') {
+                    // Generates the .vdr keycard for your Electron App
                     const blob = new Blob([file.id], { type: 'text/plain' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a'); a.href = url; a.download = `${file.name}.vdr`;
                     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
                     await supabase.from('documents').update({ is_downloaded: true }).eq('id', file.id);
-                } else if (type === 'original') {
-                    const { data, error } = await supabase.storage.from('vault-files').download(file.file_path);
-                    if (error) throw error;
-                    const text = await data.text();
-                    const secret = new fernet.Secret(file.dek_ref);
-                    const token = new fernet.Token({ secret: secret, token: text, ttl: 0 });
-                    const decryptedBase64 = token.decode();
-                    const byteCharacters = atob(decryptedBase64);
-                    const byteNumbers = new Array(byteCharacters.length);
-                    for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-                    const blob = new Blob([new Uint8Array(byteNumbers)], { type: file.mime_type || 'application/octet-stream' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a'); a.href = url; a.download = file.name;
-                    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
                 }
-            } catch (err) { alert(`Download failed for ${file.name}`); }
+                else if (type === 'original') {
+                    // 🔥 NEW FAST PATH: Direct Original Bucket Download!
+                    if (file.original_file_path) {
+                        const { data, error } = await supabase.storage.from('original-files').download(file.original_file_path);
+                        if (error) throw error;
+                        const url = URL.createObjectURL(data);
+                        const a = document.createElement('a'); a.href = url; a.download = file.name;
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                    } else {
+                        // FALLBACK: For old files uploaded before we added the dual-bucket feature
+                        const { data, error } = await supabase.storage.from('vault-files').download(file.file_path);
+                        if (error) throw error;
+                        const text = await data.text();
+                        const secret = new fernet.Secret(file.dek_ref);
+                        const token = new fernet.Token({ secret: secret, token: text, ttl: 0 });
+                        const decryptedBase64 = token.decode();
+                        const byteCharacters = atob(decryptedBase64);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        const blob = new Blob([new Uint8Array(byteNumbers)], { type: file.mime_type || 'application/octet-stream' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a'); a.href = url; a.download = file.name;
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                    }
+                }
+            } catch (err) { alert(`Download failed for ${file.name}: ${err.message}`); }
             finally { setDownloading(prev => { const n = { ...prev }; delete n[file.id]; return n; }); }
         }
     };
@@ -289,7 +452,7 @@ function UnifiedWorkspace() {
                 {/* ── TOP ACTION BAR (Exact Firmata Match) ── */}
                 <div className="flex items-center px-6 py-4 bg-white border-b border-slate-200">
                     <div className="flex items-center gap-3">
-                        {currentView !== 'trash' && canUploadHere && (
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canUploadHere && (
                             <>
                                 <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
@@ -303,7 +466,7 @@ function UnifiedWorkspace() {
                         )}
 
                         {/* Download Dropdown Logic */}
-                        {currentView !== 'trash' && (canDownloadSecureSelected || canDownloadOriginalSelected) && (
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && (canDownloadSecureSelected || canDownloadOriginalSelected) && (
                             <div className="relative">
                                 <button onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
@@ -324,20 +487,26 @@ function UnifiedWorkspace() {
                             </div>
                         )}
 
-                        {currentView !== 'trash' && canUser('can_export') && (
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canUser('can_export') && (
                             <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                                 Export
                             </button>
                         )}
 
-                        {currentView !== 'trash' && canEditSelected && selectedIds.size > 0 && (
+                        {/* {currentView !== 'trash' && canEditSelected && selectedIds.size > 0 && (
+                            <button onClick={() => setIsDeleteModalOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
+                                Delete
+                            </button>
+                        )} */}
+                        {/* 🔥 Switched from canEditSelected to canDeleteSelected */}
+                        {currentView !== 'trash' && canDeleteSelected && selectedIds.size > 0 && (
                             <button onClick={() => setIsDeleteModalOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
                                 Delete
                             </button>
                         )}
-
                         {currentView === 'trash' && (
                             <>
                                 <button disabled={selectedIds.size === 0} onClick={executeRecover} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 ? 'text-slate-600 cursor-not-allowed' : 'text-emerald-600 hover:bg-emerald-50'}`}>
@@ -369,13 +538,16 @@ function UnifiedWorkspace() {
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-white border-b border-slate-100">
                                 <tr>
-                                    <th className="py-4 px-5 w-10">
-                                        <input type="checkbox" checked={selectedIds.size === filteredItems.length && filteredItems.length > 0} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
-                                    </th>
+                                    {selectionEnabled ? (
+                                        <th className="py-4 px-5 w-10">
+                                            <input type="checkbox" checked={selectedIds.size === filteredItems.length && filteredItems.length > 0} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
+                                        </th>
+                                    ) : null}
+                                    <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center w-16">Index</th>
+                                    <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Name</th>
                                     {currentView !== 'trash' && (
                                         <th className="py-4 px-2 w-8 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Star</th>
                                     )}
-                                    <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Index and Name</th>
                                     {currentView === 'trash' ? (
                                         <>
                                             <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deleted By</th>
@@ -385,6 +557,9 @@ function UnifiedWorkspace() {
                                         <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Created At</th>
                                     )}
                                     <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Size</th>
+                                    {currentView !== 'trash' && (
+                                        <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Permission Details</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -394,9 +569,25 @@ function UnifiedWorkspace() {
                                     const isDL = downloading[item.id];
 
                                     return (
-                                        <tr key={item.id} onClick={() => handleItemClick(item)} className={`group cursor-pointer transition-colors ${isChecked ? 'bg-slate-50' : 'hover:bg-slate-50/50'}`}>
-                                            <td className="py-4 px-5" onClick={e => e.stopPropagation()}>
-                                                <input type="checkbox" checked={isChecked} onChange={e => handleToggleSelect(item.id, e)} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
+                                        <tr key={item.id} className={`group transition-colors ${selectionEnabled ? 'cursor-pointer' : ''} ${isChecked ? 'bg-slate-50' : 'hover:bg-slate-50/50'}`} onClick={selectionEnabled ? () => handleItemClick(item) : undefined}>
+                                            {selectionEnabled ? (
+                                                <td className="py-4 px-5" onClick={e => e.stopPropagation()}>
+                                                    <input type="checkbox" checked={isChecked} onChange={e => handleToggleSelect(item.id, e)} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
+                                                </td>
+                                            ) : null}
+                                            <td className="py-4 px-3 text-center text-[12px] font-mono font-semibold text-slate-500">
+                                                {item.index || '—'}
+                                            </td>
+                                            <td className="py-4 px-3">
+                                                <div className="flex items-center gap-3">
+                                                    {isFolder ? (
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fcd34d"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
+                                                    ) : (
+                                                        <div className="w-5 h-5 bg-slate-100 rounded text-[8px] font-black text-slate-500 flex items-center justify-center">{item.type.toUpperCase().slice(0, 3)}</div>
+                                                    )}
+                                                    <span className="text-[13px] font-semibold text-slate-800">{item.name}</span>
+                                                    {isDL && <span className="ml-2 text-[10px] text-emerald-600 font-bold animate-pulse">Downloading...</span>}
+                                                </div>
                                             </td>
                                             {currentView !== 'trash' && (
                                                 <td className="py-4 px-2 text-center" onClick={e => handleToggleBookmark(item, e)}>
@@ -405,17 +596,6 @@ function UnifiedWorkspace() {
                                                     </svg>
                                                 </td>
                                             )}
-                                            <td className="py-4 px-3">
-                                                <div className="flex items-center gap-3">
-                                                    {isFolder ? (
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fcd34d"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
-                                                    ) : (
-                                                        <div className="w-5 h-5 bg-slate-100 rounded text-[8px] font-black text-slate-500 flex items-center justify-center">{item.type.toUpperCase().slice(0, 3)}</div>
-                                                    )}
-                                                    <span className="text-[13px] font-semibold text-slate-800">{item.index} {item.name}</span>
-                                                    {isDL && <span className="ml-2 text-[10px] text-emerald-600 font-bold animate-pulse">Downloading...</span>}
-                                                </div>
-                                            </td>
                                             {currentView === 'trash' ? (
                                                 <>
                                                     <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.deletedBy}</td>
@@ -425,6 +605,18 @@ function UnifiedWorkspace() {
                                                 <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.dateCreated}</td>
                                             )}
                                             <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.size}</td>
+                                            {currentView !== 'trash' && (
+                                                <td className="py-4 px-3">
+                                                    <div className="flex items-center gap-5">
+                                                        {canUser('can_view', item) ? <FaEye className="text-slate-600 text-[15px]" title="View" /> : <FaEye className="text-slate-200 text-[15px]" title="No View Access" />}
+                                                        {canUser('can_edit', item) ? <FaEdit className="text-slate-600 text-[15px]" title="Edit" /> : <FaEdit className="text-slate-200 text-[15px]" title="No Edit Access" />}
+                                                        {item.type === 'folder' && (canUser('can_upload', item) ? <FaUpload className="text-slate-600 text-[15px]" title="Upload" /> : <FaUpload className="text-slate-200 text-[15px]" title="No Upload Access" />)}
+                                                        {canUser('can_download_secure', item) ? <FaShieldAlt className="text-slate-600 text-[15px]" title="Download Secure" /> : <FaShieldAlt className="text-slate-200 text-[15px]" title="No Secure DL Access" />}
+                                                        {canUser('can_download_original', item) ? <FaDownload className="text-slate-600 text-[15px]" title="Download Original" /> : <FaDownload className="text-slate-200 text-[15px]" title="No Original DL Access" />}
+                                                        {canUser('can_delete', item) ? <FaTrash className="text-rose-600 text-[14px]" title="Delete" /> : <FaTrash className="text-slate-200 text-[14px]" title="No Delete Access" />}
+                                                    </div>
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })}
@@ -434,42 +626,7 @@ function UnifiedWorkspace() {
                 </div>
             </div>
 
-            {/* ── RIGHT SIDEBAR: PERMISSION DETAILS ── */}
-            <aside className="w-[300px] shrink-0 border-l border-slate-200 bg-white flex flex-col h-full overflow-hidden">
-                <div className="p-6 border-b border-slate-100">
-                    <h3 className="text-[14px] font-black text-slate-800">Permission Details</h3>
-                </div>
 
-                {selectedItemsArray.length === 1 ? (
-                    <div className="p-6 flex flex-col gap-4">
-                        <div className="mb-2">
-                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Selected File</p>
-                            <p className="text-[14px] font-bold text-slate-800 break-words">{selectedItemsArray[0].name}</p>
-                        </div>
-
-                        <div className="space-y-3">
-                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Your Access</p>
-
-                            <PermRow label="View File" hasAccess={canUser('can_view', selectedItemsArray[0])} />
-                            <PermRow label="Edit / Delete" hasAccess={canUser('can_edit', selectedItemsArray[0])} />
-                            <PermRow label="Download Secure" hasAccess={canUser('can_download_secure', selectedItemsArray[0])} />
-                            <PermRow label="Download Original" hasAccess={canUser('can_download_original', selectedItemsArray[0])} />
-                            {selectedItemsArray[0].type === 'folder' && (
-                                <PermRow label="Upload to Folder" hasAccess={canUser('can_upload', selectedItemsArray[0])} />
-                            )}
-                        </div>
-                    </div>
-                ) : selectedItemsArray.length > 1 ? (
-                    <div className="p-6 flex flex-col items-center justify-center h-48 text-slate-400 text-center">
-                        <span className="text-[24px] font-black text-slate-800 mb-2">{selectedItemsArray.length}</span>
-                        <p className="text-[13px] font-semibold">Items Selected</p>
-                    </div>
-                ) : (
-                    <div className="p-6 flex flex-col items-center justify-center h-48 text-slate-400 text-center">
-                        <p className="text-[13px] font-semibold">Select an item to view your permissions.</p>
-                    </div>
-                )}
-            </aside>
 
             {/* Modals */}
             {isPermDeleteModalOpen && (
