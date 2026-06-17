@@ -266,11 +266,11 @@ export default function DynamicGroupPage() {
             )}
 
             {/* HEADER */}
-            <div className="pt-12 px-12 pb-8">
-                <h1 className="text-5xl font-black font-sans text-black uppercase tracking-tighter">
+            <div className="pt-8 px-8 pb-4">
+                <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
                     {groupData ? `${groupData.name} Members` : "Loading..."}
                 </h1>
-                <p className="text-gray-400 mt-2 font-black font-sans text-xs tracking-[0.3em] uppercase">
+                <p className="text-gray-500 mt-2 text-[15px]">
                     {groupData?.description || "Administration & Access Management"}
                 </p>
             </div>
@@ -279,15 +279,15 @@ export default function DynamicGroupPage() {
 
                 {!showPermissionPage ? (
                     <div className="bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 p-12">
-                        <div className="flex items-center gap-12 mb-12">
+                        <div className="flex items-center gap-6 mb-8">
                             <button onClick={() => setShowInviteModal(true)}
-                                className="flex items-center gap-3 text-black font-black font-sans uppercase text-[11px] tracking-[0.2em] hover:opacity-50 transition-all">
-                                <FaUserPlus size={22} className="text-slate-900" />
+                                className="flex items-center gap-2 text-gray-700 font-semibold text-sm hover:text-black transition-all">
+                                <FaUserPlus size={18} className="text-gray-600" />
                                 <span>Invite Member</span>
                             </button>
                             <button onClick={() => setShowPermissionPage(true)}
-                                className="flex items-center gap-3 text-black font-black font-sans uppercase text-[11px] tracking-[0.2em] hover:opacity-50 transition-all">
-                                <FaCog size={22} className="text-slate-900" />
+                                className="flex items-center gap-2 text-gray-700 font-semibold text-sm hover:text-black transition-all">
+                                <FaCog size={18} className="text-gray-600" />
                                 <span>Edit Permission</span>
                             </button>
                         </div>
@@ -295,11 +295,11 @@ export default function DynamicGroupPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead>
-                                    <tr className="border-b-4 border-gray-50">
-                                        <th className="py-6 font-black font-sans text-black text-[10px] uppercase tracking-[0.3em]">Name</th>
-                                        <th className="py-6 font-black font-sans text-black text-[10px] uppercase tracking-[0.3em]">Email Address</th>
-                                        <th className="py-6 font-black font-sans text-black text-[10px] uppercase tracking-[0.3em]">Phone Number</th>
-                                        <th className="py-6 font-black font-sans text-black text-[10px] uppercase tracking-[0.3em]">Status</th>
+                                    <tr className="border-b border-gray-200 bg-gray-50/50">
+                                        <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Name</th>
+                                        <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Email Address</th>
+                                        <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Phone Number</th>
+                                        <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -309,12 +309,12 @@ export default function DynamicGroupPage() {
                                         <tr><td colSpan="4" className="py-24 text-center font-black font-sans text-gray-300 uppercase tracking-widest">No members assigned to this sector</td></tr>
                                     ) : (
                                         members.map((member) => (
-                                            <tr key={member.id} className="group hover:bg-gray-50/80 transition-all duration-300">
-                                                <td className="py-7 font-black font-sans text-black text-base tracking-tight">{member.name}</td>
-                                                <td className="py-7 text-gray-500 font-bold font-sans text-sm tracking-wide">{member.email}</td>
-                                                <td className="py-7 text-gray-500 font-bold font-sans text-sm tracking-wide">{member.phone_number}</td>
-                                                <td className="py-7 text-sm">
-                                                    <span className={`px-5 py-2 rounded-full text-[10px] font-black font-sans uppercase tracking-[0.15em] ${member.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                            <tr key={member.id} className="group hover:bg-gray-50 transition-all duration-200 border-b border-gray-100">
+                                                <td className="py-4 px-4 font-semibold text-gray-800 text-sm">{member.name}</td>
+                                                <td className="py-4 px-4 text-gray-500 text-sm">{member.email}</td>
+                                                <td className="py-4 px-4 text-gray-500 text-sm">{member.phone_number}</td>
+                                                <td className="py-4 px-4 text-sm">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${member.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                                                         {member.status}
                                                     </span>
                                                 </td>
@@ -329,15 +329,15 @@ export default function DynamicGroupPage() {
                 ) : (
                     <div className="bg-white rounded-[2.5rem] p-16 shadow-2xl border border-gray-100">
 
-                        <div className="flex justify-between items-start mb-14">
+                        <div className="flex justify-between items-start mb-10">
                             <div>
-                                <h2 className="text-5xl font-black font-sans text-black uppercase tracking-tighter">Group Permissions</h2>
-                                <p className="text-gray-400 font-black font-sans mt-3 uppercase text-[10px] tracking-[0.4em] border-b-2 border-black/10 pb-4 inline-block">
+                                <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Group Permissions</h2>
+                                <p className="text-gray-500 mt-2 text-[15px]">
                                     Configuring access for @{groupData?.name}
                                 </p>
                             </div>
                             <button onClick={() => setShowPermissionPage(false)}
-                                className="bg-black text-white px-12 py-4 rounded-[1.2rem] font-black font-sans uppercase tracking-[0.2em] text-[10px] hover:scale-105 transition-all shadow-xl">
+                                className="bg-white border border-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all shadow-sm">
                                 Back to List
                             </button>
                         </div>
@@ -365,18 +365,18 @@ export default function DynamicGroupPage() {
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="font-black font-sans text-sm uppercase tracking-widest text-black">{label} Access</p>
-                                                        <p className="font-bold font-sans text-[10px] uppercase tracking-widest text-gray-400 mt-0.5">{description}</p>
+                                                        <p className="font-bold text-sm text-gray-900">{label} Access</p>
+                                                        <p className="text-[13px] text-gray-500 mt-0.5">{description}</p>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex items-center gap-4">
                                                     {!hasSubPerms && s.enabled && (
-                                                        <span className="text-[9px] font-black font-sans uppercase tracking-widest text-gray-400 border border-gray-200 rounded-full px-3 py-1">
+                                                        <span className="text-xs font-semibold text-gray-500 border border-gray-200 rounded-full px-3 py-1">
                                                             Full Access
                                                         </span>
                                                     )}
-                                                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black font-sans uppercase tracking-widest ${s.enabled ? "bg-black text-white" : "bg-gray-100 text-gray-400"}`}>
+                                                    <span className={`px-4 py-1 rounded-full text-xs font-semibold ${s.enabled ? "bg-black text-white" : "bg-gray-100 text-gray-500"}`}>
                                                         {s.enabled ? "Enabled" : "Disabled"}
                                                     </span>
                                                 </div>
@@ -389,18 +389,18 @@ export default function DynamicGroupPage() {
                                                             <div key={key} onClick={() => toggleSubPerm(scope, key)}
                                                                 className={`flex flex-col gap-3 p-5 rounded-2xl border-2 cursor-pointer transition-all select-none ${s[key] ? "border-black bg-black/5" : "border-gray-100 bg-white hover:border-gray-300"}`}>
                                                                 <div className="flex items-center justify-between">
-                                                                    <span className={`font-black font-sans text-[11px] uppercase tracking-widest ${s[key] ? "text-black" : "text-gray-500"}`}>
+                                                                    <span className={`font-semibold text-sm ${s[key] ? "text-gray-900" : "text-gray-500"}`}>
                                                                         {subLabel}
                                                                     </span>
-                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all shrink-0 ${s[key] ? "bg-black border-black" : "bg-white border-gray-300"}`}>
+                                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${s[key] ? "bg-black border-black" : "bg-white border-gray-300"}`}>
                                                                         {s[key] && (
-                                                                            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                                                             </svg>
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                                <span className="font-bold font-sans text-[9px] uppercase tracking-wider text-gray-400">{desc}</span>
+                                                                <span className="text-[13px] text-gray-500">{desc}</span>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -413,7 +413,7 @@ export default function DynamicGroupPage() {
                         )}
 
                         <button onClick={handleSubmitPermissions} disabled={saving || permsLoading}
-                            className="mt-14 bg-black text-white px-16 py-5 rounded-[1.5rem] font-black font-sans uppercase tracking-[0.3em] text-[11px] shadow-2xl hover:bg-gray-800 transition-all block mx-auto disabled:opacity-40 disabled:cursor-not-allowed">
+                            className="mt-10 bg-gradient-to-r from-gray-900 to-black text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all block mx-auto disabled:opacity-50 disabled:cursor-not-allowed">
                             {saving ? "Saving..." : "Save Permissions"}
                         </button>
                     </div>
@@ -425,24 +425,24 @@ export default function DynamicGroupPage() {
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100] p-6">
                     <div className="bg-white w-full max-w-xl rounded-[3rem] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] p-12 relative">
                         <button onClick={() => setShowInviteModal(false)}
-                            className="absolute top-8 right-10 text-3xl text-gray-300 hover:text-black font-light font-sans">✕</button>
-                        <h2 className="text-4xl font-black font-sans text-black uppercase tracking-tighter mb-2">Member Invite</h2>
-                        <p className="text-gray-400 font-black font-sans mb-10 text-[10px] tracking-[0.3em] uppercase">
-                            Sector: <span className="text-black">@{groupData?.name}</span>
+                            className="absolute top-6 right-6 text-2xl text-gray-400 hover:text-gray-600">✕</button>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Invite Member</h2>
+                        <p className="text-sm text-gray-500 mb-8">
+                            Sector: <span className="font-semibold text-gray-800">@{groupData?.name}</span>
                         </p>
                         <div className="space-y-8">
                             <div>
-                                <label className="block text-[10px] font-black font-sans text-black uppercase tracking-widest mb-3">Candidate Email</label>
-                                <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} type="email" placeholder="USER@VDR.COM"
-                                    className="w-full bg-gray-50 border-none rounded-2xl p-5 font-black font-sans text-black text-sm outline-none focus:ring-4 focus:ring-black/5 placeholder:text-gray-300" />
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Candidate Email</label>
+                                <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} type="email" placeholder="user@vdr.com"
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-[15px] font-medium text-gray-900 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
                             </div>
                             <div>
-                                <label className="block text-[10px] font-black font-sans text-black uppercase tracking-widest mb-3">Brief Message</label>
-                                <textarea value={inviteDescription} onChange={e => setInviteDescription(e.target.value)} rows="4" placeholder="DESCRIBE THE ROLE..."
-                                    className="w-full bg-gray-50 border-none rounded-2xl p-5 font-bold font-sans text-black text-sm outline-none focus:ring-4 focus:ring-black/5 resize-none placeholder:text-gray-300" />
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Brief Message</label>
+                                <textarea value={inviteDescription} onChange={e => setInviteDescription(e.target.value)} rows="4" placeholder="Describe the role..."
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-[15px] font-medium text-gray-900 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 resize-none transition-all" />
                             </div>
                             <button onClick={handleInviteSubmit}
-                                className="w-full bg-black text-white py-6 rounded-2xl font-black font-sans uppercase tracking-[0.3em] text-xs shadow-2xl hover:scale-[1.02] active:scale-95 transition-all">
+                                className="w-full bg-gradient-to-r from-gray-900 to-black text-white py-3 rounded-xl font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
                                 Dispatch Invitation
                             </button>
                         </div>
