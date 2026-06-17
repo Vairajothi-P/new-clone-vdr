@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaGoogle, FaFacebook } from 'react-icons/fa';
+import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaGoogle } from 'react-icons/fa';
 import { FiShield } from "react-icons/fi";
 import { supabase } from '@/utils/supabase/client';
 
@@ -158,18 +158,8 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  disabled={isLoading}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                />
-                <span className="text-gray-600">Remember me</span>
-              </label>
-              {/* <Link href="/forgot-password" className="text-blue-600 hover:text-blue-700 font-medium transition">Forgot Password?</Link> */}
+            <div className="flex items-center justify-end text-sm">
+              <Link href="/forgot-password" className="text-blue-600 hover:text-blue-700 font-medium transition">Forgot Password?</Link>
             </div>
 
             <button
@@ -199,15 +189,11 @@ export default function LoginPage() {
               <FaGoogle className="text-red-500 text-lg" />
               <span className="text-gray-700 font-medium text-sm">Sign in with Google</span>
             </button>
-            <button type="button" disabled={isLoading} className="w-full py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 transition flex items-center justify-center gap-3 disabled:opacity-50">
-              <FaFacebook className="text-blue-600 text-lg" />
-              <span className="text-gray-700 font-medium text-sm">Sign in with Facebook</span>
-            </button>
-          </div> */}
+          </div>
 
           <p className="text-center text-gray-600 text-sm p-2">
             Don t have an account?{' '}
-            <Link href="#" className="text-blue-600 hover:text-blue-700 font-semibold transition">Register</Link>
+            <Link href="/register" className="text-blue-600 hover:text-blue-700 font-semibold transition">Register</Link>
           </p>
         </div>
 
