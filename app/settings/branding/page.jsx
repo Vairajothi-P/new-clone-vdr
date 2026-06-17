@@ -14,6 +14,7 @@ export default function BrandingPage() {
   const [activeTheme, setActiveTheme] = useState(1);
   const [brandName, setBrandName] = useState('');
   const [logoUrl, setLogoUrl] = useState(null);
+  const [logoFile, setLogoFile] = useState(null);
 
   // User Profile States
   const [adminName, setAdminName] = useState('');
@@ -56,13 +57,42 @@ export default function BrandingPage() {
     fetchBranding();
   }, []);
 
+  // ─── Logo Helper Functions ────────────────────────────────────
+  const getLogoDisplayUrl = (pathOrBase64) => {
+    if (!pathOrBase64) return null;
+    if (pathOrBase64.startsWith('data:image')) return pathOrBase64;
+    if (pathOrBase64.startsWith('http')) return pathOrBase64;
+    const { data } = supabase.storage.from('vdr-logos').getPublicUrl(pathOrBase64);
+    return data?.publicUrl || null;
+  };
+
+  const uploadLogoIfNew = async () => {
+    if (!logoFile) return logoUrl;
+    const ext = logoFile.name.split('.').pop();
+    const fileName = `brand_${COMPANY_ID}_${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from('vdr-logos')
+      .upload(fileName, logoFile, { contentType: logoFile.type });
+    if (uploadErr) throw uploadErr;
+    return fileName;
+  };
+
   // ─── Save / Publish to DB ─────────────────────────────────────
   const handlePublish = async () => {
     setSaving(true);
+    let finalLogoPath = logoUrl;
+    try {
+      finalLogoPath = await uploadLogoIfNew();
+    } catch (err) {
+      setSaving(false);
+      alert('Failed to upload logo: ' + err.message);
+      return;
+    }
+
     const payload = {
       company_id:   COMPANY_ID,
       brand_name:   brandName,
-      logo_url:     logoUrl,
+      logo_url:     finalLogoPath,
       active_theme: activeTheme,
       admin_name:   adminName,
       admin_email:  adminEmail,
@@ -93,7 +123,7 @@ export default function BrandingPage() {
     }
   };
 
-  // ─── Logo upload (base64 preview) ─────────────────────────────
+  // ─── Logo upload (preview only) ─────────────────────────────
   const handleLogoChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -101,6 +131,7 @@ export default function BrandingPage() {
         alert('Logo size must be less than 2MB');
         return;
       }
+      setLogoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setLogoUrl(reader.result);
       reader.readAsDataURL(file);
@@ -223,7 +254,7 @@ export default function BrandingPage() {
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className={`w-16 h-16 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-800 text-xl font-bold shadow-sm ring-4 ring-white overflow-hidden transition-colors duration-500`}>
-                {logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" /> : <span className={currentThemeStyles.text}>{getInitials(adminName)}</span>}
+                {logoUrl ? <img src={getLogoDisplayUrl(logoUrl)} alt="Logo" className="w-full h-full object-contain p-1" /> : <span className={currentThemeStyles.text}>{getInitials(adminName)}</span>}
               </div>
               <div className={`absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm`}>
                 <div className={`w-4 h-4 ${currentThemeStyles.fill} rounded-full transition-colors duration-500`}></div>
@@ -276,7 +307,7 @@ export default function BrandingPage() {
                       <div className={`absolute inset-0 bg-gradient-to-tr ${currentThemeStyles.fill} opacity-0 group-hover:opacity-20 rounded-2xl blur-md transition-opacity duration-500`}></div>
                       <div className={`relative w-20 h-20 rounded-2xl border-2 border-dashed border-gray-300 bg-white/50 backdrop-blur-sm flex flex-col items-center justify-center text-gray-400 ${currentThemeStyles.hoverBorder} group-hover:${currentThemeStyles.bg} transition-all duration-300 overflow-hidden`}>
                         {logoUrl ? (
-                          <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1.5" />
+                          <img src={getLogoDisplayUrl(logoUrl)} alt="Logo" className="w-full h-full object-contain p-1.5" />
                         ) : (
                           <>
                             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${currentThemeStyles.hoverText} transition-colors mb-1`}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
@@ -294,7 +325,7 @@ export default function BrandingPage() {
                         SVG or PNG • 512x512px • Max 2MB
                       </p>
                       {logoUrl && (
-                        <button type="button" onClick={() => setLogoUrl(null)} className="text-[12px] font-bold text-red-500 hover:text-red-700 transition-colors cursor-pointer">Remove Logo</button>
+                        <button type="button" onClick={() => { setLogoUrl(null); setLogoFile(null); }} className="text-[12px] font-bold text-red-500 hover:text-red-700 transition-colors cursor-pointer">Remove Logo</button>
                       )}
                     </div>
                   </div>
