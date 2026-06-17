@@ -291,6 +291,7 @@ function RegisterContent() {
   const [invitationDetails, setInvitationDetails] = useState(null);
 
   const [formData, setFormData] = useState({
+    companyName: "",
     name: "",
     email: "",
     mobile: "",
@@ -299,6 +300,7 @@ function RegisterContent() {
   });
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
 
   // 1. Fetch Invitation Details if token exists in URL
   useEffect(() => {
@@ -351,6 +353,59 @@ function RegisterContent() {
     updatedOtp[index] = value;
     setOtp(updatedOtp);
   };
+  const sendOtp = async () => {
+    try {
+      setIsSendingOtp(true);
+
+      const generatedOtp = Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
+
+      // SAVE OTP TO DATABASE
+      const { data, error } = await supabase
+        .from("email_otps")
+        .insert({
+          email: formData.email,
+          otp: generatedOtp,
+          expires_at: new Date(
+            Date.now() + 5 * 60 * 1000
+          ).toISOString(),
+          verified: false,
+        })
+        .select();
+
+      console.log("OTP DATA:", data);
+      console.log("OTP ERROR:", error);
+
+      if (error) {
+        throw error;
+      }
+      const response = await fetch("/api/send-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          otp: generatedOtp,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+
+      alert("OTP sent successfully!");
+      setStep(2);
+
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
 
   // 2. Perform database user registration and complete invitation status update
   const handleFinalSubmit = async () => {
@@ -360,23 +415,98 @@ function RegisterContent() {
     }
 
     try {
-      const targetRole = invitationDetails?.groups?.name;
-      const targetCompany = invitationDetails?.groups?.company_id;
+      const enteredOtp = otp.join("");
 
-      // Insert new user record into public.users table
-      const { data: newUser, error: userError } = await supabase
+      const { data: otpRecord } =
+        await supabase
+          .from("email_otps")
+          .select("*")
+          .eq("email", formData.email)
+          .eq("otp", enteredOtp)
+          .eq("verified", false)
+          .order("created_at", {
+            ascending: false,
+          })
+          .limit(1)
+          .single();
+
+      if (!otpRecord) {
+        alert("Invalid OTP");
+        return;
+      }
+
+      if (
+        new Date(
+          otpRecord.expires_at
+        ) < new Date()
+      ) {
+        alert("OTP Expired");
+        return;
+      }
+
+      await supabase
+        .from("email_otps")
+        .update({
+          verified: true,
+        })
+        .eq("id", otpRecord.id);
+
+      const { data: existingUser } =
+        await supabase
+          .from("users")
+          .select("id")
+          .eq("email", formData.email)
+          .maybeSingle();
+
+      if (existingUser) {
+        alert("Email already registered");
+        return;
+      }
+      // Create Company First
+      const {
+        data: companyData,
+        error: companyError,
+      } = await supabase
+        .from("companies")
+        .insert({
+          name: formData.companyName,
+          email: formData.email,
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (companyError) {
+        throw companyError;
+      }
+
+      const companyId = companyData.id;
+
+      // Create User
+      const {
+        data: newUser,
+        error: userError,
+      } = await supabase
         .from("users")
         .insert({
+          company_id: companyId,
+          company_name: formData.companyName,
+
           name: formData.name,
           email: formData.email,
           phone_number: formData.mobile,
-          password_hash: formData.password, // Plain text match to match login structure
-          role: targetRole,
-          company_id: targetCompany,
+
+          password_hash: formData.password,
+
+          role: "external_user",
           status: "active",
         })
         .select()
         .single();
+
+      if (userError) {
+        throw userError;
+      }
 
       if (userError) {
         throw new Error(userError.message);
@@ -392,7 +522,8 @@ function RegisterContent() {
 
       // Proceed to success page
       setStep(3);
-    } catch (err) {
+    }
+    catch (err) {
       console.error("Registration Error:", err);
       alert("Failed to complete registration: " + err.message);
     }
@@ -445,6 +576,23 @@ function RegisterContent() {
             <>
               {step === 1 && (
                 <div className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Company Name
+                    </label>
+
+                    <div className="relative">
+                      <input
+                        type="text"
+                        name="companyName"
+                        value={formData.companyName}
+                        onChange={handleChange}
+                        placeholder="Enter company name"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
                       Full Name
@@ -551,16 +699,24 @@ function RegisterContent() {
                   </div>
 
                   <button
-                    onClick={() => {
-                      if (!formData.name || !formData.email || !formData.mobile || !formData.password) {
+                    onClick={async () => {
+                      if (
+                        !formData.companyName ||
+                        !formData.name ||
+                        !formData.email ||
+                        !formData.mobile ||
+                        !formData.password
+                      ) {
                         alert("Please fill all required fields.");
                         return;
                       }
-                      setStep(2);
+
+                      await sendOtp();
                     }}
+                    disabled={isSendingOtp}
                     className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold transition"
                   >
-                    Continue
+                    {isSendingOtp ? "Sending OTP..." : "Continue"}
                   </button>
                 </div>
               )}
