@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/utils/supabase/client';
 
-// ← Replace with your actual company_id (or fetch from auth context)
 const COMPANY_ID = '11111111-1111-1111-1111-111111111111';
 
 const DEFAULT_ATTRIBUTES = {
@@ -27,69 +26,91 @@ const DEFAULT_POSITIONS = {
   'bottom-right':  true,
 };
 
+const EMPTY_TEMPLATE = {
+  name: '',
+  watermark_type: 'dynamic',
+  custom_text: 'Confidential',
+  font_size: 14,
+  text_color: '#64748B',
+  text_opacity: 25,
+  rotation: -30,
+  attributes: DEFAULT_ATTRIBUTES,
+  positions: DEFAULT_POSITIONS,
+  logo_path: '',
+  logo_opacity: 0.2,
+  logo_position: 'middle-center',
+};
+
 export default function WatermarkPage() {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [recordId, setRecordId] = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [saving, setSaving]         = useState(false);
+  const [recordId, setRecordId]     = useState(null);
 
-  const [activeType, setActiveType] = useState('dynamic');
-  const [customText, setCustomText] = useState('Confidential');
-  const [attributes, setAttributes] = useState(DEFAULT_ATTRIBUTES);
-  const [fontSize, setFontSize] = useState(14);
-  const [textColor, setTextColor] = useState('#64748B');
-  const [textOpacity, setTextOpacity] = useState(25);
-  const [rotation, setRotation] = useState(-30);
-  const [positions, setPositions] = useState(DEFAULT_POSITIONS);
+  // Settings state
+  const [activeType, setActiveType]     = useState('dynamic');
+  const [customText, setCustomText]     = useState('Confidential');
+  const [attributes, setAttributes]     = useState(DEFAULT_ATTRIBUTES);
+  const [fontSize, setFontSize]         = useState(14);
+  const [textColor, setTextColor]       = useState('#64748B');
+  const [textOpacity, setTextOpacity]   = useState(25);
+  const [rotation, setRotation]         = useState(-30);
+  const [positions, setPositions]       = useState(DEFAULT_POSITIONS);
 
-  const [brandName, setBrandName] = useState('Company Name');
-  const [logoUrl, setLogoUrl] = useState(null);
+  // Template state
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templates, setTemplates]                 = useState([]);
+  const [templateForm, setTemplateForm]           = useState({ ...EMPTY_TEMPLATE });
+  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [savingTemplate, setSavingTemplate]       = useState(false);
+  const [loadingTemplates, setLoadingTemplates]   = useState(false);
+  const logoRef = useRef(null);
+  const [logoFile, setLogoFile]   = useState(null);
+  const [logoPreview, setLogoPreview] = useState('');
 
-  // ─── Fetch from DB on mount ───────────────────────────────────
+  // ─── Fetch settings on mount ────────────────────────────────
   useEffect(() => {
-    const fetchWatermark = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('watermark_settings')
-        .select('*')
-        .eq('company_id', COMPANY_ID)
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching watermark settings:', error);
-      }
-
-      if (data) {
-        setRecordId(data.id);
-        setActiveType(data.watermark_type ?? 'dynamic');
-        setCustomText(data.custom_text ?? 'Confidential');
-        setFontSize(data.font_size ?? 14);
-        setTextColor(data.text_color ?? '#64748B');
-        setTextOpacity(data.text_opacity ?? 25);
-        setRotation(data.rotation ?? -30);
-        setAttributes({ ...DEFAULT_ATTRIBUTES, ...(data.attributes ?? {}) });
-        setPositions({ ...DEFAULT_POSITIONS, ...(data.positions ?? {}) });
-      }
-
-      // Fetch Workspace Settings for Brand Name and Logo
-      const { data: wsData } = await supabase
-        .from('workspace_settings')
-        .select('brand_name, logo_url')
-        .eq('company_id', COMPANY_ID)
-        .single();
-
-      if (wsData) {
-        setBrandName(wsData.brand_name || 'Company Name');
-        setLogoUrl(wsData.logo_url || null);
-      }
-
-      setLoading(false);
-    };
-
-    fetchWatermark();
+    fetchSettings();
   }, []);
 
-  // ─── Save to DB ───────────────────────────────────────────────
+  async function fetchSettings() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('watermark_settings')
+      .select('*')
+      .eq('company_id', COMPANY_ID)
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching watermark settings:', error);
+    }
+
+    if (data) {
+      setRecordId(data.id);
+      setActiveType(data.watermark_type ?? 'dynamic');
+      setCustomText(data.custom_text ?? 'Confidential');
+      setFontSize(data.font_size ?? 14);
+      setTextColor(data.text_color ?? '#64748B');
+      setTextOpacity(data.text_opacity ?? 25);
+      setRotation(data.rotation ?? -30);
+      setAttributes({ ...DEFAULT_ATTRIBUTES, ...(data.attributes ?? {}) });
+      setPositions({ ...DEFAULT_POSITIONS, ...(data.positions ?? {}) });
+    }
+    setLoading(false);
+  }
+
+  async function fetchTemplates() {
+    setLoadingTemplates(true);
+    const { data, error } = await supabase
+      .from('watermark_templates')
+      .select('*')
+      .eq('company_id', COMPANY_ID)
+      .order('created_at', { ascending: false });
+    if (!error) setTemplates(data || []);
+    setLoadingTemplates(false);
+  }
+
+  // ─── Save settings ───────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true);
     const payload = {
@@ -106,35 +127,127 @@ export default function WatermarkPage() {
 
     let error;
     if (recordId) {
-      ({ error } = await supabase
-        .from('watermark_settings')
-        .update(payload)
-        .eq('id', recordId));
+      ({ error } = await supabase.from('watermark_settings').update(payload).eq('id', recordId));
     } else {
       const { data, error: insertError } = await supabase
-        .from('watermark_settings')
-        .insert(payload)
-        .select()
-        .single();
+        .from('watermark_settings').insert(payload).select().single();
       error = insertError;
       if (data) setRecordId(data.id);
     }
 
     setSaving(false);
-    if (error) {
-      alert('Failed to save: ' + error.message);
-    } else {
-      alert('Watermark settings saved successfully!');
+    if (error) alert('Failed to save: ' + error.message);
+    else alert('Watermark settings saved!');
+  };
+
+  // ─── Apply template to current settings ─────────────────────
+  function applyTemplate(t) {
+    setActiveType(t.watermark_type ?? 'dynamic');
+    setCustomText(t.custom_text ?? 'Confidential');
+    setFontSize(t.font_size ?? 14);
+    setTextColor(t.text_color ?? '#64748B');
+    setTextOpacity(t.text_opacity ?? 25);
+    setRotation(t.rotation ?? -30);
+    setAttributes({ ...DEFAULT_ATTRIBUTES, ...(t.attributes ?? {}) });
+    setPositions({ ...DEFAULT_POSITIONS, ...(t.positions ?? {}) });
+    setShowTemplateModal(false);
+    alert(`Template "${t.name}" applied!`);
+  }
+
+  // ─── Save template to DB ─────────────────────────────────────
+  async function handleSaveTemplate() {
+    if (!templateForm.name.trim()) return alert('Give the template a name');
+    setSavingTemplate(true);
+
+    let logoPath = templateForm.logo_path || null;
+
+    // Upload logo if new file selected
+    if (logoFile) {
+      const ext = logoFile.name.split('.').pop();
+      const fileName = `${COMPANY_ID}_${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('vdr-logos')
+        .upload(fileName, logoFile, { contentType: logoFile.type });
+      if (!uploadErr) logoPath = fileName;
     }
-  };
 
-  const handlePositionToggle = (pos) => {
-    setPositions(prev => ({ ...prev, [pos]: !prev[pos] }));
-  };
+    const payload = {
+      company_id:     COMPANY_ID,
+      name:           templateForm.name,
+      watermark_type: templateForm.watermark_type,
+      custom_text:    templateForm.custom_text,
+      font_size:      templateForm.font_size,
+      text_color:     templateForm.text_color,
+      text_opacity:   templateForm.text_opacity,
+      rotation:       templateForm.rotation,
+      attributes:     templateForm.attributes,
+      positions:      templateForm.positions,
+      logo_path:      logoPath,
+      logo_opacity:   templateForm.logo_opacity,
+      logo_position:  templateForm.logo_position,
+    };
 
-  const toggleAttribute = (attr) => {
-    setAttributes(prev => ({ ...prev, [attr]: !prev[attr] }));
-  };
+    let error;
+    if (editingTemplateId) {
+      ({ error } = await supabase.from('watermark_templates').update(payload).eq('id', editingTemplateId));
+    } else {
+      ({ error } = await supabase.from('watermark_templates').insert(payload));
+    }
+
+    setSavingTemplate(false);
+    if (error) { alert('Failed: ' + error.message); return; }
+
+    setTemplateForm({ ...EMPTY_TEMPLATE });
+    setEditingTemplateId(null);
+    setLogoFile(null);
+    setLogoPreview('');
+    await fetchTemplates();
+  }
+
+  async function handleDeleteTemplate(id) {
+    if (!confirm('Delete this template?')) return;
+    await supabase.from('watermark_templates').delete().eq('id', id);
+    await fetchTemplates();
+  }
+
+  function handleEditTemplate(t) {
+    setTemplateForm({
+      name:           t.name,
+      watermark_type: t.watermark_type,
+      custom_text:    t.custom_text,
+      font_size:      t.font_size,
+      text_color:     t.text_color,
+      text_opacity:   t.text_opacity,
+      rotation:       t.rotation,
+      attributes:     { ...DEFAULT_ATTRIBUTES, ...(t.attributes ?? {}) },
+      positions:      { ...DEFAULT_POSITIONS, ...(t.positions ?? {}) },
+      logo_path:      t.logo_path || '',
+      logo_opacity:   t.logo_opacity || 0.2,
+      logo_position:  t.logo_position || 'middle-center',
+    });
+    setEditingTemplateId(t.id);
+    setLogoFile(null);
+    setLogoPreview('');
+  }
+
+  function handleLogoSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setLogoPreview(reader.result);
+    reader.readAsDataURL(file);
+  }
+
+  // ─── Open modal ──────────────────────────────────────────────
+  function openTemplateModal() {
+    setShowTemplateModal(true);
+    fetchTemplates();
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────────
+  const handlePositionToggle = (pos) => setPositions(prev => ({ ...prev, [pos]: !prev[pos] }));
+  const toggleAttribute      = (attr) => setAttributes(prev => ({ ...prev, [attr]: !prev[attr] }));
 
   const getWatermarkText = () => {
     if (activeType === 'static') return customText;
@@ -143,19 +256,23 @@ export default function WatermarkPage() {
     if (attributes.email)     parts.push('john@company.com');
     if (attributes.dateTime)  parts.push('2026-05-17 19:28');
     if (attributes.ipAddress) parts.push('192.168.1.100');
-    if (attributes.cmpname)   parts.push(brandName);
     return parts.filter(Boolean).join(' | ');
   };
 
   const hexToRGBA = (hex, opacity) => {
-    let c;
     if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
-      c = hex.substring(1).split('');
+      let c = hex.substring(1).split('');
       if (c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
       c = '0x' + c.join('');
       return `rgba(${[(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',')},${opacity / 100})`;
     }
     return `rgba(100, 116, 139, ${opacity / 100})`;
+  };
+
+  const getLogoUrl = (path) => {
+    if (!path) return null;
+    const { data } = supabase.storage.from('vdr-logos').getPublicUrl(path);
+    return data?.publicUrl || null;
   };
 
   if (loading) {
@@ -171,8 +288,189 @@ export default function WatermarkPage() {
 
   return (
     <div className="relative min-h-screen bg-[#F8FAFC]">
-      <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-50 to-transparent pointer-events-none"></div>
+      <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-50 to-transparent pointer-events-none" />
 
+      {/* ── Template Modal ─────────────────────────────────────── */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-extrabold text-gray-900">Watermark Templates</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Save reusable watermark configurations</p>
+              </div>
+              <button onClick={() => { setShowTemplateModal(false); setTemplateForm({ ...EMPTY_TEMPLATE }); setEditingTemplateId(null); setLogoPreview(''); setLogoFile(null); }}
+                className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors text-lg font-bold">✕</button>
+            </div>
+
+            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left: Form */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
+                  {editingTemplateId ? 'Edit Template' : 'New Template'}
+                </h3>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Template Name *</label>
+                  <input value={templateForm.name} onChange={e => setTemplateForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. Client Review, Confidential..."
+className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />               </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Type</label>
+                    <select value={templateForm.watermark_type} onChange={e => setTemplateForm(f => ({ ...f, watermark_type: e.target.value }))}
+className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all">                      <option value="dynamic">Dynamic</option>
+                      <option value="static">Static</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Watermark Text</label>
+                    <input value={templateForm.custom_text} onChange={e => setTemplateForm(f => ({ ...f, custom_text: e.target.value }))}
+className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"/>                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Color</label>
+                    <div className="flex items-center gap-2">
+                      <input type="color" value={templateForm.text_color} onChange={e => setTemplateForm(f => ({ ...f, text_color: e.target.value }))}
+                        className="w-10 h-10 border-0 rounded-lg cursor-pointer" />
+                      <span className="text-xs font-mono text-gray-600">{templateForm.text_color.toUpperCase()}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Font Size ({templateForm.font_size}px)</label>
+                    <input type="range" min="10" max="32" value={templateForm.font_size}
+                      onChange={e => setTemplateForm(f => ({ ...f, font_size: parseInt(e.target.value) }))}
+                      className="w-full accent-blue-600 mt-2" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Opacity ({templateForm.text_opacity}%)</label>
+                    <input type="range" min="5" max="100" value={templateForm.text_opacity}
+                      onChange={e => setTemplateForm(f => ({ ...f, text_opacity: parseInt(e.target.value) }))}
+                      className="w-full accent-blue-600 mt-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Rotation ({templateForm.rotation}°)</label>
+                    <input type="range" min="-90" max="90" value={templateForm.rotation}
+                      onChange={e => setTemplateForm(f => ({ ...f, rotation: parseInt(e.target.value) }))}
+                      className="w-full accent-blue-600 mt-2" />
+                  </div>
+                </div>
+
+                {/* Logo upload */}
+                <div className="border-t border-gray-100 pt-4">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Company Logo (PNG/JPG)</label>
+                  <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/jpg" hidden onChange={handleLogoSelect} />
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => logoRef.current?.click()}
+                      className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+                      Upload Logo
+                    </button>
+                    {(logoPreview || templateForm.logo_path) && (
+                      <div className="flex items-center gap-2">
+                        <img src={logoPreview || getLogoUrl(templateForm.logo_path)} alt="logo"
+                          className="h-10 w-20 object-contain rounded-lg border border-gray-100 bg-gray-50 p-1" />
+                        <button onClick={() => { setLogoFile(null); setLogoPreview(''); setTemplateForm(f => ({ ...f, logo_path: '' })); }}
+                          className="text-red-400 hover:text-red-600 text-lg">✕</button>
+                      </div>
+                    )}
+                    {!logoPreview && !templateForm.logo_path && (
+                      <span className="text-sm text-gray-400">No logo selected</span>
+                    )}
+                  </div>
+                  {(logoPreview || templateForm.logo_path) && (
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Logo Opacity ({Math.round(templateForm.logo_opacity * 100)}%)</label>
+                        <input type="range" min="0.05" max="1" step="0.05" value={templateForm.logo_opacity}
+                          onChange={e => setTemplateForm(f => ({ ...f, logo_opacity: parseFloat(e.target.value) }))}
+                          className="w-full accent-blue-600" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Logo Position</label>
+                        <select value={templateForm.logo_position} onChange={e => setTemplateForm(f => ({ ...f, logo_position: e.target.value }))}
+className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-lg focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all">                          {['top-left','top-center','top-right','middle-left','middle-center','middle-right','bottom-left','bottom-center','bottom-right'].map(p => (
+                            <option key={p} value={p}>{p.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button onClick={handleSaveTemplate} disabled={savingTemplate}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-gray-900 to-black text-white text-sm font-bold rounded-xl hover:shadow-lg transition-all disabled:opacity-60">
+                    {savingTemplate ? 'Saving…' : editingTemplateId ? 'Update Template' : 'Save Template'}
+                  </button>
+                  {editingTemplateId && (
+                    <button onClick={() => { setTemplateForm({ ...EMPTY_TEMPLATE }); setEditingTemplateId(null); setLogoPreview(''); setLogoFile(null); }}
+                      className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Saved templates */}
+              <div>
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+                  Saved Templates ({templates.length})
+                </h3>
+                {loadingTemplates ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-8 h-8 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+                  </div>
+                ) : templates.length === 0 ? (
+                  <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center">
+                    <p className="text-gray-400 text-sm">No templates yet. Create one on the left.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {templates.map(t => (
+                      <div key={t.id} className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {/* Mini preview */}
+                            <div className="w-12 h-14 bg-white border border-gray-200 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden relative">
+                              <span style={{ color: t.text_color, fontSize: '5px', fontWeight: 'bold', transform: `rotate(${t.rotation}deg)`, opacity: t.text_opacity / 100, textAlign: 'center', lineHeight: 1.2 }}>
+                                {t.custom_text?.substring(0, 8)}
+                              </span>
+                              {t.logo_path && (
+                                <img src={getLogoUrl(t.logo_path)} alt="logo" className="absolute w-5 h-5 object-contain bottom-1 right-1" style={{ opacity: t.logo_opacity }} />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-gray-900 text-sm truncate">{t.name}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">{t.custom_text} · {t.watermark_type} · {t.text_opacity}% opacity</p>
+                              {t.logo_path && <span className="text-xs text-blue-500 font-medium">🖼 Has logo</span>}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button onClick={() => applyTemplate(t)}
+                              className="px-3 py-1.5 bg-blue-500 text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-colors">Apply</button>
+                            <button onClick={() => handleEditTemplate(t)}
+                              className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-bold rounded-lg hover:bg-white transition-colors">Edit</button>
+                            <button onClick={() => handleDeleteTemplate(t.id)}
+                              className="px-2 py-1.5 border border-red-100 text-red-400 text-xs rounded-lg hover:bg-red-50 transition-colors">✕</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Main Page ──────────────────────────────────────────── */}
       <div className="relative p-4 md:p-6 max-w-5xl mx-auto w-full space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-700">
 
         {/* Header */}
@@ -181,52 +479,48 @@ export default function WatermarkPage() {
             <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Watermark Settings</h1>
             <p className="text-gray-500 mt-2 text-[15px]">Protect your confidential files with customizable document watermarks.</p>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-6 py-2.5 bg-gradient-to-r from-gray-900 to-black text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-gray-900/20 hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {saving ? (
-              <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Saving…</>
-            ) : 'Save Changes'}
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={openTemplateModal}
+              className="px-5 py-2.5 border border-gray-200 bg-white text-gray-700 text-sm font-bold rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              Watermark Templates
+            </button>
+            <button onClick={handleSave} disabled={saving}
+              className="px-6 py-2.5 bg-gradient-to-r from-gray-900 to-black text-white text-sm font-bold rounded-xl hover:shadow-lg hover:shadow-gray-900/20 hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+              {saving ? (
+                <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Saving…</>
+              ) : 'Save Changes'}
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-          {/* Left panel */}
+          {/* Left Panel */}
           <div className="lg:col-span-7 space-y-6">
 
-            {/* Configuration Card */}
             <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 p-6 space-y-6">
 
               {/* Type Switcher */}
               <div>
                 <label className="block text-[14px] font-bold text-gray-800 mb-3">Watermark Type</label>
                 <div className="grid grid-cols-2 gap-2 p-1 bg-gray-50 border border-gray-100 rounded-xl">
-                  <button
-                    onClick={() => setActiveType('dynamic')}
-                    className={`py-2 px-4 rounded-lg text-sm font-bold transition-all ${activeType === 'dynamic' ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500 hover:text-gray-800'}`}
-                  >Dynamic</button>
-                  <button
-                    onClick={() => setActiveType('static')}
-                    className={`py-2 px-4 rounded-lg text-sm font-bold transition-all ${activeType === 'static' ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500 hover:text-gray-800'}`}
-                  >Static</button>
+                  {['dynamic', 'static'].map(type => (
+                    <button key={type} onClick={() => setActiveType(type)}
+                      className={`py-2 px-4 rounded-lg text-sm font-bold transition-all ${activeType === type ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500 hover:text-gray-800'}`}>
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Watermark Text */}
+              {/* Text */}
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="customText" className="block text-[14px] font-bold text-gray-800 mb-2">Watermark Text</label>
-                  <input
-                    id="customText"
-                    type="text"
-                    value={customText}
-                    onChange={(e) => setCustomText(e.target.value)}
+                  <label className="block text-[14px] font-bold text-gray-800 mb-2">Watermark Text</label>
+                  <input type="text" value={customText} onChange={e => setCustomText(e.target.value)}
                     placeholder="Enter main watermark text..."
-                    className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-inner"
-                  />
+                    className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
                 </div>
 
                 {activeType === 'dynamic' && (
@@ -240,16 +534,9 @@ export default function WatermarkPage() {
                         { id: 'ipAddress', label: 'IP Address' },
                         { id: 'cmplogo',   label: 'Company Logo' },
                         { id: 'cmpname',   label: 'Company Name' },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => toggleAttribute(item.id)}
-                          className={`flex items-center justify-between p-3 rounded-xl border text-[13px] font-semibold transition-all ${
-                            attributes[item.id]
-                              ? 'bg-blue-50/30 border-blue-500/40 text-blue-700'
-                              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                          }`}
-                        >
+                      ].map(item => (
+                        <button key={item.id} onClick={() => toggleAttribute(item.id)}
+                          className={`flex items-center justify-between p-3 rounded-xl border text-[13px] font-semibold transition-all ${attributes[item.id] ? 'bg-blue-50/30 border-blue-500/40 text-blue-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                           <span>{item.label}</span>
                           <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${attributes[item.id] ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 bg-white'}`}>
                             {attributes[item.id] && (
@@ -263,55 +550,46 @@ export default function WatermarkPage() {
                 )}
               </div>
 
-              {/* Font Size & Opacity */}
+              {/* Font & Opacity */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Font Size ({fontSize}px)</label>
-                  <input type="range" min="10" max="32" value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+                  <input type="range" min="10" max="32" value={fontSize} onChange={e => setFontSize(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
                 </div>
                 <div>
                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Opacity ({textOpacity}%)</label>
-                  <input type="range" min="5" max="100" value={textOpacity} onChange={(e) => setTextOpacity(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+                  <input type="range" min="5" max="100" value={textOpacity} onChange={e => setTextOpacity(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
                 </div>
               </div>
 
               {/* Rotation & Color */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[14px] font-bold text-gray-800 mb-2">Rotation Angle ({rotation}°)</label>
-                  <input type="range" min="-90" max="90" value={rotation} onChange={(e) => setRotation(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+                  <label className="block text-[14px] font-bold text-gray-800 mb-2">Rotation ({rotation}°)</label>
+                  <input type="range" min="-90" max="90" value={rotation} onChange={e => setRotation(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
                 </div>
                 <div>
                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Watermark Color</label>
                   <div className="flex items-center gap-3">
-                    <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} className="w-10 h-10 border-0 rounded-lg cursor-pointer bg-transparent" />
-                    <span className="text-sm font-semibold font-mono text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex-1 text-center">
-                      {textColor.toUpperCase()}
-                    </span>
+                    <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} className="w-10 h-10 border-0 rounded-lg cursor-pointer bg-transparent" />
+                    <span className="text-sm font-semibold font-mono text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex-1 text-center">{textColor.toUpperCase()}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Position Grid Card */}
+            {/* Position Grid */}
             <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 p-6">
               <div className="mb-4">
                 <h3 className="text-md font-bold text-gray-900">Watermark Positions</h3>
-                <p className="text-[13px] text-gray-500 mt-1">Select the areas on the document page where the watermark will overlay.</p>
+                <p className="text-[13px] text-gray-500 mt-1">Select areas on the document where the watermark will overlay.</p>
               </div>
               <div className="grid grid-cols-3 gap-2 bg-gray-50 p-3 rounded-2xl border border-gray-100 max-w-sm mx-auto">
-                {Object.keys(positions).map((pos) => {
+                {Object.keys(positions).map(pos => {
                   const label = pos.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                   return (
-                    <button
-                      key={pos}
-                      onClick={() => handlePositionToggle(pos)}
-                      className={`h-16 rounded-xl flex flex-col items-center justify-center gap-1.5 text-[11px] font-bold border transition-all ${
-                        positions[pos]
-                          ? 'bg-blue-500 border-blue-500 text-white shadow-sm scale-[1.03]'
-                          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
+                    <button key={pos} onClick={() => handlePositionToggle(pos)}
+                      className={`h-16 rounded-xl flex flex-col items-center justify-center gap-1.5 text-[11px] font-bold border transition-all ${positions[pos] ? 'bg-blue-500 border-blue-500 text-white shadow-sm scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'}`}>
                       <span className="uppercase text-[9px] tracking-wider">{label}</span>
                       <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${positions[pos] ? 'bg-white border-white text-blue-500' : 'border-gray-300 bg-gray-50'}`}>
                         {positions[pos] && (
@@ -325,7 +603,7 @@ export default function WatermarkPage() {
             </div>
           </div>
 
-          {/* Right panel: Live Preview */}
+          {/* Right Panel: Live Preview */}
           <div className="lg:col-span-5 flex flex-col">
             <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 p-6 flex-1 flex flex-col">
               <div className="mb-4">
@@ -337,13 +615,13 @@ export default function WatermarkPage() {
                 {/* Toolbar */}
                 <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-xl px-4 py-2 flex items-center justify-between mb-4 shadow-sm">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                    <div className="w-3 h-3 rounded-full bg-red-400" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                    <div className="w-3 h-3 rounded-full bg-green-400" />
                   </div>
                   <span className="text-[11px] font-bold text-slate-500">financial_report_q2.pdf</span>
                   <div className="w-6 h-6 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
                   </div>
                 </div>
 
@@ -364,55 +642,33 @@ export default function WatermarkPage() {
                     ].map(({ key, cls }) => (
                       <div key={key} className={`${cls} overflow-hidden`}>
                         {positions[key] && (
-                          <div
-                            style={{
-                              transform: `rotate(${rotation}deg)`,
-                              opacity: textOpacity / 100,
-                            }}
-                            className="origin-center transition-all duration-200 flex items-center gap-3"
-                          >
-                            {activeType === 'dynamic' && attributes.cmplogo && logoUrl && (
-                               <img 
-                                 src={logoUrl} 
-                                 alt="Company Logo" 
-                                 style={{ height: `${fontSize * 1.5}px` }} 
-                                 className="object-contain" 
-                               />
-                            )}
-                            <span
-                              style={{
-                                fontSize: `${fontSize}px`,
-                                color: textColor,
-                                whiteSpace: 'nowrap',
-                              }}
-                              className="font-bold"
-                            >
-                              {getWatermarkText()}
-                            </span>
-                          </div>
+                          <span style={{ fontSize: `${fontSize}px`, color: hexToRGBA(textColor, textOpacity), transform: `rotate(${rotation}deg)`, whiteSpace: 'nowrap' }}
+                            className="font-bold origin-center transition-all duration-200">
+                            {getWatermarkText()}
+                          </span>
                         )}
                       </div>
                     ))}
                   </div>
 
                   {/* Dummy Content */}
-                  <div className="h-6 w-1/3 bg-slate-200 rounded-md"></div>
-                  <div className="h-4 w-5/6 bg-slate-100 rounded-md mt-2"></div>
-                  <div className="h-4 w-full bg-slate-100 rounded-md"></div>
-                  <div className="h-4 w-4/5 bg-slate-100 rounded-md"></div>
+                  <div className="h-6 w-1/3 bg-slate-200 rounded-md" />
+                  <div className="h-4 w-5/6 bg-slate-100 rounded-md mt-2" />
+                  <div className="h-4 w-full bg-slate-100 rounded-md" />
+                  <div className="h-4 w-4/5 bg-slate-100 rounded-md" />
                   <div className="mt-6 border-t border-slate-100 pt-4 flex flex-col gap-2">
                     <div className="h-24 bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between gap-4">
                       <div className="flex-1 flex flex-col gap-2">
-                        <div className="h-3 w-1/2 bg-slate-200 rounded"></div>
-                        <div className="h-3 w-5/6 bg-slate-100 rounded"></div>
+                        <div className="h-3 w-1/2 bg-slate-200 rounded" />
+                        <div className="h-3 w-5/6 bg-slate-100 rounded" />
                       </div>
                       <div className="w-16 h-16 bg-blue-100/50 rounded-xl flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
                       </div>
                     </div>
                   </div>
-                  <div className="h-4 w-full bg-slate-100 rounded-md mt-auto"></div>
-                  <div className="h-4 w-3/4 bg-slate-100 rounded-md"></div>
+                  <div className="h-4 w-full bg-slate-100 rounded-md mt-auto" />
+                  <div className="h-4 w-3/4 bg-slate-100 rounded-md" />
                 </div>
               </div>
             </div>
@@ -423,3 +679,835 @@ export default function WatermarkPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+// "use client";
+
+// import { useState, useEffect } from 'react';
+// import { supabase } from '@/utils/supabase/client';
+
+// // ← Replace with your actual company_id (or fetch from auth context)
+// const COMPANY_ID = '11111111-1111-1111-1111-111111111111';
+
+// const DEFAULT_ATTRIBUTES = {
+//   userName:  true,
+//   dateTime:  true,
+//   email:     true,
+//   ipAddress: true,
+//   cmplogo:   false,
+//   cmpname:   false,
+// };
+
+// const DEFAULT_POSITIONS = {
+//   'top-left':      true,
+//   'top-center':    false,
+//   'top-right':     false,
+//   'middle-left':   false,
+//   'middle-center': true,
+//   'middle-right':  false,
+//   'bottom-left':   false,
+//   'bottom-center': false,
+//   'bottom-right':  true,
+// };
+
+// export default function WatermarkPage() {
+//   const [loading, setLoading] = useState(true);
+//   const [saving, setSaving] = useState(false);
+//   const [recordId, setRecordId] = useState(null);
+
+//   const [activeType, setActiveType] = useState('dynamic');
+//   const [customText, setCustomText] = useState('Confidential');
+//   const [attributes, setAttributes] = useState(DEFAULT_ATTRIBUTES);
+//   const [fontSize, setFontSize] = useState(14);
+//   const [textColor, setTextColor] = useState('#64748B');
+//   const [textOpacity, setTextOpacity] = useState(25);
+//   const [rotation, setRotation] = useState(-30);
+//   const [positions, setPositions] = useState(DEFAULT_POSITIONS);
+
+//   // ─── Fetch from DB on mount ───────────────────────────────────
+//   useEffect(() => {
+//     const fetchWatermark = async () => {
+//       setLoading(true);
+//       const { data, error } = await supabase
+//         .from('watermark_settings')
+//         .select('*')
+//         .eq('company_id', COMPANY_ID)
+//         .limit(1)
+//         .single();
+
+//       if (error && error.code !== 'PGRST116') {
+//         console.error('Error fetching watermark settings:', error);
+//       }
+
+//       if (data) {
+//         setRecordId(data.id);
+//         setActiveType(data.watermark_type ?? 'dynamic');
+//         setCustomText(data.custom_text ?? 'Confidential');
+//         setFontSize(data.font_size ?? 14);
+//         setTextColor(data.text_color ?? '#64748B');
+//         setTextOpacity(data.text_opacity ?? 25);
+//         setRotation(data.rotation ?? -30);
+//         setAttributes({ ...DEFAULT_ATTRIBUTES, ...(data.attributes ?? {}) });
+//         setPositions({ ...DEFAULT_POSITIONS, ...(data.positions ?? {}) });
+//       }
+//       setLoading(false);
+//     };
+
+//     fetchWatermark();
+//   }, []);
+
+//   // ─── Save to DB ───────────────────────────────────────────────
+//   const handleSave = async () => {
+//     setSaving(true);
+//     const payload = {
+//       company_id:     COMPANY_ID,
+//       watermark_type: activeType,
+//       custom_text:    customText,
+//       font_size:      fontSize,
+//       text_color:     textColor,
+//       text_opacity:   textOpacity,
+//       rotation:       rotation,
+//       attributes:     attributes,
+//       positions:      positions,
+//     };
+
+//     let error;
+//     if (recordId) {
+//       ({ error } = await supabase
+//         .from('watermark_settings')
+//         .update(payload)
+//         .eq('id', recordId));
+//     } else {
+//       const { data, error: insertError } = await supabase
+//         .from('watermark_settings')
+//         .insert(payload)
+//         .select()
+//         .single();
+//       error = insertError;
+//       if (data) setRecordId(data.id);
+//     }
+
+//     setSaving(false);
+//     if (error) {
+//       alert('Failed to save: ' + error.message);
+//     } else {
+//       alert('Watermark settings saved successfully!');
+//     }
+//   };
+
+//   const handlePositionToggle = (pos) => {
+//     setPositions(prev => ({ ...prev, [pos]: !prev[pos] }));
+//   };
+
+//   const toggleAttribute = (attr) => {
+//     setAttributes(prev => ({ ...prev, [attr]: !prev[attr] }));
+//   };
+
+//   const getWatermarkText = () => {
+//     if (activeType === 'static') return customText;
+//     const parts = [customText];
+//     if (attributes.userName)  parts.push('John Doe');
+//     if (attributes.email)     parts.push('john@company.com');
+//     if (attributes.dateTime)  parts.push('2026-05-17 19:28');
+//     if (attributes.ipAddress) parts.push('192.168.1.100');
+//     return parts.filter(Boolean).join(' | ');
+//   };
+
+//   const hexToRGBA = (hex, opacity) => {
+//     let c;
+//     if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+//       c = hex.substring(1).split('');
+//       if (c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+//       c = '0x' + c.join('');
+//       return `rgba(${[(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',')},${opacity / 100})`;
+//     }
+//     return `rgba(100, 116, 139, ${opacity / 100})`;
+//   };
+
+//   if (loading) {
+//     return (
+//       <div className="relative min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+//         <div className="flex flex-col items-center gap-4">
+//           <div className="w-10 h-10 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+//           <p className="text-gray-500 text-sm font-medium">Loading watermark settings…</p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="relative min-h-screen bg-[#F8FAFC]">
+//       <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-50 to-transparent pointer-events-none"></div>
+
+//       <div className="relative p-4 md:p-6 max-w-5xl mx-auto w-full space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-700">
+
+//         {/* Header */}
+//         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+//           <div>
+//             <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Watermark Settings</h1>
+//             <p className="text-gray-500 mt-2 text-[15px]">Protect your confidential files with customizable document watermarks.</p>
+//           </div>
+//           <button
+//             onClick={handleSave}
+//             disabled={saving}
+//             className="px-6 py-2.5 bg-gradient-to-r from-gray-900 to-black text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-gray-900/20 hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+//           >
+//             {saving ? (
+//               <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Saving…</>
+//             ) : 'Save Changes'}
+//           </button>
+//         </div>
+
+//         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+//           {/* Left panel */}
+//           <div className="lg:col-span-7 space-y-6">
+
+//             {/* Configuration Card */}
+//             <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 p-6 space-y-6">
+
+//               {/* Type Switcher */}
+//               <div>
+//                 <label className="block text-[14px] font-bold text-gray-800 mb-3">Watermark Type</label>
+//                 <div className="grid grid-cols-2 gap-2 p-1 bg-gray-50 border border-gray-100 rounded-xl">
+//                   <button
+//                     onClick={() => setActiveType('dynamic')}
+//                     className={`py-2 px-4 rounded-lg text-sm font-bold transition-all ${activeType === 'dynamic' ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500 hover:text-gray-800'}`}
+//                   >Dynamic</button>
+//                   <button
+//                     onClick={() => setActiveType('static')}
+//                     className={`py-2 px-4 rounded-lg text-sm font-bold transition-all ${activeType === 'static' ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500 hover:text-gray-800'}`}
+//                   >Static</button>
+//                 </div>
+//               </div>
+
+//               {/* Watermark Text */}
+//               <div className="space-y-4">
+//                 <div>
+//                   <label htmlFor="customText" className="block text-[14px] font-bold text-gray-800 mb-2">Watermark Text</label>
+//                   <input
+//                     id="customText"
+//                     type="text"
+//                     value={customText}
+//                     onChange={(e) => setCustomText(e.target.value)}
+//                     placeholder="Enter main watermark text..."
+//                     className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-inner"
+//                   />
+//                 </div>
+
+//                 {activeType === 'dynamic' && (
+//                   <div>
+//                     <label className="block text-[13px] font-bold text-gray-500 uppercase tracking-wider mb-2">Included Variables</label>
+//                     <div className="grid grid-cols-2 gap-3">
+//                       {[
+//                         { id: 'userName',  label: 'User Name' },
+//                         { id: 'email',     label: 'Email Address' },
+//                         { id: 'dateTime',  label: 'Date & Time' },
+//                         { id: 'ipAddress', label: 'IP Address' },
+//                         { id: 'cmplogo',   label: 'Company Logo' },
+//                         { id: 'cmpname',   label: 'Company Name' },
+//                       ].map((item) => (
+//                         <button
+//                           key={item.id}
+//                           onClick={() => toggleAttribute(item.id)}
+//                           className={`flex items-center justify-between p-3 rounded-xl border text-[13px] font-semibold transition-all ${
+//                             attributes[item.id]
+//                               ? 'bg-blue-50/30 border-blue-500/40 text-blue-700'
+//                               : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+//                           }`}
+//                         >
+//                           <span>{item.label}</span>
+//                           <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${attributes[item.id] ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 bg-white'}`}>
+//                             {attributes[item.id] && (
+//                               <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+//                             )}
+//                           </div>
+//                         </button>
+//                       ))}
+//                     </div>
+//                   </div>
+//                 )}
+//               </div>
+
+//               {/* Font Size & Opacity */}
+//               <div className="grid grid-cols-2 gap-4">
+//                 <div>
+//                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Font Size ({fontSize}px)</label>
+//                   <input type="range" min="10" max="32" value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+//                 </div>
+//                 <div>
+//                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Opacity ({textOpacity}%)</label>
+//                   <input type="range" min="5" max="100" value={textOpacity} onChange={(e) => setTextOpacity(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+//                 </div>
+//               </div>
+
+//               {/* Rotation & Color */}
+//               <div className="grid grid-cols-2 gap-4">
+//                 <div>
+//                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Rotation Angle ({rotation}°)</label>
+//                   <input type="range" min="-90" max="90" value={rotation} onChange={(e) => setRotation(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+//                 </div>
+//                 <div>
+//                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Watermark Color</label>
+//                   <div className="flex items-center gap-3">
+//                     <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} className="w-10 h-10 border-0 rounded-lg cursor-pointer bg-transparent" />
+//                     <span className="text-sm font-semibold font-mono text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex-1 text-center">
+//                       {textColor.toUpperCase()}
+//                     </span>
+//                   </div>
+//                 </div>
+//               </div>
+//             </div>
+
+//             {/* Position Grid Card */}
+//             <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 p-6">
+//               <div className="mb-4">
+//                 <h3 className="text-md font-bold text-gray-900">Watermark Positions</h3>
+//                 <p className="text-[13px] text-gray-500 mt-1">Select the areas on the document page where the watermark will overlay.</p>
+//               </div>
+//               <div className="grid grid-cols-3 gap-2 bg-gray-50 p-3 rounded-2xl border border-gray-100 max-w-sm mx-auto">
+//                 {Object.keys(positions).map((pos) => {
+//                   const label = pos.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+//                   return (
+//                     <button
+//                       key={pos}
+//                       onClick={() => handlePositionToggle(pos)}
+//                       className={`h-16 rounded-xl flex flex-col items-center justify-center gap-1.5 text-[11px] font-bold border transition-all ${
+//                         positions[pos]
+//                           ? 'bg-blue-500 border-blue-500 text-white shadow-sm scale-[1.03]'
+//                           : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+//                       }`}
+//                     >
+//                       <span className="uppercase text-[9px] tracking-wider">{label}</span>
+//                       <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${positions[pos] ? 'bg-white border-white text-blue-500' : 'border-gray-300 bg-gray-50'}`}>
+//                         {positions[pos] && (
+//                           <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+//                         )}
+//                       </div>
+//                     </button>
+//                   );
+//                 })}
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* Right panel: Live Preview */}
+//           <div className="lg:col-span-5 flex flex-col">
+//             <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 p-6 flex-1 flex flex-col">
+//               <div className="mb-4">
+//                 <h3 className="text-md font-bold text-gray-900">Live Document Preview</h3>
+//                 <p className="text-[13px] text-gray-500 mt-1">Real-time simulation of a secured VDR document.</p>
+//               </div>
+
+//               <div className="relative flex-1 min-h-[420px] bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden flex flex-col p-4 shadow-inner">
+//                 {/* Toolbar */}
+//                 <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-xl px-4 py-2 flex items-center justify-between mb-4 shadow-sm">
+//                   <div className="flex items-center gap-2">
+//                     <div className="w-3 h-3 rounded-full bg-red-400"></div>
+//                     <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+//                     <div className="w-3 h-3 rounded-full bg-green-400"></div>
+//                   </div>
+//                   <span className="text-[11px] font-bold text-slate-500">financial_report_q2.pdf</span>
+//                   <div className="w-6 h-6 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center">
+//                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>
+//                   </div>
+//                 </div>
+
+//                 {/* Document */}
+//                 <div className="relative flex-1 bg-white border border-slate-200 rounded-xl p-6 shadow-sm overflow-hidden flex flex-col gap-3 select-none">
+//                   {/* Watermark Overlay */}
+//                   <div className="absolute inset-0 p-4 grid grid-cols-3 grid-rows-3 pointer-events-none z-10">
+//                     {[
+//                       { key: 'top-left',      cls: 'flex items-start justify-start' },
+//                       { key: 'top-center',    cls: 'flex items-start justify-center' },
+//                       { key: 'top-right',     cls: 'flex items-start justify-end' },
+//                       { key: 'middle-left',   cls: 'flex items-center justify-start' },
+//                       { key: 'middle-center', cls: 'flex items-center justify-center' },
+//                       { key: 'middle-right',  cls: 'flex items-center justify-end' },
+//                       { key: 'bottom-left',   cls: 'flex items-end justify-start' },
+//                       { key: 'bottom-center', cls: 'flex items-end justify-center' },
+//                       { key: 'bottom-right',  cls: 'flex items-end justify-end' },
+//                     ].map(({ key, cls }) => (
+//                       <div key={key} className={`${cls} overflow-hidden`}>
+//                         {positions[key] && (
+//                           <span
+//                             style={{
+//                               fontSize: `${fontSize}px`,
+//                               color: hexToRGBA(textColor, textOpacity),
+//                               transform: `rotate(${rotation}deg)`,
+//                               whiteSpace: 'nowrap',
+//                             }}
+//                             className="font-bold origin-center transition-all duration-200"
+//                           >
+//                             {getWatermarkText()}
+//                           </span>
+//                         )}
+//                       </div>
+//                     ))}
+//                   </div>
+
+//                   {/* Dummy Content */}
+//                   <div className="h-6 w-1/3 bg-slate-200 rounded-md"></div>
+//                   <div className="h-4 w-5/6 bg-slate-100 rounded-md mt-2"></div>
+//                   <div className="h-4 w-full bg-slate-100 rounded-md"></div>
+//                   <div className="h-4 w-4/5 bg-slate-100 rounded-md"></div>
+//                   <div className="mt-6 border-t border-slate-100 pt-4 flex flex-col gap-2">
+//                     <div className="h-24 bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between gap-4">
+//                       <div className="flex-1 flex flex-col gap-2">
+//                         <div className="h-3 w-1/2 bg-slate-200 rounded"></div>
+//                         <div className="h-3 w-5/6 bg-slate-100 rounded"></div>
+//                       </div>
+//                       <div className="w-16 h-16 bg-blue-100/50 rounded-xl flex items-center justify-center">
+//                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /></svg>
+//                       </div>
+//                     </div>
+//                   </div>
+//                   <div className="h-4 w-full bg-slate-100 rounded-md mt-auto"></div>
+//                   <div className="h-4 w-3/4 bg-slate-100 rounded-md"></div>
+//                 </div>
+//               </div>
+//             </div>
+//           </div>
+
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+// old one, not used anymore
+// "use client";
+
+// import { useState, useEffect } from 'react';
+// import { supabase } from '@/utils/supabase/client';
+
+// // ← Replace with your actual company_id (or fetch from auth context)
+// const COMPANY_ID = '11111111-1111-1111-1111-111111111111';
+
+// const DEFAULT_ATTRIBUTES = {
+//   userName:  true,
+//   dateTime:  true,
+//   email:     true,
+//   ipAddress: true,
+//   cmplogo:   false,
+//   cmpname:   false,
+// };
+
+// const DEFAULT_POSITIONS = {
+//   'top-left':      true,
+//   'top-center':    false,
+//   'top-right':     false,
+//   'middle-left':   false,
+//   'middle-center': true,
+//   'middle-right':  false,
+//   'bottom-left':   false,
+//   'bottom-center': false,
+//   'bottom-right':  true,
+// };
+
+// export default function WatermarkPage() {
+//   const [loading, setLoading] = useState(true);
+//   const [saving, setSaving] = useState(false);
+//   const [recordId, setRecordId] = useState(null);
+
+//   const [activeType, setActiveType] = useState('dynamic');
+//   const [customText, setCustomText] = useState('Confidential');
+//   const [attributes, setAttributes] = useState(DEFAULT_ATTRIBUTES);
+//   const [fontSize, setFontSize] = useState(14);
+//   const [textColor, setTextColor] = useState('#64748B');
+//   const [textOpacity, setTextOpacity] = useState(25);
+//   const [rotation, setRotation] = useState(-30);
+//   const [positions, setPositions] = useState(DEFAULT_POSITIONS);
+
+//   const [brandName, setBrandName] = useState('Company Name');
+//   const [logoUrl, setLogoUrl] = useState(null);
+
+//   // ─── Fetch from DB on mount ───────────────────────────────────
+//   useEffect(() => {
+//     const fetchWatermark = async () => {
+//       setLoading(true);
+//       const { data, error } = await supabase
+//         .from('watermark_settings')
+//         .select('*')
+//         .eq('company_id', COMPANY_ID)
+//         .limit(1)
+//         .single();
+
+//       if (error && error.code !== 'PGRST116') {
+//         console.error('Error fetching watermark settings:', error);
+//       }
+
+//       if (data) {
+//         setRecordId(data.id);
+//         setActiveType(data.watermark_type ?? 'dynamic');
+//         setCustomText(data.custom_text ?? 'Confidential');
+//         setFontSize(data.font_size ?? 14);
+//         setTextColor(data.text_color ?? '#64748B');
+//         setTextOpacity(data.text_opacity ?? 25);
+//         setRotation(data.rotation ?? -30);
+//         setAttributes({ ...DEFAULT_ATTRIBUTES, ...(data.attributes ?? {}) });
+//         setPositions({ ...DEFAULT_POSITIONS, ...(data.positions ?? {}) });
+//       }
+
+//       // Fetch Workspace Settings for Brand Name and Logo
+//       const { data: wsData } = await supabase
+//         .from('workspace_settings')
+//         .select('brand_name, logo_url')
+//         .eq('company_id', COMPANY_ID)
+//         .single();
+
+//       if (wsData) {
+//         setBrandName(wsData.brand_name || 'Company Name');
+//         setLogoUrl(wsData.logo_url || null);
+//       }
+
+//       setLoading(false);
+//     };
+
+//     fetchWatermark();
+//   }, []);
+
+//   // ─── Save to DB ───────────────────────────────────────────────
+//   const handleSave = async () => {
+//     setSaving(true);
+//     const payload = {
+//       company_id:     COMPANY_ID,
+//       watermark_type: activeType,
+//       custom_text:    customText,
+//       font_size:      fontSize,
+//       text_color:     textColor,
+//       text_opacity:   textOpacity,
+//       rotation:       rotation,
+//       attributes:     attributes,
+//       positions:      positions,
+//     };
+
+//     let error;
+//     if (recordId) {
+//       ({ error } = await supabase
+//         .from('watermark_settings')
+//         .update(payload)
+//         .eq('id', recordId));
+//     } else {
+//       const { data, error: insertError } = await supabase
+//         .from('watermark_settings')
+//         .insert(payload)
+//         .select()
+//         .single();
+//       error = insertError;
+//       if (data) setRecordId(data.id);
+//     }
+
+//     setSaving(false);
+//     if (error) {
+//       alert('Failed to save: ' + error.message);
+//     } else {
+//       alert('Watermark settings saved successfully!');
+//     }
+//   };
+
+//   const handlePositionToggle = (pos) => {
+//     setPositions(prev => ({ ...prev, [pos]: !prev[pos] }));
+//   };
+
+//   const toggleAttribute = (attr) => {
+//     setAttributes(prev => ({ ...prev, [attr]: !prev[attr] }));
+//   };
+
+//   const getWatermarkText = () => {
+//     if (activeType === 'static') return customText;
+//     const parts = [customText];
+//     if (attributes.userName)  parts.push('John Doe');
+//     if (attributes.email)     parts.push('john@company.com');
+//     if (attributes.dateTime)  parts.push('2026-05-17 19:28');
+//     if (attributes.ipAddress) parts.push('192.168.1.100');
+//     if (attributes.cmpname)   parts.push(brandName);
+//     return parts.filter(Boolean).join(' | ');
+//   };
+
+//   const hexToRGBA = (hex, opacity) => {
+//     let c;
+//     if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+//       c = hex.substring(1).split('');
+//       if (c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+//       c = '0x' + c.join('');
+//       return `rgba(${[(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',')},${opacity / 100})`;
+//     }
+//     return `rgba(100, 116, 139, ${opacity / 100})`;
+//   };
+
+//   if (loading) {
+//     return (
+//       <div className="relative min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+//         <div className="flex flex-col items-center gap-4">
+//           <div className="w-10 h-10 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+//           <p className="text-gray-500 text-sm font-medium">Loading watermark settings…</p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="relative min-h-screen bg-[#F8FAFC]">
+//       <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-50 to-transparent pointer-events-none"></div>
+
+//       <div className="relative p-4 md:p-6 max-w-5xl mx-auto w-full space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-700">
+
+//         {/* Header */}
+//         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+//           <div>
+//             <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Watermark Settings</h1>
+//             <p className="text-gray-500 mt-2 text-[15px]">Protect your confidential files with customizable document watermarks.</p>
+//           </div>
+//           <button
+//             onClick={handleSave}
+//             disabled={saving}
+//             className="px-6 py-2.5 bg-gradient-to-r from-gray-900 to-black text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-gray-900/20 hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+//           >
+//             {saving ? (
+//               <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Saving…</>
+//             ) : 'Save Changes'}
+//           </button>
+//         </div>
+
+//         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+//           {/* Left panel */}
+//           <div className="lg:col-span-7 space-y-6">
+
+//             {/* Configuration Card */}
+//             <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 p-6 space-y-6">
+
+//               {/* Type Switcher */}
+//               <div>
+//                 <label className="block text-[14px] font-bold text-gray-800 mb-3">Watermark Type</label>
+//                 <div className="grid grid-cols-2 gap-2 p-1 bg-gray-50 border border-gray-100 rounded-xl">
+//                   <button
+//                     onClick={() => setActiveType('dynamic')}
+//                     className={`py-2 px-4 rounded-lg text-sm font-bold transition-all ${activeType === 'dynamic' ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500 hover:text-gray-800'}`}
+//                   >Dynamic</button>
+//                   <button
+//                     onClick={() => setActiveType('static')}
+//                     className={`py-2 px-4 rounded-lg text-sm font-bold transition-all ${activeType === 'static' ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500 hover:text-gray-800'}`}
+//                   >Static</button>
+//                 </div>
+//               </div>
+
+//               {/* Watermark Text */}
+//               <div className="space-y-4">
+//                 <div>
+//                   <label htmlFor="customText" className="block text-[14px] font-bold text-gray-800 mb-2">Watermark Text</label>
+//                   <input
+//                     id="customText"
+//                     type="text"
+//                     value={customText}
+//                     onChange={(e) => setCustomText(e.target.value)}
+//                     placeholder="Enter main watermark text..."
+//                     className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-inner"
+//                   />
+//                 </div>
+
+//                 {activeType === 'dynamic' && (
+//                   <div>
+//                     <label className="block text-[13px] font-bold text-gray-500 uppercase tracking-wider mb-2">Included Variables</label>
+//                     <div className="grid grid-cols-2 gap-3">
+//                       {[
+//                         { id: 'userName',  label: 'User Name' },
+//                         { id: 'email',     label: 'Email Address' },
+//                         { id: 'dateTime',  label: 'Date & Time' },
+//                         { id: 'ipAddress', label: 'IP Address' },
+//                         { id: 'cmplogo',   label: 'Company Logo' },
+//                         { id: 'cmpname',   label: 'Company Name' },
+//                       ].map((item) => (
+//                         <button
+//                           key={item.id}
+//                           onClick={() => toggleAttribute(item.id)}
+//                           className={`flex items-center justify-between p-3 rounded-xl border text-[13px] font-semibold transition-all ${
+//                             attributes[item.id]
+//                               ? 'bg-blue-50/30 border-blue-500/40 text-blue-700'
+//                               : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+//                           }`}
+//                         >
+//                           <span>{item.label}</span>
+//                           <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${attributes[item.id] ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 bg-white'}`}>
+//                             {attributes[item.id] && (
+//                               <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+//                             )}
+//                           </div>
+//                         </button>
+//                       ))}
+//                     </div>
+//                   </div>
+//                 )}
+//               </div>
+
+//               {/* Font Size & Opacity */}
+//               <div className="grid grid-cols-2 gap-4">
+//                 <div>
+//                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Font Size ({fontSize}px)</label>
+//                   <input type="range" min="10" max="32" value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+//                 </div>
+//                 <div>
+//                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Opacity ({textOpacity}%)</label>
+//                   <input type="range" min="5" max="100" value={textOpacity} onChange={(e) => setTextOpacity(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+//                 </div>
+//               </div>
+
+//               {/* Rotation & Color */}
+//               <div className="grid grid-cols-2 gap-4">
+//                 <div>
+//                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Rotation Angle ({rotation}°)</label>
+//                   <input type="range" min="-90" max="90" value={rotation} onChange={(e) => setRotation(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+//                 </div>
+//                 <div>
+//                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Watermark Color</label>
+//                   <div className="flex items-center gap-3">
+//                     <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} className="w-10 h-10 border-0 rounded-lg cursor-pointer bg-transparent" />
+//                     <span className="text-sm font-semibold font-mono text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex-1 text-center">
+//                       {textColor.toUpperCase()}
+//                     </span>
+//                   </div>
+//                 </div>
+//               </div>
+//             </div>
+
+//             {/* Position Grid Card */}
+//             <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 p-6">
+//               <div className="mb-4">
+//                 <h3 className="text-md font-bold text-gray-900">Watermark Positions</h3>
+//                 <p className="text-[13px] text-gray-500 mt-1">Select the areas on the document page where the watermark will overlay.</p>
+//               </div>
+//               <div className="grid grid-cols-3 gap-2 bg-gray-50 p-3 rounded-2xl border border-gray-100 max-w-sm mx-auto">
+//                 {Object.keys(positions).map((pos) => {
+//                   const label = pos.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+//                   return (
+//                     <button
+//                       key={pos}
+//                       onClick={() => handlePositionToggle(pos)}
+//                       className={`h-16 rounded-xl flex flex-col items-center justify-center gap-1.5 text-[11px] font-bold border transition-all ${
+//                         positions[pos]
+//                           ? 'bg-blue-500 border-blue-500 text-white shadow-sm scale-[1.03]'
+//                           : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+//                       }`}
+//                     >
+//                       <span className="uppercase text-[9px] tracking-wider">{label}</span>
+//                       <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${positions[pos] ? 'bg-white border-white text-blue-500' : 'border-gray-300 bg-gray-50'}`}>
+//                         {positions[pos] && (
+//                           <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+//                         )}
+//                       </div>
+//                     </button>
+//                   );
+//                 })}
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* Right panel: Live Preview */}
+//           <div className="lg:col-span-5 flex flex-col">
+//             <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 p-6 flex-1 flex flex-col">
+//               <div className="mb-4">
+//                 <h3 className="text-md font-bold text-gray-900">Live Document Preview</h3>
+//                 <p className="text-[13px] text-gray-500 mt-1">Real-time simulation of a secured VDR document.</p>
+//               </div>
+
+//               <div className="relative flex-1 min-h-[420px] bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden flex flex-col p-4 shadow-inner">
+//                 {/* Toolbar */}
+//                 <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-xl px-4 py-2 flex items-center justify-between mb-4 shadow-sm">
+//                   <div className="flex items-center gap-2">
+//                     <div className="w-3 h-3 rounded-full bg-red-400"></div>
+//                     <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+//                     <div className="w-3 h-3 rounded-full bg-green-400"></div>
+//                   </div>
+//                   <span className="text-[11px] font-bold text-slate-500">financial_report_q2.pdf</span>
+//                   <div className="w-6 h-6 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center">
+//                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-600"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>
+//                   </div>
+//                 </div>
+
+//                 {/* Document */}
+//                 <div className="relative flex-1 bg-white border border-slate-200 rounded-xl p-6 shadow-sm overflow-hidden flex flex-col gap-3 select-none">
+//                   {/* Watermark Overlay */}
+//                   <div className="absolute inset-0 p-4 grid grid-cols-3 grid-rows-3 pointer-events-none z-10">
+//                     {[
+//                       { key: 'top-left',      cls: 'flex items-start justify-start' },
+//                       { key: 'top-center',    cls: 'flex items-start justify-center' },
+//                       { key: 'top-right',     cls: 'flex items-start justify-end' },
+//                       { key: 'middle-left',   cls: 'flex items-center justify-start' },
+//                       { key: 'middle-center', cls: 'flex items-center justify-center' },
+//                       { key: 'middle-right',  cls: 'flex items-center justify-end' },
+//                       { key: 'bottom-left',   cls: 'flex items-end justify-start' },
+//                       { key: 'bottom-center', cls: 'flex items-end justify-center' },
+//                       { key: 'bottom-right',  cls: 'flex items-end justify-end' },
+//                     ].map(({ key, cls }) => (
+//                       <div key={key} className={`${cls} overflow-hidden`}>
+//                         {positions[key] && (
+//                           <div
+//                             style={{
+//                               transform: `rotate(${rotation}deg)`,
+//                               opacity: textOpacity / 100,
+//                             }}
+//                             className="origin-center transition-all duration-200 flex items-center gap-3"
+//                           >
+//                             {activeType === 'dynamic' && attributes.cmplogo && logoUrl && (
+//                                <img 
+//                                  src={logoUrl} 
+//                                  alt="Company Logo" 
+//                                  style={{ height: `${fontSize * 1.5}px` }} 
+//                                  className="object-contain" 
+//                                />
+//                             )}
+//                             <span
+//                               style={{
+//                                 fontSize: `${fontSize}px`,
+//                                 color: textColor,
+//                                 whiteSpace: 'nowrap',
+//                               }}
+//                               className="font-bold"
+//                             >
+//                               {getWatermarkText()}
+//                             </span>
+//                           </div>
+//                         )}
+//                       </div>
+//                     ))}
+//                   </div>
+
+//                   {/* Dummy Content */}
+//                   <div className="h-6 w-1/3 bg-slate-200 rounded-md"></div>
+//                   <div className="h-4 w-5/6 bg-slate-100 rounded-md mt-2"></div>
+//                   <div className="h-4 w-full bg-slate-100 rounded-md"></div>
+//                   <div className="h-4 w-4/5 bg-slate-100 rounded-md"></div>
+//                   <div className="mt-6 border-t border-slate-100 pt-4 flex flex-col gap-2">
+//                     <div className="h-24 bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between gap-4">
+//                       <div className="flex-1 flex flex-col gap-2">
+//                         <div className="h-3 w-1/2 bg-slate-200 rounded"></div>
+//                         <div className="h-3 w-5/6 bg-slate-100 rounded"></div>
+//                       </div>
+//                       <div className="w-16 h-16 bg-blue-100/50 rounded-xl flex items-center justify-center">
+//                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /></svg>
+//                       </div>
+//                     </div>
+//                   </div>
+//                   <div className="h-4 w-full bg-slate-100 rounded-md mt-auto"></div>
+//                   <div className="h-4 w-3/4 bg-slate-100 rounded-md"></div>
+//                 </div>
+//               </div>
+//             </div>
+//           </div>
+
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
