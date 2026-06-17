@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { supabase } from '@/utils/supabase/client';
 import {
   FaCog,
   FaShieldAlt,
@@ -20,16 +21,53 @@ import {
 export default function MainSidebar() {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasSettingsAccess, setHasSettingsAccess] = useState(false);
   const isGroupsActive = pathname?.startsWith('/groups');
 
   // 🔥 Check the session when the sidebar loads
+  // useEffect(() => {
+  //   const rawSession = localStorage.getItem('vdr_session');
+  //   if (rawSession) {
+  //     const session = JSON.parse(rawSession);
+  //     // Only set to true if the role is exactly 'admin'
+  //     setIsAdmin(session.role === 'admin');
+  //   }
+  // }, []);
   useEffect(() => {
     const rawSession = localStorage.getItem('vdr_session');
-    if (rawSession) {
-      const session = JSON.parse(rawSession);
-      // Only set to true if the role is exactly 'admin'
-      setIsAdmin(session.role === 'admin');
-    }
+    if (!rawSession) return;
+    const session = JSON.parse(rawSession);
+    setIsAdmin(session.role === 'admin');
+
+    const checkSettingsPermission = async () => {
+      // super_admin always has access
+      if (session.role === 'super_admin') {
+        setHasSettingsAccess(true);
+        return;
+      }
+
+      // Get all groups this user belongs to
+      const { data: ugRows } = await supabase
+        .from('user_groups')
+        .select('group_id')
+        .eq('user_id', session.id);
+
+      const groupIds = ugRows?.map(r => r.group_id) || [];
+      if (!groupIds.length) return;
+
+      // Check if any of those groups have settings permission enabled
+      const { data: perms } = await supabase
+        .from('permissions')
+        .select('id')
+        .eq('company_id', session.company_id)
+        .eq('scope', 'settings')
+        .eq('can_view', true)
+        .in('group_id', groupIds);
+
+      setHasSettingsAccess(!!(perms && perms.length > 0));
+    };
+
+    checkSettingsPermission();
   }, []);
 
   return (
@@ -82,14 +120,16 @@ export default function MainSidebar() {
       <div className="flex flex-col gap-4 mt-auto">
 
         {/* 🔥 SETTINGS BUTTON: NOW ALWAYS VISIBLE (WITHOUT isAdmin WRAPPER) */}
-        <Link
-          href="/settings"
-          className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 ${pathname.startsWith('/settings')
-            ? 'bg-slate-900 text-white shadow-md'
-            : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+        {hasSettingsAccess && (
+          <Link
+            href="/settings"
+            className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 ${
+              pathname.startsWith('/settings')
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
             }`}
-          title="Settings"
-        >
+            title="Settings"
+          >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="22"
@@ -104,6 +144,7 @@ export default function MainSidebar() {
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
           </svg>
         </Link>
+        )}
       </div>
 
       {/* Profile / Logout Button (Visible to everyone) */}

@@ -13,6 +13,8 @@ const PERMISSION_SECTIONS = [
         subPerms: [
             { key: "can_add_members", label: "Add Members", desc: "Can invite & add users to groups" },
             { key: "can_remove_members", label: "Remove Members", desc: "Can remove users from groups" },
+            { key: "can_create_group", label: "Create Group", desc: "Can create new groups" },
+            { key: "can_delete_group", label: "Delete Group", desc: "Can delete existing groups" },
         ],
     },
     {
@@ -46,6 +48,9 @@ export default function DynamicGroupPage() {
     const [inviteDescription, setInviteDescription] = useState("");
     const [showToast, setShowToast] = useState(false);
     const [toastMsg, setToastMsg] = useState("");
+
+    const [canAddMembers, setCanAddMembers] = useState(false);
+    const [canRemoveMembers, setCanRemoveMembers] = useState(false);
 
     const [perms, setPerms] = useState({});
     const [permsLoading, setPermsLoading] = useState(false);
@@ -110,6 +115,42 @@ export default function DynamicGroupPage() {
     }, [groupSlug, companyId]);
 
     useEffect(() => {
+        if (!session || !companyId) return;
+
+        const checkGroupPermissions = async () => {
+            // super_admin always has full access
+            if (session.role === 'super_admin') {
+            setCanAddMembers(true);
+            setCanRemoveMembers(true);
+            return;
+            }
+
+            const { data: ugRows } = await supabase
+            .from('user_groups')
+            .select('group_id')
+            .eq('user_id', session.id);
+
+            const groupIds = ugRows?.map(r => r.group_id) || [];
+            if (!groupIds.length) return;
+
+            const { data: perms } = await supabase
+            .from('permissions')
+            .select('can_add_members, can_remove_members')
+            .eq('company_id', companyId)
+            .eq('scope', 'group')
+            .in('group_id', groupIds);
+
+            if (perms && perms.length > 0) {
+            // if ANY of the user's groups grant the permission, allow it
+            setCanAddMembers(perms.some(p => p.can_add_members));
+            setCanRemoveMembers(perms.some(p => p.can_remove_members));
+            }
+        };
+
+        checkGroupPermissions();
+        }, [session, companyId]);
+
+    useEffect(() => {
         if (!showPermissionPage || !groupData) return;
         const loadPerms = async () => {
             setPermsLoading(true);
@@ -128,6 +169,8 @@ export default function DynamicGroupPage() {
                         enabled: !!row,
                         can_add_members: row?.can_add_members ?? false,
                         can_remove_members: row?.can_remove_members ?? false,
+                        can_create_group: row?.can_create_group ?? false,   // ADD THIS
+                        can_delete_group: row?.can_delete_group ?? false, 
                         existingId: row?.id ?? null,
                     };
                 });
@@ -192,6 +235,8 @@ export default function DynamicGroupPage() {
                     can_delete: s.can_delete || false,
                     can_add_members: s.can_add_members || false,
                     can_remove_members: s.can_remove_members || false,
+                    can_create_group: s.can_create_group || false,   // ADD THIS
+                    can_delete_group: s.can_delete_group || false,  
                     can_print: false,
                     folder_id: null,
                     document_id: null,
@@ -249,6 +294,28 @@ export default function DynamicGroupPage() {
         }
     };
 
+    const handleRemoveMember = async (userId) => {
+        if (!groupData) return;
+        const confirm = window.confirm("Are you sure you want to remove this member?");
+        if (!confirm) return;
+
+        try {
+            const { error } = await supabase
+            .from('user_groups')
+            .delete()
+            .eq('user_id', userId)
+            .eq('group_id', groupData.id);
+
+            if (error) throw error;
+
+            setMembers(prev => prev.filter(m => m.id !== userId));
+            triggerToast("Member removed successfully");
+        } catch (err) {
+            console.error(err);
+            alert("Failed to remove member: " + err.message);
+        }
+        };
+
     const triggerToast = (msg) => {
         setToastMsg(msg);
         setShowToast(true);
@@ -280,49 +347,70 @@ export default function DynamicGroupPage() {
                 {!showPermissionPage ? (
                     <div className="bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 p-12">
                         <div className="flex items-center gap-6 mb-8">
-                            <button onClick={() => setShowInviteModal(true)}
+                            {canAddMembers && (
+                                <button onClick={() => setShowInviteModal(true)}
                                 className="flex items-center gap-2 text-gray-700 font-semibold text-sm hover:text-black transition-all">
                                 <FaUserPlus size={18} className="text-gray-600" />
                                 <span>Invite Member</span>
-                            </button>
+                                </button>
+                            )}
                             <button onClick={() => setShowPermissionPage(true)}
                                 className="flex items-center gap-2 text-gray-700 font-semibold text-sm hover:text-black transition-all">
                                 <FaCog size={18} className="text-gray-600" />
                                 <span>Edit Permission</span>
                             </button>
-                        </div>
+</div>
 
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead>
                                     <tr className="border-b border-gray-200 bg-gray-50/50">
-                                        <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Name</th>
-                                        <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Email Address</th>
-                                        <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Phone Number</th>
-                                        <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Status</th>
+                                    <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Name</th>
+                                    <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Email Address</th>
+                                    <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Phone Number</th>
+                                    <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Status</th>
+                                    {canRemoveMembers && (
+                                        <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Action</th>
+                                    )}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {loading ? (
-                                        <tr><td colSpan="4" className="py-24 text-center font-black font-sans text-gray-200 uppercase tracking-[0.5em] text-xl">Decrypting...</td></tr>
+                                    <tr><td colSpan={canRemoveMembers ? 5 : 4} className="py-24 text-center font-black font-sans text-gray-200 uppercase tracking-[0.5em] text-xl">Decrypting...</td></tr>
                                     ) : members.length === 0 ? (
-                                        <tr><td colSpan="4" className="py-24 text-center font-black font-sans text-gray-300 uppercase tracking-widest">No members assigned to this sector</td></tr>
+                                    <tr><td colSpan={canRemoveMembers ? 5 : 4} className="py-24 text-center font-black font-sans text-gray-300 uppercase tracking-widest">No members assigned to this sector</td></tr>
                                     ) : (
-                                        members.map((member) => (
-                                            <tr key={member.id} className="group hover:bg-gray-50 transition-all duration-200 border-b border-gray-100">
-                                                <td className="py-4 px-4 font-semibold text-gray-800 text-sm">{member.name}</td>
-                                                <td className="py-4 px-4 text-gray-500 text-sm">{member.email}</td>
-                                                <td className="py-4 px-4 text-gray-500 text-sm">{member.phone_number}</td>
-                                                <td className="py-4 px-4 text-sm">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${member.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                                                        {member.status}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))
+                                    members.map((member) => (
+                                        <tr key={member.id} className="group hover:bg-gray-50 transition-all duration-200 border-b border-gray-100">
+                                        <td className="py-4 px-4 font-semibold text-gray-800 text-sm">{member.name}</td>
+                                        <td className="py-4 px-4 text-gray-500 text-sm">{member.email}</td>
+                                        <td className="py-4 px-4 text-gray-500 text-sm">{member.phone_number}</td>
+                                        <td className="py-4 px-4 text-sm">
+                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${member.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                            {member.status}
+                                            </span>
+                                        </td>
+                                        {canRemoveMembers && (
+                                            <td className="py-4 px-4 text-sm">
+                                            <button
+                                                onClick={() => handleRemoveMember(member.id)}
+                                                className="text-gray-400 hover:text-red-500 transition-colors"
+                                                title="Remove member"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="3 6 5 6 21 6" />
+                                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                                <path d="M10 11v6" /><path d="M14 11v6" />
+                                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                                                </svg>
+                                            </button>
+                                            </td>
+                                        )}
+                                        </tr>
+                                    ))
                                     )}
                                 </tbody>
-                            </table>
+                                </table>
                         </div>
                     </div>
 

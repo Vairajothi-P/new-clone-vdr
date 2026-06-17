@@ -449,6 +449,9 @@ export default function GroupsSidebar({ isOpen = true }) {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    const [canCreateGroup, setCanCreateGroup] = useState(false);
+    const [canDeleteGroup, setCanDeleteGroup] = useState(false);
+
     useEffect(() => {
         const fetchGroups = async () => {
             setIsLoading(true);
@@ -456,6 +459,33 @@ export default function GroupsSidebar({ isOpen = true }) {
             const userRole = session?.role;
             const userId = session?.id;
             const companyId = session?.company_id;
+
+            // Check create/delete group permissions
+            if (userRole === 'super_admin') {
+                setCanCreateGroup(true);
+                setCanDeleteGroup(true);
+            } else {
+                const { data: ugRows } = await supabase
+                    .from('user_groups')
+                    .select('group_id')
+                    .eq('user_id', userId);
+
+                const groupIds = ugRows?.map(r => r.group_id) || [];
+
+                if (groupIds.length > 0) {
+                    const { data: perms } = await supabase
+                        .from('permissions')
+                        .select('can_create_group, can_delete_group')
+                        .eq('company_id', companyId)
+                        .eq('scope', 'group')
+                        .in('group_id', groupIds);
+
+                    if (perms && perms.length > 0) {
+                        setCanCreateGroup(perms.some(p => p.can_create_group));
+                        setCanDeleteGroup(perms.some(p => p.can_delete_group));
+                    }
+                }
+            }
 
             if (userRole === 'external_user') {
                 const { data: ugRows } = await supabase
@@ -580,17 +610,19 @@ export default function GroupsSidebar({ isOpen = true }) {
                                             <span className="text-[14px] font-sans truncate">{item.name}</span>
                                         </div>
 
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setDeleteTarget({ id: item.id, name: item.name });
-                                            }}
-                                            className="text-gray-800 hover:text-red-500 transition-colors"
-                                            title="Delete group"
-                                        >
-                                            {TRASH_ICON}
-                                        </button>
+                                        {canDeleteGroup && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setDeleteTarget({ id: item.id, name: item.name });
+                                                }}
+                                                className="text-gray-800 hover:text-red-500 transition-colors"
+                                                title="Delete group"
+                                            >
+                                                {TRASH_ICON}
+                                            </button>
+                                        )}
                                     </Link>
                                 );
                             })
@@ -598,12 +630,14 @@ export default function GroupsSidebar({ isOpen = true }) {
                     </nav>
                 </div>
 
-                <div className="p-5 border-t border-gray-100 bg-gray-50/30">
-                    <button onClick={() => setIsAddGroupModalOpen(true)} className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold font-sans text-[13px] hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                        Add Groups
-                    </button>
-                </div>
+                {canCreateGroup && (
+                    <div className="p-5 border-t border-gray-100 bg-gray-50/30">
+                        <button onClick={() => setIsAddGroupModalOpen(true)} className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold font-sans text-[13px] hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                            Add Groups
+                        </button>
+                    </div>
+                )}
             </aside>
 
             {/* ── Delete Confirmation Modal ─────────────────────────────── */}
