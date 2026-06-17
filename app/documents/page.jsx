@@ -679,24 +679,33 @@ function AdminView({ session, currentView, router }) {
     useEffect(() => {
         (async () => {
             try {
-                const [{ data: foldersData }, { data: docsData }] = await Promise.all([
+                const [{ data: foldersData }, { data: docsData }, { data: usersData }] = await Promise.all([
                     supabase.from('folders').select('*').eq('company_id', session.company_id),
                     supabase.from('documents').select('*').eq('company_id', session.company_id).eq('is_deleted', false),
+                    supabase.from('users').select('id, name, role').eq('company_id', session.company_id),
                 ]);
+
+                // Build a user name lookup map
+                const userMap = {};
+                (usersData || []).forEach(u => {
+                    userMap[u.id] = u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1).replace('_', ' ') : 'System';
+                });
+
                 const mappedFolders = (foldersData || []).map(f => ({
                     id: f.id, parentId: f.parent_folder_id || null,
                     index: f.index_number ? `${f.index_number}.0` : '1.0',
-                    name: f.name, type: 'folder', size: '--', uploadedBy: 'System',
+                    name: f.name, type: 'folder', size: '--', uploadedBy: userMap[f.created_by] || 'Unknown',
                     dateCreated: new Date(f.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     security: 'Encrypted',
                 }));
                 const mappedDocs = (docsData || []).map(doc => ({
                     id: doc.id, parentId: doc.folder_id || null, index: doc.index || '99.0',
                     name: doc.name, type: doc.name.split('.').pop().toLowerCase() || 'file',
+                    rawSize: doc.file_size_bytes || 0,
                     size: doc.file_size_bytes > 1024 * 1024
                         ? `${(doc.file_size_bytes / (1024 * 1024)).toFixed(1)} MB`
                         : `${(doc.file_size_bytes / 1024).toFixed(0)} KB`,
-                    uploadedBy: 'Admin',
+                    uploadedBy: userMap[doc.uploaded_by] || 'Unknown',
                     dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     security: doc.security || 'Encrypted',
                     is_bookmarked: doc.is_bookmarked,
@@ -715,21 +724,49 @@ function AdminView({ session, currentView, router }) {
     }, [session]);
 
     // ── DERIVED ───────────────────────────────────────────────────────────────
+    const filesWithSizes = useMemo(() => {
+        const getFolderSize = (folderId, itemsList) => {
+            let totalBytes = 0;
+            // Direct files in this folder (excluding folders and deleted items)
+            const filesInFolder = itemsList.filter(item => item.parentId === folderId && item.type !== 'folder' && !deletedIds.has(item.id));
+            filesInFolder.forEach(f => {
+                totalBytes += (f.rawSize || 0);
+            });
+            // Subfolders (excluding deleted ones)
+            const subfolders = itemsList.filter(item => item.parentId === folderId && item.type === 'folder' && !deletedIds.has(item.id));
+            subfolders.forEach(sf => {
+                totalBytes += getFolderSize(sf.id, itemsList);
+            });
+            return totalBytes;
+        };
+
+        return files.map(item => {
+            if (item.type === 'folder') {
+                const bytes = getFolderSize(item.id, files);
+                const formattedSize = bytes > 1024 * 1024
+                    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+                    : `${(bytes / 1024).toFixed(0)} KB`;
+                return { ...item, rawSize: bytes, size: formattedSize };
+            }
+            return item;
+        });
+    }, [files, deletedIds]);
+
     const breadcrumbPath = useMemo(() => {
         const path = []; let id = currentFolderId;
         while (id !== null) {
-            const folder = files.find(f => f.id === id);
+            const folder = filesWithSizes.find(f => f.id === id);
             if (folder) { path.unshift(folder); id = folder.parentId; } else break;
         }
         return path;
-    }, [currentFolderId, files]);
+    }, [currentFolderId, filesWithSizes]);
 
     const currentItems = useMemo(() => {
-        if (currentView === 'trash') return files.filter(f => deletedIds.has(f.id));
-        if (currentView === 'bookmarks') return files.filter(f => bookmarkedIds.has(f.id) && !deletedIds.has(f.id));
-        if (currentView === 'downloads') return files.filter(f => downloadedIds.has(f.id) && !deletedIds.has(f.id));
-        return files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
-    }, [currentFolderId, files, currentView, deletedIds, bookmarkedIds, downloadedIds]);
+        if (currentView === 'trash') return filesWithSizes.filter(f => deletedIds.has(f.id));
+        if (currentView === 'bookmarks') return filesWithSizes.filter(f => bookmarkedIds.has(f.id) && !deletedIds.has(f.id));
+        if (currentView === 'downloads') return filesWithSizes.filter(f => downloadedIds.has(f.id) && !deletedIds.has(f.id));
+        return filesWithSizes.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
+    }, [currentFolderId, filesWithSizes, currentView, deletedIds, bookmarkedIds, downloadedIds]);
 
     const filteredItems = useMemo(() => {
         let items = currentItems;
@@ -750,17 +787,17 @@ function AdminView({ session, currentView, router }) {
         });
     }, [currentItems, searchQuery, typeFilter]);
 
-    const allFolders = useMemo(() => files.filter(f => f.type === 'folder' && !deletedIds.has(f.id)), [files, deletedIds]);
+    const allFolders = useMemo(() => filesWithSizes.filter(f => f.type === 'folder' && !deletedIds.has(f.id)), [filesWithSizes, deletedIds]);
     const rootFolders = useMemo(() => allFolders.filter(f => f.parentId === null), [allFolders]);
-    const getFolderChildCount = (folderId) => files.filter(f => f.parentId === folderId && !deletedIds.has(f.id)).length;
+    const getFolderChildCount = (folderId) => filesWithSizes.filter(f => f.parentId === folderId && !deletedIds.has(f.id)).length;
     const availableFoldersForMove = allFolders.filter(f => !selectedIds.has(f.id));
-    const selectedItems = [...selectedIds].map(id => files.find(f => f.id === id)).filter(Boolean);
+    const selectedItems = [...selectedIds].map(id => filesWithSizes.find(f => f.id === id)).filter(Boolean);
     const selectedHasFiles = selectedItems.some(f => f.type !== 'folder');
     const allChecked = filteredItems.length > 0 && selectedIds.size === filteredItems.length;
     const someChecked = selectedIds.size > 0 && selectedIds.size < filteredItems.length;
 
     const generateNewIndex = () => {
-        const peers = files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
+        const peers = filesWithSizes.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
         if (currentFolderId === null) {
             const max = peers.reduce((m, it) => Math.max(m, parseInt(it.index.split('.')[0]) || 0), 0);
             return `${max + 1}.0`;
@@ -798,7 +835,7 @@ function AdminView({ session, currentView, router }) {
         if (error) { alert('Failed to create folder'); return; }
         setFiles(prev => [...prev, {
             id: dbFolder.id, parentId: dbFolder.parent_folder_id || null, index: newIndex,
-            name: dbFolder.name, type: 'folder', size: '--', uploadedBy: session.name,
+            name: dbFolder.name, type: 'folder', size: '--', uploadedBy: session.role ? session.role.charAt(0).toUpperCase() + session.role.slice(1).replace('_', ' ') : 'System',
             dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
             security: 'Encrypted',
         }]);
@@ -929,9 +966,15 @@ function AdminView({ session, currentView, router }) {
 
                 // 6. Success Update UI
                 setUploadQueue(prev => prev.map((it, idx) => idx === i ? { ...it, progress: 100, status: 'completed' } : it));
+                const formattedSize = file.size > 1024 * 1024
+                    ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+                    : `${(file.size / 1024).toFixed(0)} KB`;
                 setFiles(prev => [...prev, {
                     id: docId, parentId: currentFolderId, index: newIndex, name: file.name,
-                    type: file.name.split('.').pop().toLowerCase() || 'file', size: file.size, uploadedBy: session.name,
+                    type: file.name.split('.').pop().toLowerCase() || 'file',
+                    rawSize: file.size,
+                    size: formattedSize,
+                    uploadedBy: session.role ? session.role.charAt(0).toUpperCase() + session.role.slice(1).replace('_', ' ') : 'System',
                     dateCreated: new Date().toLocaleDateString(), security: 'Fernet Encrypted', file_path: storagePath
                 }]);
 
