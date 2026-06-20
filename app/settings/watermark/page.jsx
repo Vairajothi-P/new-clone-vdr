@@ -7,9 +7,7 @@ const COMPANY_ID = '11111111-1111-1111-1111-111111111111';
 
 const DEFAULT_ATTRIBUTES = {
   userName:  true,
-  dateTime:  true,
   email:     true,
-  ipAddress: true,
   cmplogo:   false,
   cmpname:   false,
 };
@@ -30,6 +28,7 @@ const EMPTY_TEMPLATE = {
   name: '',
   watermark_type: 'dynamic',
   custom_text: 'Confidential',
+  email_address: '',
   font_size: 14,
   text_color: '#64748B',
   text_opacity: 25,
@@ -57,6 +56,9 @@ export default function WatermarkPage() {
   const [positions, setPositions]       = useState(DEFAULT_POSITIONS);
 
   const [emailText, setEmailText]       = useState('');
+  const [brandLogo, setBrandLogo]       = useState(null);
+  const [logoPath, setLogoPath]         = useState('');
+  const [logoOpacity, setLogoOpacity]   = useState(0.5);
 
   // Template state
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -80,6 +82,15 @@ export default function WatermarkPage() {
 
   async function fetchSettings() {
     setLoading(true);
+    
+    // Fetch branding logo
+    const { data: wsData } = await supabase
+      .from('workspace_settings')
+      .select('logo_url')
+      .eq('company_id', COMPANY_ID)
+      .single();
+    if (wsData?.logo_url) setBrandLogo(wsData.logo_url);
+
     const { data, error } = await supabase
       .from('watermark_settings')
       .select('*')
@@ -102,18 +113,34 @@ export default function WatermarkPage() {
       setAttributes({ ...DEFAULT_ATTRIBUTES, ...(data.attributes ?? {}) });
       setEmailText(data.email_address ?? '');
       setPositions({ ...DEFAULT_POSITIONS, ...(data.positions ?? {}) });
+      setLogoPath(data.logo_path ?? '');
+      setLogoOpacity(data.logo_opacity ?? 0.5);
     }
     setLoading(false);
   }
 
-  async function fetchTemplates() {
+  async function fetchTemplates(currentBrandLogo = null) {
     setLoadingTemplates(true);
     const { data, error } = await supabase
       .from('watermark_templates')
       .select('*')
       .eq('company_id', COMPANY_ID)
       .order('created_at', { ascending: false });
-    if (!error) setTemplates(data || []);
+    
+    if (!error && data) {
+      // Auto-fix any templates that have a null or empty logo_path
+      const fallbackLogo = currentBrandLogo || brandLogo;
+      if (fallbackLogo) {
+        const needsFix = data.filter(t => !t.logo_path);
+        for (const t of needsFix) {
+          await supabase.from('watermark_templates').update({ logo_path: fallbackLogo }).eq('id', t.id);
+          t.logo_path = fallbackLogo; // update locally
+        }
+      }
+      setTemplates(data);
+    } else {
+      setTemplates([]);
+    }
     setLoadingTemplates(false);
   }
 
@@ -131,6 +158,8 @@ export default function WatermarkPage() {
       rotation:       rotation,
       attributes:     attributes,
       positions:      positions,
+      logo_path:      logoPath || brandLogo || '',
+      logo_opacity:   logoOpacity,
     };
 
     let error;
@@ -149,15 +178,33 @@ export default function WatermarkPage() {
   };
 
   // ─── Apply template to current settings ─────────────────────
-  function applyTemplate(t) {
+  async function applyTemplate(t) {
     setActiveType(t.watermark_type ?? 'dynamic');
-    setCustomText(t.custom_text ?? 'Confidential');
+    setCustomText(t.name ?? 'Confidential');
+    setEmailText(t.email_address ?? '');
     setFontSize(t.font_size ?? 14);
     setTextColor(t.text_color ?? '#64748B');
     setTextOpacity(t.text_opacity ?? 25);
     setRotation(t.rotation ?? -30);
     setAttributes({ ...DEFAULT_ATTRIBUTES, ...(t.attributes ?? {}) });
     setPositions({ ...DEFAULT_POSITIONS, ...(t.positions ?? {}) });
+    setLogoPath(t.logo_path ?? '');
+    setLogoOpacity(t.logo_opacity ?? 0.5);
+
+    // Mark all templates as present: false for this company
+    await supabase
+      .from('watermark_templates')
+      .update({ present: false })
+      .eq('company_id', COMPANY_ID);
+
+    // Mark the selected template as present: true
+    await supabase
+      .from('watermark_templates')
+      .update({ present: true })
+      .eq('id', t.id);
+
+    await fetchTemplates(); // Refresh to update UI if needed
+
     setShowTemplateModal(false);
     alert(`Template "${t.name}" applied!`);
   }
@@ -167,7 +214,7 @@ export default function WatermarkPage() {
     if (!templateForm.name.trim()) return alert('Give the template a name');
     setSavingTemplate(true);
 
-    let logoPath = templateForm.logo_path || null;
+    let logoPath = templateForm.logo_path || brandLogo || '';
 
     // Upload logo if new file selected
     if (logoFile) {
@@ -184,6 +231,7 @@ export default function WatermarkPage() {
       name:           templateForm.name,
       watermark_type: templateForm.watermark_type,
       custom_text:    templateForm.custom_text,
+      email_address:  templateForm.email_address,
       font_size:      templateForm.font_size,
       text_color:     templateForm.text_color,
       text_opacity:   templateForm.text_opacity,
@@ -196,7 +244,12 @@ export default function WatermarkPage() {
     };
 
     let error;
+    let isCurrentlyApplied = false;
     if (editingTemplateId) {
+      const existingT = templates.find(t => t.id === editingTemplateId);
+      if (existingT && (existingT.present === true || existingT.present === 'true')) {
+        isCurrentlyApplied = true;
+      }
       ({ error } = await supabase.from('watermark_templates').update(payload).eq('id', editingTemplateId));
     } else {
       ({ error } = await supabase.from('watermark_templates').insert(payload));
@@ -204,6 +257,20 @@ export default function WatermarkPage() {
 
     setSavingTemplate(false);
     if (error) { alert('Failed: ' + error.message); return; }
+
+    if (isCurrentlyApplied) {
+      setActiveType(payload.watermark_type);
+      setCustomText(payload.name);
+      setEmailText(payload.email_address);
+      setFontSize(payload.font_size);
+      setTextColor(payload.text_color);
+      setTextOpacity(payload.text_opacity);
+      setRotation(payload.rotation);
+      setAttributes(payload.attributes);
+      setPositions(payload.positions);
+      setLogoPath(payload.logo_path);
+      setLogoOpacity(payload.logo_opacity);
+    }
 
     setTemplateForm({ ...EMPTY_TEMPLATE });
     setEditingTemplateId(null);
@@ -222,7 +289,8 @@ export default function WatermarkPage() {
     setTemplateForm({
       name:           t.name,
       watermark_type: t.watermark_type,
-      custom_text:    t.custom_text,
+      custom_text:    t.name,
+      email_address:  t.email_address || '',
       font_size:      t.font_size,
       text_color:     t.text_color,
       text_opacity:   t.text_opacity,
@@ -257,13 +325,11 @@ export default function WatermarkPage() {
   const handlePositionToggle = (pos) => setPositions(prev => ({ ...prev, [pos]: !prev[pos] }));
   const toggleAttribute      = (attr) => setAttributes(prev => ({ ...prev, [attr]: !prev[attr] }));
 
-  const getWatermarkText = () => {
-    if (activeType === 'static') return customText;
+  const getWatermarkLines = () => {
+    if (activeType === 'static') return [customText];
     const parts = [customText];
     if (emailText)            parts.push(emailText);
-    if (attributes.dateTime)  parts.push('2026-05-17 19:28');
-    if (attributes.ipAddress) parts.push('192.168.1.100');
-    return parts.filter(Boolean).join(' | ');
+    return parts.filter(Boolean);
   };
 
   const hexToRGBA = (hex, opacity) => {
@@ -299,10 +365,17 @@ export default function WatermarkPage() {
         ].map(({ key, cls }) => (
           <div key={key} className={`${cls} overflow-hidden`}>
             {positions[key] && (
-              <span style={{ fontSize: `${fontSize}px`, color: hexToRGBA(textColor, textOpacity), transform: `rotate(${rotation}deg)`, whiteSpace: 'nowrap' }}
-                className="font-bold origin-center transition-all duration-200">
-                {getWatermarkText()}
-              </span>
+              <div style={{ transform: `rotate(${rotation}deg)`, color: hexToRGBA(textColor, textOpacity) }}
+                className="font-bold origin-center transition-all duration-200 flex flex-col items-center justify-center">
+                {(logoPath || brandLogo) && (
+                  <img src={getLogoUrl(logoPath || brandLogo)} alt="logo" className="h-8 object-contain mb-1" style={{ opacity: logoOpacity }} />
+                )}
+                <div style={{ fontSize: `${fontSize}px`, whiteSpace: 'nowrap' }} className="flex flex-col items-center">
+                  {getWatermarkLines().map((line, idx) => (
+                    <span key={idx} className="block leading-tight">{line}</span>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         ))}
@@ -400,10 +473,17 @@ export default function WatermarkPage() {
                     ].map(({ key, cls }) => (
                       <div key={key} className={`${cls} overflow-visible`}>
                         {positions[key] && (
-                          <span style={{ fontSize: `${fontSize}px`, color: hexToRGBA(textColor, textOpacity), transform: `rotate(${rotation}deg)`, whiteSpace: 'nowrap' }}
-                            className="font-bold origin-center transition-all duration-200">
-                            {getWatermarkText()}
-                          </span>
+                          <div style={{ transform: `rotate(${rotation}deg)`, color: hexToRGBA(textColor, textOpacity) }}
+                            className="font-bold origin-center transition-all duration-200 flex flex-col items-center justify-center">
+                            {(logoPath || brandLogo) && (
+                              <img src={getLogoUrl(logoPath || brandLogo)} alt="logo" className="h-10 object-contain mb-1.5" style={{ opacity: logoOpacity }} />
+                            )}
+                            <div style={{ fontSize: `${fontSize}px`, whiteSpace: 'nowrap' }} className="flex flex-col items-center">
+                              {getWatermarkLines().map((line, idx) => (
+                                <span key={idx} className="block leading-tight">{line}</span>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -507,25 +587,22 @@ export default function WatermarkPage() {
                   {editingTemplateId ? 'Edit Template' : 'New Template'}
                 </h3>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Template Name *</label>
-                  <input value={templateForm.name} onChange={e => setTemplateForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="e.g. Client Review, Confidential..."
-className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />               </div>
-
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Type</label>
-                    <select value={templateForm.watermark_type} onChange={e => setTemplateForm(f => ({ ...f, watermark_type: e.target.value }))}
-className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all">                      <option value="dynamic">Dynamic</option>
-                      <option value="static">Static</option>
-                    </select>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Template Name *</label>
+                    <input value={templateForm.name} onChange={e => setTemplateForm(f => ({ ...f, name: e.target.value, custom_text: e.target.value }))}
+                      placeholder="e.g. Client Review, Confidential..."
+                      className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Watermark Text</label>
-                    <input value={templateForm.custom_text} onChange={e => setTemplateForm(f => ({ ...f, custom_text: e.target.value }))}
-className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"/>                  </div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Email Address</label>
+                    <input type="email" value={templateForm.email_address} onChange={e => setTemplateForm(f => ({ ...f, email_address: e.target.value }))}
+                      placeholder="e.g. user@example.com"
+                      className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
+                  </div>
                 </div>
+
+
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -629,14 +706,16 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {templates.map(t => (
-                      <div key={t.id} className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+                    {templates.map(t => {
+                      const isPresent = t.present === true || t.present === 'true';
+                      return (
+                      <div key={t.id} className={`border rounded-2xl p-4 transition-all ${isPresent ? 'bg-blue-50/50 border-blue-200 shadow-sm' : 'bg-gray-50/30 border-gray-100 opacity-60 hover:opacity-100'}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             {/* Mini preview */}
-                            <div className="w-12 h-14 bg-white border border-gray-200 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden relative">
+                            <div className={`w-12 h-14 bg-white border ${isPresent ? 'border-blue-200' : 'border-gray-200'} rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden relative`}>
                               <span style={{ color: t.text_color, fontSize: '5px', fontWeight: 'bold', transform: `rotate(${t.rotation}deg)`, opacity: t.text_opacity / 100, textAlign: 'center', lineHeight: 1.2 }}>
-                                {t.custom_text?.substring(0, 8)}
+                                {t.name?.substring(0, 8)}
                               </span>
                               {t.logo_path && (
                                 <img src={getLogoUrl(t.logo_path)} alt="logo" className="absolute w-5 h-5 object-contain bottom-1 right-1" style={{ opacity: t.logo_opacity }} />
@@ -644,13 +723,20 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-gray-900 text-sm truncate">{t.name}</p>
-                              <p className="text-xs text-gray-500 mt-0.5">{t.custom_text} · {t.watermark_type} · {t.text_opacity}% opacity</p>
+                              <p className="text-xs text-gray-500 mt-0.5">{t.name} {t.email_address ? `· ${t.email_address}` : ''} · {t.watermark_type} · {t.text_opacity}% opacity</p>
                               {t.logo_path && <span className="text-xs text-blue-500 font-medium">🖼 Has logo</span>}
                             </div>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
-                            <button onClick={() => applyTemplate(t)}
-                              className="px-3 py-1.5 bg-blue-500 text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-colors">Apply</button>
+                            {isPresent ? (
+                              <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                Applied
+                              </span>
+                            ) : (
+                              <button onClick={() => applyTemplate(t)}
+                                className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-xs font-bold rounded-lg transition-colors">Apply</button>
+                            )}
                             <button onClick={() => handleEditTemplate(t)}
                               className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-bold rounded-lg hover:bg-white transition-colors">Edit</button>
                             <button onClick={() => handleDeleteTemplate(t.id)}
@@ -658,7 +744,7 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
                           </div>
                         </div>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 )}
               </div>
@@ -698,25 +784,14 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
 
             <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 p-6 space-y-6">
 
-              {/* Type Switcher */}
-              <div>
-                <label className="block text-[14px] font-bold text-gray-800 mb-3">Watermark Type</label>
-                <div className="grid grid-cols-2 gap-2 p-1 bg-gray-50 border border-gray-100 rounded-xl">
-                  {['dynamic', 'static'].map(type => (
-                    <button key={type} onClick={() => setActiveType(type)}
-                      className={`py-2 px-4 rounded-lg text-sm font-bold transition-all ${activeType === type ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-500 hover:text-gray-800'}`}>
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
+
 
               {/* Text */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[14px] font-bold text-gray-800 mb-2">Watermark Text</label>
+                  <label className="block text-[14px] font-bold text-gray-800 mb-2">Template Name</label>
                   <input type="text" value={customText} onChange={e => setCustomText(e.target.value)}
-                    placeholder="Enter main watermark text..."
+                    placeholder="Enter template name..."
                     className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
                 </div>
                 <div>
@@ -726,29 +801,7 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
                     className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
                 </div>
 
-                {activeType === 'dynamic' && (
-                  <div>
-                    <label className="block text-[13px] font-bold text-gray-500 uppercase tracking-wider mb-2">Included Variables</label>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      {[
-                        { id: 'dateTime',  label: 'Date & Time' },
-                        { id: 'ipAddress', label: 'IP Address' },
-                        { id: 'cmplogo',   label: 'Company Logo' },
-                        { id: 'cmpname',   label: 'Company Name' },
-                      ].map(item => (
-                        <button key={item.id} onClick={() => toggleAttribute(item.id)}
-                          className={`flex items-center justify-between p-3 rounded-xl border text-[13px] font-semibold transition-all ${attributes[item.id] ? 'bg-blue-50/30 border-blue-500/40 text-blue-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                          <span>{item.label}</span>
-                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${attributes[item.id] ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 bg-white'}`}>
-                            {attributes[item.id] && (
-                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+
               </div>
 
               {/* Font & Opacity */}
@@ -867,10 +920,17 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
                     ].map(({ key, cls }) => (
                       <div key={key} className={`${cls} overflow-visible`}>
                         {positions[key] && (
-                          <span style={{ fontSize: `${Math.max(10, fontSize * 0.6)}px`, color: hexToRGBA(textColor, textOpacity), transform: `rotate(${rotation}deg)`, whiteSpace: 'nowrap' }}
-                            className="font-bold origin-center transition-all duration-200">
-                            {getWatermarkText()}
-                          </span>
+                          <div style={{ transform: `rotate(${rotation}deg)`, color: hexToRGBA(textColor, textOpacity) }}
+                            className="font-bold origin-center transition-all duration-200 flex flex-col items-center justify-center">
+                            {brandLogo && (
+                              <img src={getLogoUrl(brandLogo)} alt="logo" className="h-6 object-contain mb-1 opacity-50" />
+                            )}
+                            <div style={{ fontSize: `${Math.max(10, fontSize * 0.6)}px`, whiteSpace: 'nowrap' }} className="flex flex-col items-center">
+                              {getWatermarkLines().map((line, idx) => (
+                                <span key={idx} className="block leading-tight">{line}</span>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
                     ))}
