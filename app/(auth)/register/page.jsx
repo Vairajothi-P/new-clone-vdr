@@ -498,7 +498,7 @@ function RegisterContent() {
 
           password_hash: formData.password,
 
-          role: "external_user",
+          role: "super_admin",
           status: "active",
         })
         .select()
