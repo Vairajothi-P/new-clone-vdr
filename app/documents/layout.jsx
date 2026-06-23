@@ -1,11 +1,5 @@
 "use client";
 
-// /app/documents/layout.jsx
-// - VDR logo links to /dashboard (home)
-// - Nav: Files, Access (admin only), Downloads, Bookmarks, Trash, Settings (admin only)
-// - NO "New Document", NO "Recent"
-// - Single sidebar only — page.jsx handles the inner folder panel
-
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -21,143 +15,89 @@ function LayoutContent({ children }) {
         if (raw) setSession(JSON.parse(raw));
     }, []);
 
-    const isAdmin = session?.role === 'admin' || session?.role === 'super_admin';
+    const isSuperAdmin = session?.role === 'super_admin';
+    const isAdminOrSuper = session?.role === 'admin' || isSuperAdmin;
     const currentView = searchParams.get('view');
 
     const isActive = (href) => {
         if (href === '/documents/access') return pathname === '/documents/access';
-        if (href === '/settings') return pathname.startsWith('/settings');
-        if (href.includes('?view=')) {
-            const view = href.split('view=')[1];
-            return pathname === '/documents' && currentView === view;
-        }
+        if (href.includes('?view=')) return pathname === '/documents' && currentView === href.split('view=')[1];
         return pathname === '/documents' && (!currentView || currentView === 'files');
     };
 
+    // ── DYNAMIC VDR NAVIGATION ──
     const navItems = [
         {
-            href: '/documents',
-            label: 'Files',
-            icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                </svg>
-            ),
+            href: '/documents', label: 'Files',
+            icon: <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
         },
-        ...(isAdmin ? [{
-            href: '/documents/access',
-            label: 'Access',
-            icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-            ),
-        }] : []),
-        ...(!isAdmin ? [{
-            href: '/documents?view=downloads',
-            label: 'Downloads',
-            icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-            ),
+        // Only Admins/Super Admins see the Access Matrix
+        ...(isAdminOrSuper ? [{
+            href: '/documents/access', label: 'Access Control',
+            icon: <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
         }] : []),
         {
-            href: '/documents?view=bookmarks',
-            label: 'Bookmarks',
-            icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-            ),
+            href: '/documents?view=downloads', label: 'My Downloads',
+            icon: <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
         },
         {
-            href: '/documents?view=trash',
-            label: 'Trash',
-            icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6l-1 14H6L5 6" />
-                    <path d="M10 11v6M14 11v6" />
-                    <path d="M9 6V4h6v2" />
-                </svg>
-            ),
-        }
+            href: '/documents?view=bookmarks', label: 'Bookmarks',
+            icon: <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+        },
+        // ONLY Super Admins get access to the Trash Can
+        ...(isSuperAdmin ? [{
+            href: '/documents?view=trash', label: 'Trash',
+            icon: <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
+        }] : [])
     ];
 
     return (
-        <div className="flex w-full h-screen overflow-hidden bg-[#F8F9FB]">
+        <div className="flex w-full h-screen overflow-hidden bg-[#F8F9FB] font-sans">
             <MainSidebar />
-            {/* ── LEFT SIDEBAR ─────────────────────────────────────────────── */}
-            <nav className="w-[220px] shrink-0 bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden">
+            <nav className="w-[240px] shrink-0 bg-white border-r border-slate-200 flex flex-col h-full z-10 shadow-[2px_0_8px_-4px_rgba(0,0,0,0.05)]">
 
-                {/* Logo — clicking goes to /dashboard */}
-                <Link href="/dashboard" className="px-5 pt-6 pb-5 border-b border-slate-100 flex items-center hover:opacity-80 transition-opacity">
-                    <span className="text-[14px] font-black text-slate-800 tracking-tight">VDR Portal</span>
-                </Link>
+                <div className="px-6 py-6 border-b border-slate-100 flex items-center hover:opacity-80 transition-opacity">
+                    <span className="text-[15px] font-black text-slate-800 tracking-tight">VDR Vault</span>
+                </div>
 
-                {/* Nav items */}
-                <div className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
+                <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
                     {navItems.map(item => {
                         const active = isActive(item.href);
                         return (
-                            <Link
-                                key={item.label}
-                                href={item.href}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
-                                    ${active
-                                        ? 'bg-slate-900 text-white'
-                                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-                                    }`}
-                            >
-                                <span className={`shrink-0 ${active ? 'text-white' : 'text-slate-400'}`}>
-                                    {item.icon}
-                                </span>
+                            <Link key={item.label} href={item.href}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold transition-all 
+                                ${active ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
+                                <span className={active ? 'text-white' : 'text-slate-400'}>{item.icon}</span>
                                 {item.label}
                             </Link>
                         );
                     })}
                 </div>
 
-                {/* User footer + Logout */}
                 {session && (
-                    <div className="p-4 border-t border-slate-100">
+                    <div className="p-4 border-t border-slate-100 bg-slate-50/50">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center text-[11px] font-black text-white shrink-0">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-[12px] font-black text-white shrink-0 shadow-sm">
                                     {session.name?.charAt(0).toUpperCase() || 'U'}
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="text-[12px] font-bold text-slate-800 truncate">{session.name}</p>
-                                    <p className="text-[10px] text-slate-400 truncate capitalize">{session.role || 'user'}</p>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[13px] font-bold text-slate-800 truncate">{session.name}</p>
+                                    <p className="text-[11px] font-semibold text-slate-400 truncate capitalize">{session.role.replace('_', ' ')}</p>
                                 </div>
                             </div>
-
-                            {/* 🔥 QUICK LOGOUT BUTTON */}
                             <button
-                                onClick={() => {
-                                    localStorage.removeItem('vdr_session');
-                                    window.location.href = '/login';
-                                }}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                                onClick={() => { localStorage.removeItem('vdr_session'); window.location.href = '/login'; }}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-rose-100 hover:text-rose-600 transition-colors shrink-0"
                                 title="Log Out"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                    <polyline points="16 17 21 12 16 7"></polyline>
-                                    <line x1="21" y1="12" x2="9" y2="12"></line>
-                                </svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                             </button>
                         </div>
                     </div>
                 )}
             </nav>
-
-            {/* ── PAGE CONTENT ─────────────────────────────────────────────── */}
-            <main className="flex-1 min-w-0 h-full overflow-hidden">
+            <main className="flex-1 min-w-0 h-full overflow-hidden flex flex-col relative">
                 {children}
             </main>
         </div>
@@ -166,15 +106,201 @@ function LayoutContent({ children }) {
 
 export default function DocumentsLayout({ children }) {
     return (
-        <Suspense fallback={
-            <div className="flex items-center justify-center w-full h-screen bg-[#FAFBFD]">
-                <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
-            </div>
-        }>
+        <Suspense fallback={<div className="flex items-center justify-center w-full h-screen bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>}>
             <LayoutContent>{children}</LayoutContent>
         </Suspense>
     );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+//static pdoc page not permision absed
+// "use client";
+
+// // /app/documents/layout.jsx
+// // - VDR logo links to /dashboard (home)
+// // - Nav: Files, Access (admin only), Downloads, Bookmarks, Trash, Settings (admin only)
+// // - NO "New Document", NO "Recent"
+// // - Single sidebar only — page.jsx handles the inner folder panel
+
+// import React, { useEffect, useState, Suspense } from 'react';
+// import Link from 'next/link';
+// import { usePathname, useSearchParams } from 'next/navigation';
+// import MainSidebar from '@/components/MainSidebar';
+
+// function LayoutContent({ children }) {
+//     const pathname = usePathname();
+//     const searchParams = useSearchParams();
+//     const [session, setSession] = useState(null);
+
+//     useEffect(() => {
+//         const raw = localStorage.getItem('vdr_session');
+//         if (raw) setSession(JSON.parse(raw));
+//     }, []);
+
+//     const isAdmin = session?.role === 'admin' || session?.role === 'super_admin';
+//     const currentView = searchParams.get('view');
+
+//     const isActive = (href) => {
+//         if (href === '/documents/access') return pathname === '/documents/access';
+//         if (href === '/settings') return pathname.startsWith('/settings');
+//         if (href.includes('?view=')) {
+//             const view = href.split('view=')[1];
+//             return pathname === '/documents' && currentView === view;
+//         }
+//         return pathname === '/documents' && (!currentView || currentView === 'files');
+//     };
+
+//     const navItems = [
+//         {
+//             href: '/documents',
+//             label: 'Files',
+//             icon: (
+//                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+//                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+//                 </svg>
+//             ),
+//         },
+//         ...(isAdmin ? [{
+//             href: '/documents/access',
+//             label: 'Access',
+//             icon: (
+//                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+//                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+//                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+//                 </svg>
+//             ),
+//         }] : []),
+//         ...(!isAdmin ? [{
+//             href: '/documents?view=downloads',
+//             label: 'Downloads',
+//             icon: (
+//                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+//                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+//                     <polyline points="7 10 12 15 17 10" />
+//                     <line x1="12" y1="15" x2="12" y2="3" />
+//                 </svg>
+//             ),
+//         }] : []),
+//         {
+//             href: '/documents?view=bookmarks',
+//             label: 'Bookmarks',
+//             icon: (
+//                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+//                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+//                 </svg>
+//             ),
+//         },
+//         {
+//             href: '/documents?view=trash',
+//             label: 'Trash',
+//             icon: (
+//                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+//                     <polyline points="3 6 5 6 21 6" />
+//                     <path d="M19 6l-1 14H6L5 6" />
+//                     <path d="M10 11v6M14 11v6" />
+//                     <path d="M9 6V4h6v2" />
+//                 </svg>
+//             ),
+//         }
+//     ];
+
+//     return (
+//         <div className="flex w-full h-screen overflow-hidden bg-[#F8F9FB]">
+//             <MainSidebar />
+//             {/* ── LEFT SIDEBAR ─────────────────────────────────────────────── */}
+//             <nav className="w-[220px] shrink-0 bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden">
+
+//                 {/* Logo — clicking goes to /dashboard */}
+//                 <Link href="/dashboard" className="px-5 pt-6 pb-5 border-b border-slate-100 flex items-center hover:opacity-80 transition-opacity">
+//                     <span className="text-[14px] font-black text-slate-800 tracking-tight">VDR Portal</span>
+//                 </Link>
+
+//                 {/* Nav items */}
+//                 <div className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
+//                     {navItems.map(item => {
+//                         const active = isActive(item.href);
+//                         return (
+//                             <Link
+//                                 key={item.label}
+//                                 href={item.href}
+//                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
+//                                     ${active
+//                                         ? 'bg-slate-900 text-white'
+//                                         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+//                                     }`}
+//                             >
+//                                 <span className={`shrink-0 ${active ? 'text-white' : 'text-slate-400'}`}>
+//                                     {item.icon}
+//                                 </span>
+//                                 {item.label}
+//                             </Link>
+//                         );
+//                     })}
+//                 </div>
+
+//                 {/* User footer + Logout */}
+//                 {session && (
+//                     <div className="p-4 border-t border-slate-100">
+//                         <div className="flex items-center justify-between">
+//                             <div className="flex items-center gap-2.5 min-w-0">
+//                                 <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center text-[11px] font-black text-white shrink-0">
+//                                     {session.name?.charAt(0).toUpperCase() || 'U'}
+//                                 </div>
+//                                 <div className="min-w-0">
+//                                     <p className="text-[12px] font-bold text-slate-800 truncate">{session.name}</p>
+//                                     <p className="text-[10px] text-slate-400 truncate capitalize">{session.role || 'user'}</p>
+//                                 </div>
+//                             </div>
+
+//                             {/* 🔥 QUICK LOGOUT BUTTON */}
+//                             <button
+//                                 onClick={() => {
+//                                     localStorage.removeItem('vdr_session');
+//                                     window.location.href = '/login';
+//                                 }}
+//                                 className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+//                                 title="Log Out"
+//                             >
+//                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+//                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+//                                     <polyline points="16 17 21 12 16 7"></polyline>
+//                                     <line x1="21" y1="12" x2="9" y2="12"></line>
+//                                 </svg>
+//                             </button>
+//                         </div>
+//                     </div>
+//                 )}
+//             </nav>
+
+//             {/* ── PAGE CONTENT ─────────────────────────────────────────────── */}
+//             <main className="flex-1 min-w-0 h-full overflow-hidden">
+//                 {children}
+//             </main>
+//         </div>
+//     );
+// }
+
+// export default function DocumentsLayout({ children }) {
+//     return (
+//         <Suspense fallback={
+//             <div className="flex items-center justify-center w-full h-screen bg-[#FAFBFD]">
+//                 <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+//             </div>
+//         }>
+//             <LayoutContent>{children}</LayoutContent>
+//         </Suspense>
+//     );
+// }
 
 
 
