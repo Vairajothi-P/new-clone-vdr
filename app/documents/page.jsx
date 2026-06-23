@@ -45,7 +45,8 @@ function DocumentsPageContent() {
     }
 
     // Route to correct view based on role
-    if (session.role === 'admin') {
+    // if (session.role === 'admin') {
+    if (session.role === 'admin' || session.role === 'super_admin') {
         return <AdminView session={session} currentView={currentView} router={router} />;
     }
     return <UserView session={session} currentView={currentView} />;
