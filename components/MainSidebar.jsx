@@ -4,19 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
-import {
-  FaCog,
-  FaShieldAlt,
-  FaHome,
-  FaUsers
-} from "react-icons/fa";
-
-import {
-  FiShield,
-  FiFolder,
-  FiSettings,
-  FiHome
-} from "react-icons/fi";
+import { NAV_ITEMS } from '@/lib/nav-items';
 
 export default function MainSidebar() {
   const pathname = usePathname();
@@ -24,15 +12,6 @@ export default function MainSidebar() {
   const [hasSettingsAccess, setHasSettingsAccess] = useState(false);
   const isGroupsActive = pathname?.startsWith('/groups');
 
-  // 🔥 Check the session when the sidebar loads
-  // useEffect(() => {
-  //   const rawSession = localStorage.getItem('vdr_session');
-  //   if (rawSession) {
-  //     const session = JSON.parse(rawSession);
-  //     // Only set to true if the role is exactly 'admin'
-  //     setIsAdmin(session.role === 'admin');
-  //   }
-  // }, []);
   useEffect(() => {
     const rawSession = localStorage.getItem('vdr_session');
     if (!rawSession) return;
@@ -81,79 +60,47 @@ export default function MainSidebar() {
         </svg>
       </Link>
 
-      {/* Standard Nav Items (Visible to everyone) */}
-      <div className="flex flex-col gap-4">
-        <Link
-          href="/documents"
-          className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 ${pathname.startsWith('/documents')
-            ? 'bg-slate-900 text-white shadow-md'
-            : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
-            }`}
-          title="Documents"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-          </svg>
-        </Link>
-      </div>
+      {/* Nav Items — Driven by NAV_ITEMS config in lib/nav-items.js */}
+      <div className="flex flex-col gap-2 flex-1">
+        {NAV_ITEMS.map((item) => {
+          // Hide settings from non-admins
+          if (item.key === 'settings' && !hasSettingsAccess) return null;
 
-      <Link
-        href="/groups"
-        className="group relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-300 mt-4"
-      >
-        {isGroupsActive && (
-          <div className="absolute left-0 w-1 h-8 bg-gray-900 rounded-r-md" />
-        )}
+          const isActive = pathname?.startsWith(item.href);
 
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isGroupsActive
-          ? 'bg-gray-100 text-gray-900 shadow-inner font-semibold'
-          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-          }`}>
-          <FaUsers className="text-lg md:text-xl" />
-        </div>
-        <span className="absolute left-16 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
-          Groups
-        </span>
-      </Link>
-
-      {/* Bottom Actions */}
-      <div className="flex flex-col gap-4 mt-auto">
-
-        {/* 🔥 SETTINGS BUTTON: NOW ALWAYS VISIBLE (WITHOUT isAdmin WRAPPER) */}
-        {hasSettingsAccess && (
-          <Link
-            href="/settings"
-            className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 ${pathname.startsWith('/settings')
-                ? 'bg-slate-900 text-white shadow-md'
-                : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
-              }`}
-            title="Settings"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              className={pathname.startsWith('/settings') ? 'animate-[spin_4s_linear_infinite]' : ''}
+          return (
+            <Link
+              key={item.key}
+              href={item.href}
+              title={item.label}
+              className="group relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-300"
             >
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-          </Link>
-        )}
+              {isActive && (
+                <div className="absolute left-0 w-1 h-8 bg-slate-900 rounded-r-md" />
+              )}
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                isActive
+                  ? 'bg-slate-100 text-slate-900 shadow-inner'
+                  : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+              }`}>
+                {item.icon}
+              </div>
+              <span className="absolute left-16 bg-slate-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
       </div>
 
-      {/* Profile / Logout Button (Visible to everyone) */}
-      <div className="flex flex-col items-center gap-4">
+      {/* Sign Out Button */}
+      <div className="flex flex-col items-center gap-4 mt-auto">
         <button
           onClick={() => {
             localStorage.removeItem('vdr_session');
             window.location.href = '/login';
           }}
-          className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all duration-300 mt-2"
+          className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all duration-300"
           title="Sign Out"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -162,11 +109,12 @@ export default function MainSidebar() {
             <line x1="21" y1="12" x2="9" y2="12"></line>
           </svg>
         </button>
-
       </div>
-    </aside >
+    </aside>
   );
 }
+
+
 
 
 

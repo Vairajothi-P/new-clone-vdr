@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { FaUserPlus, FaCog } from "react-icons/fa";
+import { NAV_ITEMS } from "@/lib/nav-items";
 
 export default function ActivatePage() {
 
@@ -44,12 +45,8 @@ export default function ActivatePage() {
     fetchMembers();
   }, []);
 
-  // Workspace permissions
-  const workspacePermissions = [
-    "Documents",
-    "Groups",
-    "Settings",
-  ];
+  // Workspace permissions - Dynamically built from NAV_ITEMS
+  const workspacePermissions = NAV_ITEMS.map(item => item.label);
 
   // File permissions
   const filePermissions = [
