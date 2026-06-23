@@ -695,31 +695,47 @@ function AdminView({ session, currentView, router }) {
                     userMap[u.id] = u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1).replace('_', ' ') : 'System';
                 });
 
+                // const mappedFolders = (foldersData || []).map(f => ({
+                //     id: f.id, parentId: f.parent_folder_id || null,
+                //     index: f.index_number ? `${f.index_number}.0` : '1.0',
+                //     name: f.name, type: 'folder', size: '--', uploadedBy: userMap[f.created_by] || 'Unknown',
+                //     dateCreated: new Date(f.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                //     security: 'Encrypted',
+                // }));
+
                 const mappedFolders = (foldersData || []).map(f => ({
                     id: f.id, parentId: f.parent_folder_id || null,
-                    index: f.index_number ? `${f.index_number}.0` : '1.0',
+                    index: f.index_number ? f.index_number.toString() : '1', // <-- Changed here
                     name: f.name, type: 'folder', size: '--', uploadedBy: userMap[f.created_by] || 'Unknown',
                     dateCreated: new Date(f.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                    security: 'Encrypted',
                 }));
+                // const mappedDocs = (docsData || []).map(doc => ({
+                //     id: doc.id, parentId: doc.folder_id || null, index: doc.index || '99.0',
+                //     name: doc.name, type: doc.name.split('.').pop().toLowerCase() || 'file',
+                //     rawSize: doc.file_size_bytes || 0,
+                //     size: doc.file_size_bytes > 1024 * 1024
+                //         ? `${(doc.file_size_bytes / (1024 * 1024)).toFixed(1)} MB`
+                //         : `${(doc.file_size_bytes / 1024).toFixed(0)} KB`,
+                //     uploadedBy: userMap[doc.uploaded_by] || 'Unknown',
+                //     dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                //     security: doc.security || 'Encrypted',
+                //     is_bookmarked: doc.is_bookmarked,
+                //     is_downloaded: doc.is_downloaded,
+                //     is_deleted: doc.is_deleted,
+
+                //     // 🔥 ADD THIS HERE TOO
+                //     file_path: doc.file_path,
+                //     dek_ref: doc.dek_ref,
+                //     mime_type: doc.mime_type
+                // }));
+
                 const mappedDocs = (docsData || []).map(doc => ({
-                    id: doc.id, parentId: doc.folder_id || null, index: doc.index || '99.0',
+                    id: doc.id, parentId: doc.folder_id || null,
+                    index: doc.index ? doc.index.toString().replace('.0', '') : '99', // <-- Changed here
                     name: doc.name, type: doc.name.split('.').pop().toLowerCase() || 'file',
-                    rawSize: doc.file_size_bytes || 0,
-                    size: doc.file_size_bytes > 1024 * 1024
-                        ? `${(doc.file_size_bytes / (1024 * 1024)).toFixed(1)} MB`
-                        : `${(doc.file_size_bytes / 1024).toFixed(0)} KB`,
+                    size: doc.file_size_bytes > 1024 * 1024 ? `${(doc.file_size_bytes / (1024 * 1024)).toFixed(1)} MB` : `${(doc.file_size_bytes / 1024).toFixed(0)} KB`,
                     uploadedBy: userMap[doc.uploaded_by] || 'Unknown',
                     dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                    security: doc.security || 'Encrypted',
-                    is_bookmarked: doc.is_bookmarked,
-                    is_downloaded: doc.is_downloaded,
-                    is_deleted: doc.is_deleted,
-
-                    // 🔥 ADD THIS HERE TOO
-                    file_path: doc.file_path,
-                    dek_ref: doc.dek_ref,
-                    mime_type: doc.mime_type
                 }));
 
                 setFiles([...mappedFolders, ...mappedDocs]);
@@ -803,11 +819,19 @@ function AdminView({ session, currentView, router }) {
     const allChecked = filteredItems.length > 0 && selectedIds.size === filteredItems.length;
     const someChecked = selectedIds.size > 0 && selectedIds.size < filteredItems.length;
 
+    // const generateNewIndex = () => {
+    //     const peers = filesWithSizes.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
+    //     // Find the highest existing integer and add 1
+    //     const max = peers.reduce((m, it) => Math.max(m, parseInt(it.index) || 0), 0);
+    //     return (max + 1).toString();
+    // }
     const generateNewIndex = () => {
         const peers = filesWithSizes.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
         if (currentFolderId === null) {
-            const max = peers.reduce((m, it) => Math.max(m, parseInt(it.index.split('.')[0]) || 0), 0);
-            return `${max + 1}.0`;
+            // const max = peers.reduce((m, it) => Math.max(m, parseInt(it.index.split('.')[0]) || 0), 0);
+            // return `${max + 1}.0`;
+            const max = peers.reduce((m, it) => Math.max(m, parseInt(it.index) || 0), 0);
+            return (max + 1).toString();
         }
         const parent = files.find(f => f.id === currentFolderId);
         const prefix = parent?.index?.endsWith('.0') ? parent.index.slice(0, -2) : (parent?.index ?? '1');

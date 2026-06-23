@@ -21,7 +21,7 @@ function LayoutContent({ children }) {
         if (raw) setSession(JSON.parse(raw));
     }, []);
 
-    const isAdmin = session?.role === 'admin';
+    const isAdmin = session?.role === 'admin' || session?.role === 'super_admin';
     const currentView = searchParams.get('view');
 
     const isActive = (href) => {
