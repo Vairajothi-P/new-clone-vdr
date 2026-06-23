@@ -673,6 +673,7 @@ function AdminView({ session, currentView, router }) {
     const [movingToFolderId, setMovingToFolderId] = useState(null);
     const [uploadQueue, setUploadQueue] = useState([]);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isConfirmPermanentDeleteOpen, setIsConfirmPermanentDeleteOpen] = useState(false);
     const fileInputRef = useRef(null);
 
 
@@ -682,7 +683,7 @@ function AdminView({ session, currentView, router }) {
             try {
                 const [{ data: foldersData }, { data: docsData }, { data: usersData }] = await Promise.all([
                     supabase.from('folders').select('*').eq('company_id', session.company_id),
-                    supabase.from('documents').select('*').eq('company_id', session.company_id).eq('is_deleted', false),
+                    supabase.from('documents').select('*').eq('company_id', session.company_id),
                     supabase.from('users').select('id, name, role').eq('company_id', session.company_id),
                 ]);
 
@@ -711,6 +712,7 @@ function AdminView({ session, currentView, router }) {
                     security: doc.security || 'Encrypted',
                     is_bookmarked: doc.is_bookmarked,
                     is_downloaded: doc.is_downloaded,
+                    is_deleted: doc.is_deleted,
 
                     // 🔥 ADD THIS HERE TOO
                     file_path: doc.file_path,
@@ -720,6 +722,7 @@ function AdminView({ session, currentView, router }) {
                 setFiles([...mappedFolders, ...mappedDocs]);
                 setBookmarkedIds(new Set((docsData || []).filter(d => d.is_bookmarked).map(d => d.id)));
                 setDownloadedIds(new Set((docsData || []).filter(d => d.is_downloaded).map(d => d.id)));
+                setDeletedIds(new Set((docsData || []).filter(d => d.is_deleted).map(d => d.id)));
             } catch (err) { console.error('Failed to fetch:', err); }
         })();
     }, [session]);
@@ -851,9 +854,56 @@ function AdminView({ session, currentView, router }) {
             if (docIds.length > 0) await supabase.from('documents').update({ is_deleted: true }).in('id', docIds);
             if (folderIds.length > 0) await supabase.from('folders').delete().in('id', folderIds);
             setDeletedIds(prev => { const next = new Set(prev); selectedIds.forEach(id => next.add(id)); return next; });
+            setFiles(prev => prev.map(f => selectedIds.has(f.id) && f.type !== 'folder' ? { ...f, is_deleted: true } : f));
             setSelectedIds(new Set());
         } catch (err) { console.error('Delete failed:', err); }
         finally { setIsDeleting(false); setIsDeleteModalOpen(false); }
+    };
+
+    const executeRestoreSelected = async () => {
+        if (selectedIds.size === 0) return;
+        try {
+            const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+            if (docIds.length > 0) {
+                const { error } = await supabase.from('documents').update({ is_deleted: false }).in('id', docIds);
+                if (error) throw error;
+            }
+            setDeletedIds(prev => {
+                const next = new Set(prev);
+                selectedIds.forEach(id => next.delete(id));
+                return next;
+            });
+            setFiles(prev => prev.map(f => selectedIds.has(f.id) ? { ...f, is_deleted: false } : f));
+            setSelectedIds(new Set());
+        } catch (err) {
+            console.error('Restore failed:', err);
+            alert('Failed to restore items');
+        }
+    };
+
+    const executeDeletePermanently = async () => {
+        if (selectedIds.size === 0) return;
+        setIsDeleting(true);
+        try {
+            const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+            if (docIds.length > 0) {
+                const { error } = await supabase.from('documents').delete().in('id', docIds);
+                if (error) throw error;
+            }
+            setFiles(prev => prev.filter(f => !selectedIds.has(f.id)));
+            setDeletedIds(prev => {
+                const next = new Set(prev);
+                selectedIds.forEach(id => next.delete(id));
+                return next;
+            });
+            setSelectedIds(new Set());
+        } catch (err) {
+            console.error('Permanent delete failed:', err);
+            alert('Failed to delete permanently');
+        } finally {
+            setIsDeleting(false);
+            setIsConfirmPermanentDeleteOpen(false);
+        }
     };
 
     const executeMoveToFolder = async () => {
@@ -1046,32 +1096,55 @@ function AdminView({ session, currentView, router }) {
                 {/* Toolbar */}
                 <div className="flex items-center justify-between px-7 py-3 bg-white border-b border-slate-100 gap-4">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <button onClick={() => setIsUploadModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white text-[12px] font-bold rounded-xl transition-all">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-                            Upload
-                        </button>
-                        <button onClick={() => setIsNewFolderOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-[12px] font-bold rounded-xl hover:bg-slate-50 transition-all">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
-                            Add Folder
-                        </button>
-                        {selectedIds.size > 0 && (
+                        {currentView === 'trash' ? (
                             <>
-                                <div className="w-px h-5 bg-slate-200 mx-1" />
-                                <span className="text-[11.5px] font-bold text-slate-500 px-1">{selectedIds.size} selected</span>
-                                {selectedHasFiles && (
-                                    <button onClick={() => { setMovingToFolderId(null); setIsMoveModalOpen(true); }}
-                                        className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 text-blue-700 text-[12px] font-bold rounded-xl hover:bg-blue-100 transition-all">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="5 9 2 12 5 15" /><polyline points="9 5 12 2 15 5" /><line x1="2" y1="12" x2="22" y2="12" /><line x1="12" y1="2" x2="12" y2="22" /></svg>
-                                        Move to Folder
-                                    </button>
-                                )}
-                                <button onClick={() => setIsDeleteModalOpen(true)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-rose-50 border border-rose-100 text-rose-600 text-[12px] font-bold rounded-xl hover:bg-rose-100 transition-all">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
-                                    Delete
+                                <button onClick={executeRestoreSelected} disabled={selectedIds.size === 0}
+                                    className={`flex items-center gap-2 px-4 py-2 text-[12px] font-bold rounded-xl transition-all ${selectedIds.size > 0 ? 'bg-blue-50 border border-blue-100 text-blue-700 text-[12px] font-bold rounded-xl hover:bg-blue-100 transition-all cursor-pointer' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
+                                    Recover
                                 </button>
+                                <button onClick={() => setIsConfirmPermanentDeleteOpen(true)} disabled={selectedIds.size === 0}
+                                    className={`flex items-center gap-2 px-4 py-2 text-[12px] font-bold rounded-xl transition-all ${selectedIds.size > 0 ? 'bg-rose-50 border border-rose-100 text-rose-700 text-[12px] font-bold rounded-xl hover:bg-rose-100 transition-all cursor-pointer' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
+                                    Delete Permanently
+                                </button>
+                                {selectedIds.size > 0 && (
+                                    <>
+                                        <div className="w-px h-5 bg-slate-200 mx-1" />
+                                        <span className="text-[11.5px] font-bold text-slate-500 px-1">{selectedIds.size} selected</span>
+                                    </>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <button onClick={() => setIsUploadModalOpen(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white text-[12px] font-bold rounded-xl transition-all">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                                    Upload
+                                </button>
+                                <button onClick={() => setIsNewFolderOpen(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-[12px] font-bold rounded-xl hover:bg-slate-50 transition-all">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+                                    Add Folder
+                                </button>
+                                {selectedIds.size > 0 && (
+                                    <>
+                                        <div className="w-px h-5 bg-slate-200 mx-1" />
+                                        <span className="text-[11.5px] font-bold text-slate-500 px-1">{selectedIds.size} selected</span>
+                                        {selectedHasFiles && (
+                                            <button onClick={() => { setMovingToFolderId(null); setIsMoveModalOpen(true); }}
+                                                className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 text-blue-700 text-[12px] font-bold rounded-xl hover:bg-blue-100 transition-all">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="5 9 2 12 5 15" /><polyline points="9 5 12 2 15 5" /><line x1="2" y1="12" x2="22" y2="12" /><line x1="12" y1="2" x2="12" y2="22" /></svg>
+                                                Move to Folder
+                                            </button>
+                                        )}
+                                        <button onClick={() => setIsDeleteModalOpen(true)}
+                                            className="flex items-center gap-2 px-4 py-2 bg-rose-50 border border-rose-100 text-rose-600 text-[12px] font-bold rounded-xl hover:bg-rose-100 transition-all">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
+                                            Delete
+                                        </button>
+                                    </>
+                                )}
                             </>
                         )}
                     </div>
@@ -1232,6 +1305,27 @@ function AdminView({ session, currentView, router }) {
                             <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-700 text-[12.5px] font-bold rounded-xl hover:bg-slate-200 transition-all">Cancel</button>
                             <button onClick={executeDelete} disabled={isDeleting} className="flex-1 py-2.5 bg-rose-600 text-white text-[12.5px] font-bold rounded-xl hover:bg-rose-700 transition-all disabled:opacity-60">
                                 {isDeleting ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {/* Confirm Permanent Delete Modal */}
+            {isConfirmPermanentDeleteOpen && (
+                <Modal onClose={() => setIsConfirmPermanentDeleteOpen(false)} maxWidth="max-w-sm">
+                    <div className="flex flex-col items-center gap-4 text-center">
+                        <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
+                        </div>
+                        <div>
+                            <h3 className="text-[15px] font-black text-slate-800">Permanently delete {selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''}?</h3>
+                            <p className="text-[12.5px] text-slate-500 mt-1">This action cannot be undone. The files will be permanently erased.</p>
+                        </div>
+                        <div className="flex gap-2 w-full">
+                            <button onClick={() => setIsConfirmPermanentDeleteOpen(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-700 text-[12.5px] font-bold rounded-xl hover:bg-slate-200 transition-all">Cancel</button>
+                            <button onClick={executeDeletePermanently} disabled={isDeleting} className="flex-1 py-2.5 bg-rose-600 text-white text-[12.5px] font-bold rounded-xl hover:bg-rose-700 transition-all disabled:opacity-60">
+                                {isDeleting ? 'Deleting...' : 'Delete Permanently'}
                             </button>
                         </div>
                     </div>
