@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { FaUserPlus, FaCog } from "react-icons/fa";
+import { NAV_ITEMS } from "@/lib/nav-items";
 
 const PERMISSION_SECTIONS = [
     {
@@ -22,6 +23,17 @@ const PERMISSION_SECTIONS = [
         scope: "settings",
         description: "Grant access to workspace settings",
         subPerms: [],
+    },
+    {
+        label: "Workspace",
+        scope: "workspace",
+        description: "Control access to navigation modules",
+        // Dynamically built from NAV_ITEMS — add a new item in lib/nav-items.js and it appears here automatically
+        subPerms: NAV_ITEMS.map(item => ({
+            key: `can_access_${item.key}`,
+            label: item.label,
+            desc: `Can access the ${item.label} module`,
+        })),
     },
 ];
 
@@ -213,6 +225,9 @@ export default function DynamicGroupPage() {
             for (const { scope } of PERMISSION_SECTIONS) {
                 const s = perms[scope];
                 if (!s) continue;
+
+                // Workspace scope is UI-only for now — Supabase columns not yet set up
+                if (scope === 'workspace') continue;
 
                 if (!s.enabled) {
                     if (s.existingId) {
