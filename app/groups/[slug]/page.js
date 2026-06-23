@@ -118,37 +118,35 @@ export default function DynamicGroupPage() {
         if (!session || !companyId) return;
 
         const checkGroupPermissions = async () => {
-            // super_admin always has full access
             if (session.role === 'super_admin') {
-            setCanAddMembers(true);
-            setCanRemoveMembers(true);
-            return;
+                setCanAddMembers(true);
+                setCanRemoveMembers(true);
+                return;
             }
 
             const { data: ugRows } = await supabase
-            .from('user_groups')
-            .select('group_id')
-            .eq('user_id', session.id);
+                .from('user_groups')
+                .select('group_id')
+                .eq('user_id', session.id);
 
             const groupIds = ugRows?.map(r => r.group_id) || [];
             if (!groupIds.length) return;
 
             const { data: perms } = await supabase
-            .from('permissions')
-            .select('can_add_members, can_remove_members')
-            .eq('company_id', companyId)
-            .eq('scope', 'group')
-            .in('group_id', groupIds);
+                .from('permissions')
+                .select('can_add_members, can_remove_members')
+                .eq('company_id', companyId)
+                .eq('scope', 'group')
+                .in('group_id', groupIds);
 
             if (perms && perms.length > 0) {
-            // if ANY of the user's groups grant the permission, allow it
-            setCanAddMembers(perms.some(p => p.can_add_members));
-            setCanRemoveMembers(perms.some(p => p.can_remove_members));
+                setCanAddMembers(perms.some(p => p.can_add_members));
+                setCanRemoveMembers(perms.some(p => p.can_remove_members));
             }
         };
 
         checkGroupPermissions();
-        }, [session, companyId]);
+    }, [session, companyId]);
 
     useEffect(() => {
         if (!showPermissionPage || !groupData) return;
@@ -169,7 +167,7 @@ export default function DynamicGroupPage() {
                         enabled: !!row,
                         can_add_members: row?.can_add_members ?? false,
                         can_remove_members: row?.can_remove_members ?? false,
-                        can_create_group: row?.can_create_group ?? false,   // ADD THIS
+                        can_create_group: row?.can_create_group ?? false,
                         can_delete_group: row?.can_delete_group ?? false, 
                         existingId: row?.id ?? null,
                     };
@@ -235,7 +233,7 @@ export default function DynamicGroupPage() {
                     can_delete: s.can_delete || false,
                     can_add_members: s.can_add_members || false,
                     can_remove_members: s.can_remove_members || false,
-                    can_create_group: s.can_create_group || false,   // ADD THIS
+                    can_create_group: s.can_create_group || false,
                     can_delete_group: s.can_delete_group || false,  
                     can_print: false,
                     folder_id: null,
@@ -301,10 +299,10 @@ export default function DynamicGroupPage() {
 
         try {
             const { error } = await supabase
-            .from('user_groups')
-            .delete()
-            .eq('user_id', userId)
-            .eq('group_id', groupData.id);
+                .from('user_groups')
+                .delete()
+                .eq('user_id', userId)
+                .eq('group_id', groupData.id);
 
             if (error) throw error;
 
@@ -314,7 +312,7 @@ export default function DynamicGroupPage() {
             console.error(err);
             alert("Failed to remove member: " + err.message);
         }
-        };
+    };
 
     const triggerToast = (msg) => {
         setToastMsg(msg);
@@ -323,172 +321,165 @@ export default function DynamicGroupPage() {
     };
 
     return (
-        <div className="flex-1 flex flex-col h-screen overflow-hidden font-sans">
+        <div className="flex-1 flex flex-col h-screen overflow-hidden font-sans bg-[#F8F9FB] relative">
 
             {/* TOAST */}
             {showToast && (
-                <div className="fixed top-8 right-8 bg-black text-white px-8 py-4 rounded-2xl shadow-2xl z-[100] animate-bounce font-black font-sans uppercase text-xs tracking-widest">
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl z-[100] animate-in slide-in-from-bottom-8 fade-in duration-300 font-medium font-sans text-sm flex items-center gap-2">
+                    <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                     {toastMsg}
                 </div>
             )}
 
             {/* HEADER */}
-            <div className="pt-8 px-8 pb-4">
-                <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                    {groupData ? `${groupData.name} Members` : "Loading..."}
-                </h1>
-                <p className="text-gray-500 mt-2 text-[15px]">
-                    {groupData?.description || "Administration & Access Management"}
-                </p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-12 pb-12 mt-4 font-sans">
-
-                {!showPermissionPage ? (
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 p-12">
-                        <div className="flex items-center gap-6 mb-8">
+            <div className="pt-10 px-10 pb-6 shrink-0 relative z-10">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                                {groupData?.name?.charAt(0).toUpperCase() || "G"}
+                            </div>
+                            <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">
+                                {groupData ? `${groupData.name} Group` : "Loading..."}
+                            </h1>
+                        </div>
+                        <p className="text-slate-500 text-sm font-medium ml-13 pl-13 max-w-2xl">
+                            {groupData?.description || "Manage access and administration settings for members in this group."}
+                        </p>
+                    </div>
+                    
+                    {!showPermissionPage && (
+                        <div className="flex items-center gap-3">
                             {canAddMembers && (
                                 <button onClick={() => setShowInviteModal(true)}
-                                className="flex items-center gap-2 text-gray-700 font-semibold text-sm hover:text-black transition-all">
-                                <FaUserPlus size={18} className="text-gray-600" />
-                                <span>Invite Member</span>
+                                    className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl font-medium text-sm hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm active:scale-95">
+                                    <FaUserPlus size={14} className="text-slate-500" />
+                                    <span>Invite Member</span>
                                 </button>
                             )}
                             <button onClick={() => setShowPermissionPage(true)}
-                                className="flex items-center gap-2 text-gray-700 font-semibold text-sm hover:text-black transition-all">
-                                <FaCog size={18} className="text-gray-600" />
-                                <span>Edit Permission</span>
+                                className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl font-medium text-sm hover:bg-slate-800 transition-all shadow-md active:scale-95">
+                                <FaCog size={14} className="text-white/80" />
+                                <span>Edit Permissions</span>
                             </button>
-</div>
+                        </div>
+                    )}
+                </div>
+            </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+            <div className="flex-1 overflow-y-auto px-10 pb-12 mt-2">
+                {!showPermissionPage ? (
+                    /* MEMBERS TABLE CARD */
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[500px]">
+                        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <h3 className="font-semibold text-sm text-slate-700">Active Members</h3>
+                            <span className="bg-slate-200 text-slate-600 font-medium text-xs px-2.5 py-0.5 rounded-full">{members.length}</span>
+                        </div>
+                        
+                        <div className="flex-1 overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="border-b border-gray-200 bg-gray-50/50">
-                                    <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Name</th>
-                                    <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Email Address</th>
-                                    <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Phone Number</th>
-                                    <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Status</th>
-                                    {canRemoveMembers && (
-                                        <th className="py-4 px-4 font-extrabold text-slate-500 text-[11px] uppercase tracking-wider">Action</th>
-                                    )}
+                                    <tr className="border-b border-slate-100">
+                                        <th className="py-4 px-6 font-semibold text-slate-500 text-xs uppercase tracking-wider w-1/3">Name</th>
+                                        <th className="py-4 px-6 font-semibold text-slate-500 text-xs uppercase tracking-wider w-1/3">Email Address</th>
+                                        <th className="py-4 px-6 font-semibold text-slate-500 text-xs uppercase tracking-wider">Phone</th>
+                                        <th className="py-4 px-6 font-semibold text-slate-500 text-xs uppercase tracking-wider text-center">Status</th>
+                                        {canRemoveMembers && (
+                                            <th className="py-4 px-6 font-semibold text-slate-500 text-xs uppercase tracking-wider text-right">Action</th>
+                                        )}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-50">
+                                <tbody className="divide-y divide-slate-50">
                                     {loading ? (
-                                    <tr><td colSpan={canRemoveMembers ? 5 : 4} className="py-24 text-center font-black font-sans text-gray-200 uppercase tracking-[0.5em] text-xl">Decrypting...</td></tr>
+                                        <tr><td colSpan={canRemoveMembers ? 5 : 4} className="py-20 text-center"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto" /></td></tr>
                                     ) : members.length === 0 ? (
-                                    <tr><td colSpan={canRemoveMembers ? 5 : 4} className="py-24 text-center font-black font-sans text-gray-300 uppercase tracking-widest">No members assigned to this sector</td></tr>
+                                        <tr><td colSpan={canRemoveMembers ? 5 : 4} className="py-24 text-center font-medium text-slate-500 text-sm">No members assigned to this group yet.</td></tr>
                                     ) : (
-                                    members.map((member) => (
-                                        <tr key={member.id} className="group hover:bg-gray-50 transition-all duration-200 border-b border-gray-100">
-                                        <td className="py-4 px-4 font-semibold text-gray-800 text-sm">{member.name}</td>
-                                        <td className="py-4 px-4 text-gray-500 text-sm">{member.email}</td>
-                                        <td className="py-4 px-4 text-gray-500 text-sm">{member.phone_number}</td>
-                                        <td className="py-4 px-4 text-sm">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${member.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                                            {member.status}
-                                            </span>
-                                        </td>
-                                        {canRemoveMembers && (
-                                            <td className="py-4 px-4 text-sm">
-                                            <button
-                                                onClick={() => handleRemoveMember(member.id)}
-                                                className="text-gray-400 hover:text-red-500 transition-colors"
-                                                title="Remove member"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="3 6 5 6 21 6" />
-                                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                                <path d="M10 11v6" /><path d="M14 11v6" />
-                                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                                                </svg>
-                                            </button>
-                                            </td>
-                                        )}
-                                        </tr>
-                                    ))
+                                        members.map((member) => (
+                                            <tr key={member.id} className="group hover:bg-slate-50/50 transition-colors duration-200">
+                                                <td className="py-4 px-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-semibold shrink-0 group-hover:bg-white group-hover:shadow-sm transition-all">
+                                                            {member.name?.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span className="font-medium text-slate-700 text-sm">{member.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6 text-slate-500 text-sm">{member.email}</td>
+                                                <td className="py-4 px-6 text-slate-500 text-sm">{member.phone_number || '—'}</td>
+                                                <td className="py-4 px-6 text-center">
+                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${member.status === "active" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"}`}>
+                                                        {member.status}
+                                                    </span>
+                                                </td>
+                                                {canRemoveMembers && (
+                                                    <td className="py-4 px-6 text-right">
+                                                        <button onClick={() => handleRemoveMember(member.id)}
+                                                            className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 w-8 h-8 rounded-lg flex items-center justify-center transition-all ml-auto" title="Remove member">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>
+                                                        </button>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))
                                     )}
                                 </tbody>
-                                </table>
+                            </table>
                         </div>
                     </div>
-
                 ) : (
-                    <div className="bg-white rounded-[2.5rem] p-16 shadow-2xl border border-gray-100">
-
-                        <div className="flex justify-between items-start mb-10">
+                    /* PERMISSIONS CONFIGURATION CARD */
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="flex justify-between items-center mb-8 pb-6 border-b border-slate-100">
                             <div>
-                                <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Group Permissions</h2>
-                                <p className="text-gray-500 mt-2 text-[15px]">
-                                    Configuring access for @{groupData?.name}
-                                </p>
+                                <h2 className="text-xl font-semibold text-slate-800 tracking-tight">Permissions Matrix</h2>
+                                <p className="text-slate-500 mt-1 text-sm">Configure granular access controls for {groupData?.name}</p>
                             </div>
                             <button onClick={() => setShowPermissionPage(false)}
-                                className="bg-white border border-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all shadow-sm">
-                                Back to List
+                                className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl font-medium text-sm hover:bg-slate-50 transition-all shadow-sm active:scale-95">
+                                Cancel
                             </button>
                         </div>
 
                         {permsLoading ? (
-                            <div className="py-24 text-center font-black font-sans text-gray-200 uppercase tracking-[0.5em] text-xl">Loading...</div>
+                            <div className="py-24 flex justify-center"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>
                         ) : (
-                            <div className="space-y-5">
+                            <div className="space-y-6 max-w-4xl">
                                 {PERMISSION_SECTIONS.map(({ label, scope, description, subPerms }) => {
                                     const s = perms[scope] || { enabled: false, ...DEFAULT_PERMS, existingId: null };
                                     const hasSubPerms = subPerms.length > 0;
 
                                     return (
-                                        <div key={scope}
-                                            className={`rounded-2xl border-2 transition-all duration-300 overflow-hidden ${s.enabled ? "border-black" : "border-gray-100"}`}>
-
-                                            <div className="flex items-center justify-between px-8 py-6">
-                                                <div className="flex items-center gap-5">
-                                                    <div onClick={() => toggleSection(scope)}
-                                                        className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer shrink-0 ${s.enabled ? "bg-black border-black" : "bg-white border-gray-300 hover:border-black"}`}>
-                                                        {s.enabled && (
-                                                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-sm text-gray-900">{label} Access</p>
-                                                        <p className="text-[13px] text-gray-500 mt-0.5">{description}</p>
-                                                    </div>
+                                        <div key={scope} className={`rounded-xl border transition-all duration-300 overflow-hidden ${s.enabled ? "border-slate-300 bg-white shadow-sm" : "border-slate-100 bg-slate-50/50"}`}>
+                                            <div className="flex items-center justify-between px-6 py-5">
+                                                <div>
+                                                    <p className={`font-semibold text-sm ${s.enabled ? "text-slate-800" : "text-slate-500"}`}>{label} Access</p>
+                                                    <p className="text-sm text-slate-500 mt-0.5">{description}</p>
                                                 </div>
-
-                                                <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-5">
                                                     {!hasSubPerms && s.enabled && (
-                                                        <span className="text-xs font-semibold text-gray-500 border border-gray-200 rounded-full px-3 py-1">
-                                                            Full Access
-                                                        </span>
+                                                        <span className="text-xs font-medium text-slate-500 bg-slate-100 rounded-md px-2.5 py-1">Full Access</span>
                                                     )}
-                                                    <span className={`px-4 py-1 rounded-full text-xs font-semibold ${s.enabled ? "bg-black text-white" : "bg-gray-100 text-gray-500"}`}>
-                                                        {s.enabled ? "Enabled" : "Disabled"}
-                                                    </span>
+                                                    <button onClick={() => toggleSection(scope)}
+                                                        className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 ${s.enabled ? 'bg-slate-800' : 'bg-slate-300'}`}>
+                                                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${s.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                                                    </button>
                                                 </div>
                                             </div>
 
                                             {s.enabled && hasSubPerms && (
-                                                <div className="px-8 pb-7 pt-1 border-t-2 border-gray-50">
-                                                    <div className={`grid gap-4 ${subPerms.length === 4 ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"}`}>
+                                                <div className="px-6 pb-6 pt-2">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         {subPerms.map(({ key, label: subLabel, desc }) => (
                                                             <div key={key} onClick={() => toggleSubPerm(scope, key)}
-                                                                className={`flex flex-col gap-3 p-5 rounded-2xl border-2 cursor-pointer transition-all select-none ${s[key] ? "border-black bg-black/5" : "border-gray-100 bg-white hover:border-gray-300"}`}>
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className={`font-semibold text-sm ${s[key] ? "text-gray-900" : "text-gray-500"}`}>
-                                                                        {subLabel}
-                                                                    </span>
-                                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${s[key] ? "bg-black border-black" : "bg-white border-gray-300"}`}>
-                                                                        {s[key] && (
-                                                                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                                            </svg>
-                                                                        )}
-                                                                    </div>
+                                                                className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all select-none group ${s[key] ? "border-slate-800 bg-slate-800/5" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                                                                <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center transition-all shrink-0 border ${s[key] ? "bg-slate-800 border-slate-800 text-white" : "bg-white border-slate-300 group-hover:border-slate-400"}`}>
+                                                                    {s[key] && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                                                 </div>
-                                                                <span className="text-[13px] text-gray-500">{desc}</span>
+                                                                <div>
+                                                                    <span className={`block font-semibold text-sm ${s[key] ? "text-slate-800" : "text-slate-600"}`}>{subLabel}</span>
+                                                                    <span className="block text-xs text-slate-500 mt-0.5">{desc}</span>
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -500,38 +491,48 @@ export default function DynamicGroupPage() {
                             </div>
                         )}
 
-                        <button onClick={handleSubmitPermissions} disabled={saving || permsLoading}
-                            className="mt-10 bg-gradient-to-r from-gray-900 to-black text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all block mx-auto disabled:opacity-50 disabled:cursor-not-allowed">
-                            {saving ? "Saving..." : "Save Permissions"}
-                        </button>
+                        <div className="mt-8 flex justify-end">
+                            <button onClick={handleSubmitPermissions} disabled={saving || permsLoading}
+                                className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-medium text-sm shadow-md shadow-slate-900/10 hover:shadow-lg hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                {saving ? (
+                                    <><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Saving Changes...</>
+                                ) : "Save Permissions"}
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
 
-            {/* ── INVITE MODAL ──────────────────────────────────────────────── */}
+            {/* INVITE MODAL - Premium Glassmorphic */}
             {showInviteModal && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100] p-6">
-                    <div className="bg-white w-full max-w-xl rounded-[3rem] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] p-12 relative">
+                <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-[200] p-6 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-8 relative animate-in zoom-in-95 duration-200">
                         <button onClick={() => setShowInviteModal(false)}
-                            className="absolute top-6 right-6 text-2xl text-gray-400 hover:text-gray-600">✕</button>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Invite Member</h2>
-                        <p className="text-sm text-gray-500 mb-8">
-                            Sector: <span className="font-semibold text-gray-800">@{groupData?.name}</span>
+                            className="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">✕</button>
+                        
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5">
+                            <FaUserPlus size={16} />
+                        </div>
+                        
+                        <h2 className="text-xl font-semibold text-slate-800 mb-1">Invite Member</h2>
+                        <p className="text-sm text-slate-500 mb-6">
+                            Add a new member to <span className="font-semibold text-slate-700">{groupData?.name}</span>
                         </p>
-                        <div className="space-y-8">
+                        
+                        <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Candidate Email</label>
-                                <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} type="email" placeholder="user@vdr.com"
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-[15px] font-medium text-gray-900 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
+                                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Candidate Email</label>
+                                <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} type="email" placeholder="colleague@company.com"
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-slate-800 transition-colors placeholder:text-slate-400 placeholder:font-normal" />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Brief Message</label>
-                                <textarea value={inviteDescription} onChange={e => setInviteDescription(e.target.value)} rows="4" placeholder="Describe the role..."
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-[15px] font-medium text-gray-900 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 resize-none transition-all" />
+                                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Message (Optional)</label>
+                                <textarea value={inviteDescription} onChange={e => setInviteDescription(e.target.value)} rows="3" placeholder="Brief invitation message..."
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-slate-800 resize-none transition-colors placeholder:text-slate-400 placeholder:font-normal" />
                             </div>
                             <button onClick={handleInviteSubmit}
-                                className="w-full bg-gradient-to-r from-gray-900 to-black text-white py-3 rounded-xl font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
-                                Dispatch Invitation
+                                className="w-full bg-slate-900 text-white py-3 rounded-xl font-medium text-sm shadow-md shadow-slate-900/10 hover:bg-slate-800 transition-all active:scale-95 mt-2">
+                                Send Invitation
                             </button>
                         </div>
                     </div>
@@ -540,3 +541,4 @@ export default function DynamicGroupPage() {
         </div>
     );
 }
+
