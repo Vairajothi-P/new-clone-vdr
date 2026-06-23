@@ -13,7 +13,7 @@ export default function AccessPage() {
     const [groups, setGroups] = useState([]);
     const [folders, setFolders] = useState([]);
     const [documents, setDocuments] = useState([]);
-    const [permissions, setPermissions] = useState({});
+    const [permissions, setPermissions] = useState({}); // Stores BOTH doc and folder perms
     const [groupMembers, setGroupMembers] = useState({});
 
     // UI State
@@ -61,7 +61,8 @@ export default function AccessPage() {
                 groupQuery,
                 supabase.from('folders').select('*').eq('company_id', session.company_id),
                 supabase.from('documents').select('id, name, folder_id, index').eq('company_id', session.company_id).eq('is_deleted', false).order('created_at', { ascending: true }),
-                supabase.from('permissions').select('id, document_id, group_id, can_view, can_edit, can_upload, can_download_secure, can_download_original').eq('company_id', session.company_id),
+                // FETCHING EVERYTHING FROM THE NEW ENTERPRISE PERMISSIONS TABLE
+                supabase.from('permissions').select('id, document_id, folder_id, scope, group_id, can_view, can_edit, can_upload, can_download_secure, can_download_original').eq('company_id', session.company_id),
                 supabase.from('user_groups').select('user_id, group_id'),
                 supabase.from('users').select('id, name, email')
             ]);
@@ -85,17 +86,17 @@ export default function AccessPage() {
             }
             setGroupMembers(membersMap);
 
+            // ── MAGIC MAPPING: Separate Docs vs Folders ──
             const map = {};
             (permsData || []).forEach(p => {
-                if (p.group_id && p.document_id) {
-                    map[`${p.group_id}_${p.document_id}`] = {
-                        can_view: p.can_view || false, can_edit: p.can_edit || false, can_upload: p.can_upload || false,
-                        can_download_secure: p.can_download_secure || false, can_download_original: p.can_download_original || false,
-                        perm_id: p.id,
-                    };
+                if (p.scope === 'document' && p.document_id) {
+                    map[`${p.group_id}_doc_${p.document_id}`] = p;
+                } else if (p.scope === 'folder' && p.folder_id) {
+                    map[`${p.group_id}_fol_${p.folder_id}`] = p;
                 }
             });
             setPermissions(map);
+
             if (groupsData?.length > 0 && !selectedGroup) setSelectedGroup(groupsData[0].id);
         } catch (err) { console.error('Fetch error:', err); }
         finally { setLoading(false); }
@@ -112,19 +113,19 @@ export default function AccessPage() {
         return descendants;
     };
 
-    const getFolderPermState = (groupId, folderId, field) => {
+    // Checks if the files INSIDE a folder have view/edit/dl rights
+    const getFolderBulkState = (groupId, folderId, field) => {
         const desc = getDescendantDocs(folderId);
         if (desc.length === 0) return 'none';
 
-        const hasAll = desc.every(d => permissions[`${groupId}_${d.id}`]?.[field]);
-        const hasSome = desc.some(d => permissions[`${groupId}_${d.id}`]?.[field]);
+        const hasAll = desc.every(d => permissions[`${groupId}_doc_${d.id}`]?.[field]);
+        const hasSome = desc.some(d => permissions[`${groupId}_doc_${d.id}`]?.[field]);
 
         if (hasAll) return 'all';
         if (hasSome) return 'some';
         return 'none';
     };
 
-    // Breadcrumb builder
     const getBreadcrumbs = () => {
         let crumbs = [];
         let curr = currentFolderId;
@@ -136,13 +137,19 @@ export default function AccessPage() {
         return crumbs;
     };
 
-    // ── TOGGLE SINGLE DOCUMENT ───────────────────────────────────────────────
-    const togglePermission = async (groupId, docId, field, overrideTarget = null) => {
-        const key = `${groupId}_${docId}`;
+    // ── CORE TOGGLE LOGIC ────────────────────────────────────────────────────
+    const togglePermission = async (groupId, targetId, type, field, overrideTarget = null) => {
+
+        // 🚨 BLOCK UPLOAD FOR FILES 🚨
+        if (type === 'doc' && field === 'can_upload') {
+            alert("Upload permission can only be granted to Folders, not individual files.");
+            return;
+        }
+
+        const key = `${groupId}_${type}_${targetId}`;
         const saveKey = `${key}_${field}`;
         const current = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false, perm_id: null };
 
-        // If overrideTarget is provided (from bulk folder toggle), use it. Otherwise, flip current state.
         let targetState = overrideTarget !== null ? overrideTarget : !current[field];
         let updated = { ...current, [field]: targetState };
 
@@ -153,7 +160,7 @@ export default function AccessPage() {
         if (field === 'can_download_original' && updated.can_download_original) {
             updated.can_download_secure = true;
         }
-        if (field === 'can_view' && updated.can_view) {
+        if (field === 'can_view' && updated.can_view && type === 'doc') {
             updated.can_download_secure = true;
         }
         if (field === 'can_view' && !updated.can_view) {
@@ -161,7 +168,6 @@ export default function AccessPage() {
             updated.can_download_secure = false; updated.can_download_original = false;
         }
 
-        // Check if actually changed to prevent useless DB calls
         if (JSON.stringify(current) === JSON.stringify(updated)) return;
 
         setPermissions(prev => ({ ...prev, [key]: updated }));
@@ -173,7 +179,7 @@ export default function AccessPage() {
             if (current.perm_id) {
                 if (allFalse) {
                     await supabase.from('permissions').delete().eq('id', current.perm_id);
-                    updated.perm_id = null; // Clear ID so it recreates later
+                    updated.perm_id = null;
                 } else {
                     await supabase.from('permissions').update({
                         can_view: updated.can_view, can_edit: updated.can_edit, can_upload: updated.can_upload,
@@ -181,9 +187,14 @@ export default function AccessPage() {
                     }).eq('id', current.perm_id);
                 }
             } else if (!allFalse) {
-                const { data } = await supabase.from('permissions').insert({
-                    company_id: session.company_id, group_id: groupId, document_id: docId, scope: 'document', ...updated
-                }).select('id').single();
+                const insertPayload = {
+                    company_id: session.company_id, group_id: groupId, scope: type === 'doc' ? 'document' : 'folder',
+                    ...updated
+                };
+                if (type === 'doc') insertPayload.document_id = targetId;
+                if (type === 'fol') insertPayload.folder_id = targetId;
+
+                const { data } = await supabase.from('permissions').insert(insertPayload).select('id').single();
                 updated.perm_id = data?.id;
             }
             setPermissions(prev => ({ ...prev, [key]: updated }));
@@ -196,33 +207,29 @@ export default function AccessPage() {
     };
 
     // ── BULK FOLDER TOGGLE ───────────────────────────────────────────────────
-    const toggleFolderPermission = async (groupId, folderId, field) => {
+    const toggleFolderBulk = async (groupId, folderId, field) => {
         const descendants = getDescendantDocs(folderId);
         if (descendants.length === 0) return;
-
-        const currentState = getFolderPermState(groupId, folderId, field);
-        // If ALL are true, we turn them ALL off. If Some/None are true, we turn them ALL on.
+        const currentState = getFolderBulkState(groupId, folderId, field);
         const targetState = currentState !== 'all';
-
-        // Execute all updates simultaneously
-        await Promise.all(descendants.map(doc => togglePermission(groupId, doc.id, field, targetState)));
+        await Promise.all(descendants.map(doc => togglePermission(groupId, doc.id, 'doc', field, targetState)));
     };
 
     const toggleAllForGroup = async (groupId, field) => {
-        const allDocsHaveIt = documents.every(doc => permissions[`${groupId}_${doc.id}`]?.[field] === true);
-        const targetState = !allDocsHaveIt;
-        await Promise.all(documents.map(doc => togglePermission(groupId, doc.id, field, targetState)));
+        if (field === 'can_upload') {
+            const allFoldersHaveIt = displayFolders.every(f => permissions[`${groupId}_fol_${f.id}`]?.can_upload);
+            await Promise.all(displayFolders.map(f => togglePermission(groupId, f.id, 'fol', 'can_upload', !allFoldersHaveIt)));
+        } else {
+            const allDocsHaveIt = displayDocs.every(doc => permissions[`${groupId}_doc_${doc.id}`]?.[field] === true);
+            await Promise.all(displayDocs.map(doc => togglePermission(groupId, doc.id, 'doc', field, !allDocsHaveIt)));
+        }
     };
 
     // ── UTILS & FILTERING ────────────────────────────────────────────────────
     const activeGroup = groups.find(g => g.id === selectedGroup);
 
-    // Get items for the current view
     const displayFolders = folders.filter(f => f.parent_folder_id === currentFolderId && f.name.toLowerCase().includes(searchQuery.toLowerCase()));
     const displayDocs = documents.filter(d => d.folder_id === currentFolderId && d.name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    // Total counts for group users
-    const getGroupAccessCount = (groupId) => documents.filter(d => permissions[`${groupId}_${d.id}`]?.can_view).length;
 
     if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>;
 
@@ -327,9 +334,12 @@ export default function AccessPage() {
                             <table className="w-full min-w-[750px] border-collapse text-left">
                                 <thead>
                                     <tr className="bg-slate-100/50 border-b border-slate-200">
-                                        <th colSpan="2" className="py-2.5 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Apply to All →</th>
+                                        <th colSpan="2" className="py-2.5 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Apply to View →</th>
                                         {['can_view', 'can_edit', 'can_upload', 'can_download_secure', 'can_download_original'].map(field => {
-                                            const isAllChecked = documents.length > 0 && documents.every(doc => permissions[`${selectedGroup}_${doc.id}`]?.[field]);
+                                            const isAllChecked = field === 'can_upload'
+                                                ? (displayFolders.length > 0 && displayFolders.every(f => permissions[`${selectedGroup}_fol_${f.id}`]?.can_upload))
+                                                : (displayDocs.length > 0 && displayDocs.every(d => permissions[`${selectedGroup}_doc_${d.id}`]?.[field]));
+
                                             return (
                                                 <th key={`bulk_${field}`} className="py-2.5 px-3 text-center">
                                                     <button onClick={() => toggleAllForGroup(selectedGroup, field)} className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md transition-colors border ${isAllChecked ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
@@ -375,21 +385,27 @@ export default function AccessPage() {
                                                 </td>
 
                                                 {toggles.map(({ field, color }) => {
-                                                    const state = getFolderPermState(selectedGroup, folder.id, field);
-                                                    return (
-                                                        <td key={field} className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                                                            <button
-                                                                onClick={() => toggleFolderPermission(selectedGroup, folder.id, field)}
-                                                                className={`relative w-11 h-6 rounded-full transition-all duration-200 focus:outline-none mx-auto block
-                                                                    ${state === 'all' ? color : state === 'some' ? 'bg-slate-300' : 'bg-slate-200'}`}
-                                                                title={state === 'some' ? 'Partial Access (Some files)' : ''}
-                                                            >
-                                                                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200
-                                                                    ${state === 'all' ? 'left-0.5 translate-x-5' : state === 'some' ? 'left-[10px]' : 'left-0.5 translate-x-0'}`}
-                                                                />
-                                                            </button>
-                                                        </td>
-                                                    );
+                                                    // UPLOAD saves to the folder directly. The others are bulk-actions for child files.
+                                                    if (field === 'can_upload') {
+                                                        const isActive = permissions[`${selectedGroup}_fol_${folder.id}`]?.can_upload;
+                                                        const isSaving = saving[`${selectedGroup}_fol_${folder.id}_can_upload`];
+                                                        return (
+                                                            <td key={field} className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                                                <button onClick={() => togglePermission(selectedGroup, folder.id, 'fol', 'can_upload')} disabled={isSaving} className={`relative w-11 h-6 rounded-full transition-all duration-200 mx-auto block ${isActive ? color : 'bg-slate-200'}`}>
+                                                                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${isActive ? 'left-0.5 translate-x-5' : 'left-0.5 translate-x-0'}`} />
+                                                                </button>
+                                                            </td>
+                                                        );
+                                                    } else {
+                                                        const state = getFolderBulkState(selectedGroup, folder.id, field);
+                                                        return (
+                                                            <td key={field} className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                                                <button onClick={() => toggleFolderBulk(selectedGroup, folder.id, field)} className={`relative w-11 h-6 rounded-full transition-all duration-200 mx-auto block ${state === 'all' ? color : state === 'some' ? 'bg-slate-400' : 'bg-slate-200'}`} title={state === 'some' ? 'Partial Access (Some files)' : ''}>
+                                                                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${state === 'all' ? 'left-0.5 translate-x-5' : state === 'some' ? 'left-[12px]' : 'left-0.5 translate-x-0'}`} />
+                                                                </button>
+                                                            </td>
+                                                        );
+                                                    }
                                                 })}
                                             </tr>
                                         );
@@ -397,8 +413,8 @@ export default function AccessPage() {
 
                                     {/* ── RENDER FILES ── */}
                                     {displayDocs.map((doc) => {
-                                        const key = `${selectedGroup}_${doc.id}`;
-                                        const perm = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false };
+                                        const key = `${selectedGroup}_doc_${doc.id}`;
+                                        const perm = permissions[key] || { can_view: false, can_edit: false, can_download_secure: false, can_download_original: false };
                                         const ext = doc.name.split('.').pop().toLowerCase();
                                         const iconClass = { pdf: 'bg-rose-50 border-rose-100 text-rose-600', xlsx: 'bg-emerald-50 border-emerald-100 text-emerald-600', docx: 'bg-indigo-50 border-indigo-100 text-indigo-600' }[ext] || 'bg-slate-50 border-slate-200 text-slate-400';
 
@@ -421,19 +437,25 @@ export default function AccessPage() {
                                                 </td>
 
                                                 {toggles.map(({ field, color }) => {
+                                                    // 🚨 GREY OUT "UPLOAD" FOR FILES
+                                                    if (field === 'can_upload') {
+                                                        return (
+                                                            <td key={field} className="py-3.5 px-3 text-center">
+                                                                <button onClick={() => togglePermission(selectedGroup, doc.id, 'doc', 'can_upload')} className="relative w-11 h-6 rounded-full bg-slate-100 cursor-not-allowed mx-auto block opacity-60" title="Upload is only for folders">
+                                                                    <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-slate-300 rounded-full flex items-center justify-center">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                                                    </span>
+                                                                </button>
+                                                            </td>
+                                                        );
+                                                    }
+
                                                     const isActive = perm[field];
                                                     const isSaving = saving[`${key}_${field}`];
                                                     return (
                                                         <td key={field} className="py-3.5 px-3 text-center">
-                                                            <button
-                                                                onClick={() => togglePermission(selectedGroup, doc.id, field)}
-                                                                disabled={isSaving}
-                                                                className={`relative w-11 h-6 rounded-full transition-all duration-200 focus:outline-none mx-auto block
-                                                                    ${isActive ? color : 'bg-slate-200'} ${isSaving ? 'opacity-50' : ''}`}
-                                                            >
-                                                                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200
-                                                                    ${isActive ? 'translate-x-5' : 'translate-x-0'}`}
-                                                                />
+                                                            <button onClick={() => togglePermission(selectedGroup, doc.id, 'doc', field)} disabled={isSaving} className={`relative w-11 h-6 rounded-full transition-all duration-200 mx-auto block ${isActive ? color : 'bg-slate-200'} ${isSaving ? 'opacity-50' : ''}`}>
+                                                                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${isActive ? 'left-0.5 translate-x-5' : 'left-0.5 translate-x-0'}`} />
                                                             </button>
                                                         </td>
                                                     );
@@ -451,427 +473,6 @@ export default function AccessPage() {
     );
 }
 
-// "use client";
-
-// import React, { useState, useEffect, useCallback } from 'react';
-// import { useRouter } from 'next/navigation';
-// import { supabase } from '@/utils/supabase/client';
-// import { hasPermission } from '@/lib/access/permissions';
-
-// export default function AccessPage() {
-//     const router = useRouter();
-//     const [session, setSession] = useState(null);
-
-//     // Core Data
-//     const [groups, setGroups] = useState([]);
-//     const [documents, setDocuments] = useState([]);
-//     const [permissions, setPermissions] = useState({}); // { [groupId_docId]: { ...permissions } }
-//     const [groupMembers, setGroupMembers] = useState({}); // { [groupId]: [ {id, name, email} ] }
-
-//     // UI State
-//     const [loading, setLoading] = useState(true);
-//     const [saving, setSaving] = useState({}); // { [groupId_docId_field]: true }
-//     const [selectedGroup, setSelectedGroup] = useState(null);
-//     const [expandedGroups, setExpandedGroups] = useState(new Set());
-//     const [searchQuery, setSearchQuery] = useState('');
-
-//     // ── SESSION ──────────────────────────────────────────────────────────────
-//     useEffect(() => {
-//         const raw = localStorage.getItem('vdr_session');
-//         if (!raw) { window.location.href = '/login'; return; }
-
-//         const s = JSON.parse(raw);
-//         if (!hasPermission(s.role, 'manage_access')) {
-//             router.replace('/documents');
-//             return;
-//         }
-//         setSession(s);
-//     }, [router]);
-
-//     // ── FETCH ────────────────────────────────────────────────────────────────
-//     useEffect(() => {
-//         if (session) fetchAll();
-//     }, [session]);
-
-//     const fetchAll = useCallback(async () => {
-//         setLoading(true);
-//         try {
-//             let groupQuery = supabase
-//                 .from('groups')
-//                 .select('*')
-//                 .eq('company_id', session.company_id)
-//                 .order('created_at', { ascending: false });
-
-//             if (session.role !== 'super_admin') {
-//                 groupQuery = groupQuery.eq('created_by', session.id);
-//             }
-
-//             const [
-//                 { data: groupsData },
-//                 { data: docsData },
-//                 { data: permsData },
-//                 { data: userGroups },
-//                 { data: usersData }
-//             ] = await Promise.all([
-//                 groupQuery,
-//                 supabase.from('documents').select('id, name, folder_id, index').eq('company_id', session.company_id).eq('is_deleted', false).order('index'),
-//                 supabase.from('permissions').select('id, document_id, group_id, can_view, can_edit, can_upload, can_download_secure, can_download_original').eq('company_id', session.company_id),
-//                 supabase.from('user_groups').select('user_id, group_id'),
-//                 supabase.from('users').select('id, name, email')
-//             ]);
-
-//             // setGroups(groupsData || []);
-//             // setDocuments(docsData || []);
-//             setGroups(groupsData || []);
-
-//             // Clean the index numbers to be exact integers (remove .0) just like the Files page
-//             const cleanedDocs = (docsData || []).map(doc => ({
-//                 ...doc,
-//                 index: doc.index ? doc.index.toString().replace('.0', '') : '--'
-//             }));
-//             setDocuments(cleanedDocs);
-//             // Build Members Map
-//             const membersMap = {};
-//             if (userGroups && usersData) {
-//                 const userDict = {};
-//                 usersData.forEach(u => userDict[u.id] = u);
-
-//                 userGroups.forEach(ug => {
-//                     if (!membersMap[ug.group_id]) membersMap[ug.group_id] = [];
-//                     if (userDict[ug.user_id]) membersMap[ug.group_id].push(userDict[ug.user_id]);
-//                 });
-//             }
-//             setGroupMembers(membersMap);
-
-//             // Build Permission Map
-//             const map = {};
-//             (permsData || []).forEach(p => {
-//                 if (p.group_id && p.document_id) {
-//                     map[`${p.group_id}_${p.document_id}`] = {
-//                         can_view: p.can_view || false,
-//                         can_edit: p.can_edit || false,
-//                         can_upload: p.can_upload || false,
-//                         can_download_secure: p.can_download_secure || false,
-//                         can_download_original: p.can_download_original || false,
-//                         perm_id: p.id,
-//                     };
-//                 }
-//             });
-//             setPermissions(map);
-
-//             if (groupsData?.length > 0 && !selectedGroup) {
-//                 setSelectedGroup(groupsData[0].id);
-//             }
-//         } catch (err) {
-//             console.error('Fetch error:', err);
-//         } finally {
-//             setLoading(false);
-//         }
-//     }, [session, selectedGroup]);
-
-//     // ── EXPAND / COLLAPSE GROUPS ─────────────────────────────────────────────
-//     const toggleExpand = (groupId) => {
-//         setExpandedGroups(prev => {
-//             const next = new Set(prev);
-//             if (next.has(groupId)) next.delete(groupId);
-//             else next.add(groupId);
-//             return next;
-//         });
-//     };
-
-//     // ── TOGGLE PERMISSION ────────────────────────────────────────────────────
-//     const togglePermission = async (groupId, docId, field) => {
-//         const key = `${groupId}_${docId}`;
-//         const saveKey = `${key}_${field}`;
-//         const current = permissions[key] || {
-//             can_view: false, can_edit: false, can_upload: false,
-//             can_download_secure: false, can_download_original: false, perm_id: null
-//         };
-
-//         let updated = { ...current, [field]: !current[field] };
-
-//         // Hierarchy Logic
-//         if (['can_edit', 'can_upload', 'can_download_secure', 'can_download_original'].includes(field) && updated[field]) {
-//             updated.can_view = true;
-//         }
-//         if (field === 'can_download_original' && updated.can_download_original) {
-//             updated.can_download_secure = true;
-//         }
-//         if (field === 'can_view' && !updated.can_view) {
-//             updated.can_edit = false;
-//             updated.can_upload = false;
-//             updated.can_download_secure = false;
-//             updated.can_download_original = false;
-//         }
-
-//         // Optimistic update
-//         setPermissions(prev => ({ ...prev, [key]: updated }));
-//         setSaving(prev => ({ ...prev, [saveKey]: true }));
-
-//         try {
-//             const allFalse = !updated.can_view && !updated.can_edit && !updated.can_upload && !updated.can_download_secure && !updated.can_download_original;
-
-//             if (current.perm_id) {
-//                 if (allFalse) {
-//                     await supabase.from('permissions').delete().eq('id', current.perm_id);
-//                 } else {
-//                     await supabase.from('permissions').update({
-//                         can_view: updated.can_view,
-//                         can_edit: updated.can_edit,
-//                         can_upload: updated.can_upload,
-//                         can_download_secure: updated.can_download_secure,
-//                         can_download_original: updated.can_download_original
-//                     }).eq('id', current.perm_id);
-//                 }
-//             } else if (!allFalse) {
-//                 const { data } = await supabase.from('permissions').insert({
-//                     company_id: session.company_id,
-//                     group_id: groupId,
-//                     document_id: docId,
-//                     scope: 'document',
-//                     ...updated
-//                 }).select('id').single();
-
-//                 setPermissions(prev => ({ ...prev, [key]: { ...updated, perm_id: data?.id } }));
-//             }
-//         } catch (err) {
-//             console.error('Permission update failed:', err);
-//             setPermissions(prev => ({ ...prev, [key]: current })); // Revert on fail
-//         } finally {
-//             setSaving(prev => { const n = { ...prev }; delete n[saveKey]; return n; });
-//         }
-//     };
-
-//     // ── UTILS ────────────────────────────────────────────────────────────────
-//     const filteredDocs = documents.filter(d => d.name.toLowerCase().includes(searchQuery.toLowerCase()));
-//     const activeGroup = groups.find(g => g.id === selectedGroup);
-//     const getGroupAccessCount = (groupId) => documents.filter(d => permissions[`${groupId}_${d.id}`]?.can_view).length;
-
-//     if (loading) {
-//         return (
-//             <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]">
-//                 <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
-//             </div>
-//         );
-//     }
-
-//     return (
-//         <div className="relative flex w-full h-full bg-[#F8F9FB] overflow-hidden text-slate-800 font-sans">
-
-//             {/* ── LEFT: GROUPS LIST (WITH ACCORDION) ──────────────────────── */}
-//             <aside className="w-[280px] shrink-0 border-r border-slate-200 bg-white flex flex-col h-full overflow-hidden">
-//                 <div className="px-5 pt-5 pb-3 border-b border-slate-100">
-//                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Room Groups</p>
-//                     <p className="text-[11px] text-slate-400 mt-1">{groups.length} group{groups.length !== 1 ? 's' : ''}</p>
-//                 </div>
-
-//                 <div className="flex-1 overflow-y-auto py-2 px-2">
-//                     {groups.length === 0 ? (
-//                         <p className="text-[11px] text-slate-400 text-center py-8 px-3">No groups available.</p>
-//                     ) : (
-//                         groups.map(group => {
-//                             const isActive = selectedGroup === group.id;
-//                             const isExpanded = expandedGroups.has(group.id);
-//                             const members = groupMembers[group.id] || [];
-//                             const accessCount = getGroupAccessCount(group.id);
-
-//                             return (
-//                                 <div key={group.id} className="mb-0.5">
-//                                     <button
-//                                         onClick={() => setSelectedGroup(group.id)}
-//                                         className={`w-full flex items-center gap-2 px-2 py-3 rounded-xl text-left transition-all
-//                                             ${isActive ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
-//                                     >
-//                                         <div
-//                                             onClick={(e) => { e.stopPropagation(); toggleExpand(group.id); }}
-//                                             className={`w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/20 transition-transform cursor-pointer
-//                                                 ${isExpanded ? 'rotate-180' : ''}`}
-//                                         >
-//                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-//                                         </div>
-
-//                                         <div className="min-w-0 flex-1">
-//                                             <p className={`text-[12.5px] font-bold truncate ${isActive ? 'text-white' : 'text-slate-800'}`}>
-//                                                 {group.name}
-//                                             </p>
-//                                             <p className={`text-[10.5px] truncate ${isActive ? 'text-white/60' : 'text-slate-400'}`}>
-//                                                 {members.length} member{members.length !== 1 ? 's' : ''}
-//                                             </p>
-//                                         </div>
-//                                         <span className={`text-[10px] font-black shrink-0 px-1.5 py-0.5 rounded-md mr-1
-//                                             ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
-//                                             {accessCount}/{documents.length}
-//                                         </span>
-//                                     </button>
-
-//                                     {/* ACCORDION USERS LIST */}
-//                                     {isExpanded && members.length > 0 && (
-//                                         <div className="mt-1 mb-2 ml-4 pl-4 border-l-2 border-slate-100 flex flex-col gap-1">
-//                                             {members.map(user => (
-//                                                 <div key={user.id} className="flex items-center gap-2 py-1">
-//                                                     <div className="w-5 h-5 rounded-md bg-slate-200 text-slate-500 flex items-center justify-center text-[9px] font-bold shrink-0">
-//                                                         {user.name?.charAt(0).toUpperCase() || 'U'}
-//                                                     </div>
-//                                                     <div className="min-w-0 flex-1">
-//                                                         <p className="text-[11.5px] font-semibold text-slate-600 truncate">{user.name}</p>
-//                                                         <p className="text-[9.5px] text-slate-400 truncate">{user.email}</p>
-//                                                     </div>
-//                                                 </div>
-//                                             ))}
-//                                         </div>
-//                                     )}
-//                                 </div>
-//                             );
-//                         })
-//                     )}
-//                 </div>
-//             </aside>
-
-//             {/* ── RIGHT: PERMISSION MATRIX ────────────────────────────────── */}
-//             <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
-
-//                 <div className="flex items-center justify-between px-7 pt-6 pb-4 border-b border-slate-200 bg-white">
-//                     <div className="flex items-center gap-3">
-//                         {activeGroup && (
-//                             <>
-//                                 <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-[12px] font-black text-white shrink-0">
-//                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-//                                 </div>
-//                                 <div>
-//                                     <p className="text-[14px] font-black text-slate-800">{activeGroup.name}</p>
-//                                     <p className="text-[11px] text-slate-400">Group Access Rules</p>
-//                                 </div>
-//                             </>
-//                         )}
-//                         {!activeGroup && <p className="text-[13px] font-black text-slate-400 uppercase tracking-widest">Access Control</p>}
-//                     </div>
-
-//                     <div className="flex items-center gap-2">
-//                         <div className="relative w-48">
-//                             <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-//                             <input
-//                                 type="text"
-//                                 placeholder="Search documents..."
-//                                 value={searchQuery}
-//                                 onChange={e => setSearchQuery(e.target.value)}
-//                                 className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[12px] font-semibold text-slate-700 focus:outline-none focus:border-slate-400 focus:bg-white transition-all"
-//                             />
-//                         </div>
-//                     </div>
-//                 </div>
-
-//                 <div className="flex-1 overflow-auto px-7 py-5">
-//                     {!selectedGroup ? (
-//                         <div className="flex flex-col items-center justify-center h-64 text-slate-400 gap-3">
-//                             <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="opacity-30"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-//                             <p className="text-[13px] font-bold">Select a group to manage access</p>
-//                         </div>
-//                     ) : (
-//                         <div className="rounded-2xl border border-slate-200 bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)] overflow-hidden">
-//                             <table className="w-full min-w-[750px] border-collapse text-left">
-//                                 <thead>
-//                                     <tr className="border-b border-slate-100 bg-slate-50/60">
-//                                         <th className="py-3.5 px-4 w-16 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Index</th>
-//                                         <th className="py-3.5 px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Document</th>
-//                                         <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">View</th>
-//                                         <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Edit</th>
-//                                         <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Upload</th>
-//                                         <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">DL Secure</th>
-//                                         <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">DL Orig</th>
-//                                     </tr>
-//                                 </thead>
-//                                 <tbody className="divide-y divide-slate-50">
-//                                     {filteredDocs.length === 0 ? (
-//                                         <tr>
-//                                             <td colSpan="7" className="py-20 text-center">
-//                                                 <p className="text-[13px] font-bold text-slate-400">
-//                                                     {searchQuery ? 'No documents match your search' : 'No documents found'}
-//                                                 </p>
-//                                             </td>
-//                                         </tr>
-//                                     ) : (
-//                                         filteredDocs.map(doc => {
-//                                             const key = `${selectedGroup}_${doc.id}`;
-//                                             const perm = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false };
-//                                             const ext = doc.name.split('.').pop().toLowerCase();
-
-//                                             const iconMap = {
-//                                                 pdf: 'bg-rose-50 border-rose-100 text-rose-600',
-//                                                 xlsx: 'bg-emerald-50 border-emerald-100 text-emerald-600',
-//                                                 xls: 'bg-emerald-50 border-emerald-100 text-emerald-600',
-//                                                 docx: 'bg-indigo-50 border-indigo-100 text-indigo-600',
-//                                                 doc: 'bg-indigo-50 border-indigo-100 text-indigo-600',
-//                                                 pptx: 'bg-orange-50 border-orange-100 text-orange-600',
-//                                                 png: 'bg-purple-50 border-purple-100 text-purple-600',
-//                                                 jpg: 'bg-purple-50 border-purple-100 text-purple-600',
-//                                             };
-//                                             const iconClass = iconMap[ext] || 'bg-slate-50 border-slate-200 text-slate-400';
-
-//                                             const toggles = [
-//                                                 { field: 'can_view', color: 'bg-slate-900' },
-//                                                 { field: 'can_edit', color: 'bg-blue-600' },
-//                                                 { field: 'can_upload', color: 'bg-purple-600' },
-//                                                 { field: 'can_download_secure', color: 'bg-emerald-600' },
-//                                                 { field: 'can_download_original', color: 'bg-orange-500' }
-//                                             ];
-
-//                                             return (
-//                                                 <tr key={doc.id} className="group hover:bg-slate-50/60 transition-all duration-150">
-//                                                     <td className="py-3.5 px-4 text-center font-mono text-[11.5px] font-semibold text-slate-400">
-//                                                         {doc.index || '—'}
-//                                                     </td>
-//                                                     <td className="py-3.5 px-3">
-//                                                         <div className="flex items-center gap-3">
-//                                                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[9px] font-black border ${iconClass}`}>
-//                                                                 {ext.toUpperCase().slice(0, 3)}
-//                                                             </div>
-//                                                             <p className="font-semibold text-[13px] text-slate-700 truncate max-w-[240px]">{doc.name}</p>
-//                                                         </div>
-//                                                     </td>
-
-//                                                     {/* The 5 Toggles */}
-//                                                     {toggles.map(({ field, color }) => {
-//                                                         const isSaving = saving[`${key}_${field}`];
-//                                                         const isActive = perm[field];
-
-//                                                         return (
-//                                                             <td key={field} className="py-3.5 px-3 text-center">
-//                                                                 <button
-//                                                                     onClick={() => togglePermission(selectedGroup, doc.id, field)}
-//                                                                     disabled={isSaving}
-//                                                                     className={`relative w-11 h-6 rounded-full transition-all duration-200 focus:outline-none mx-auto block
-//                                                                         ${isActive ? color : 'bg-slate-200'}
-//                                                                         ${isSaving ? 'opacity-50' : ''}`}
-//                                                                 >
-//                                                                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200
-//                                                                         ${isActive ? 'translate-x-5' : 'translate-x-0'}`}
-//                                                                     />
-//                                                                 </button>
-//                                                             </td>
-//                                                         );
-//                                                     })}
-//                                                 </tr>
-//                                             );
-//                                         })
-//                                     )}
-//                                 </tbody>
-//                             </table>
-//                         </div>
-//                     )}
-
-//                     {selectedGroup && (
-//                         <div className="mt-3 px-1">
-//                             <p className="text-[11.5px] text-slate-400 font-semibold">
-//                                 {filteredDocs.length} document{filteredDocs.length !== 1 ? 's' : ''}
-//                                 {searchQuery && ` matching "${searchQuery}"`}
-//                             </p>
-//                         </div>
-//                     )}
-//                 </div>
-//             </div>
-//         </div>
-//     );
-// }
 
 
 
@@ -893,6 +494,7 @@ export default function AccessPage() {
 
 
 
+//only doc usper admin user mode without groups
 // "use client";
 
 // import React, { useState, useEffect, useCallback } from 'react';
