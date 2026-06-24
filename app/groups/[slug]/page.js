@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { FaUserPlus, FaCog } from "react-icons/fa";
@@ -8,32 +8,31 @@ import { NAV_ITEMS } from "@/lib/nav-items";
 
 const PERMISSION_SECTIONS = [
     {
-        label: "Groups",
-        scope: "group",
-        description: "Control group management access",
-        subPerms: [
-            { key: "can_add_members", label: "Add Members", desc: "Can invite & add users to groups" },
-            { key: "can_remove_members", label: "Remove Members", desc: "Can remove users from groups" },
-            { key: "can_create_group", label: "Create Group", desc: "Can create new groups" },
-            { key: "can_delete_group", label: "Delete Group", desc: "Can delete existing groups" },
-        ],
-    },
-    {
-        label: "Settings",
-        scope: "settings",
-        description: "Grant access to workspace settings",
-        subPerms: [],
-    },
-    {
         label: "Workspace",
         scope: "workspace",
-        description: "Control access to navigation modules",
-        // Dynamically built from NAV_ITEMS — add a new item in lib/nav-items.js and it appears here automatically
-        subPerms: NAV_ITEMS.map(item => ({
-            key: `can_access_${item.key}`,
-            label: item.label,
-            desc: `Can access the ${item.label} module`,
-        })),
+        description: "Control access to navigation modules and group management",
+        subPerms: [
+            {
+                key: "can_access_groups", 
+                label: "Groups", 
+                desc: "Can access the Groups module and manage group settings",
+                nested: [
+                    { key: "can_add_members", label: "Add Members", desc: "Can invite & add users to groups" },
+                    { key: "can_remove_members", label: "Remove Members", desc: "Can remove users from groups" },
+                    { key: "can_create_group", label: "Create Group", desc: "Can create new groups" },
+                    { key: "can_delete_group", label: "Delete Group", desc: "Can delete existing groups" },
+                ]
+            },
+            {
+                key: "can_access_settings", 
+                label: "Settings", 
+                desc: "Can access the Settings module and workspace configurations",
+                nested: [
+                    { key: "can_access_branding", label: "Branding", desc: "Can customize workspace branding" },
+                    { key: "can_access_watermarks", label: "Watermarks", desc: "Can configure document watermarks" }
+                ]
+            }
+        ],
     },
 ];
 
@@ -150,7 +149,7 @@ export default function DynamicGroupPage() {
                 .from('permissions')
                 .select('can_add_members, can_remove_members')
                 .eq('company_id', companyId)
-                .eq('scope', 'group')
+                .eq('scope', 'workspace')
                 .in('group_id', groupIds);
 
             if (perms && perms.length > 0) {
@@ -244,9 +243,11 @@ export default function DynamicGroupPage() {
                     company_id: groupData.company_id,
                     group_id: groupData.id,
                     scope,
-                    can_view: scope === "settings" ? true : false,
+                    can_view: false,
                     can_add_members: s.can_add_members || false,
                     can_remove_members: s.can_remove_members || false,
+                    can_create_group: s.can_create_group || false,
+                    can_delete_group: s.can_delete_group || false,
                     can_access_documents: s.can_access_documents || false,
                     can_access_groups: s.can_access_groups || false,
                     can_access_settings: s.can_access_settings || false,
@@ -461,42 +462,68 @@ export default function DynamicGroupPage() {
                             <div className="space-y-6 max-w-4xl">
                                 {PERMISSION_SECTIONS.map(({ label, scope, description, subPerms }) => {
                                     const s = perms[scope] || { enabled: false, ...DEFAULT_PERMS, existingId: null };
-                                    const hasSubPerms = subPerms.length > 0;
-
+                                    
                                     return (
-                                        <div key={scope} className={`rounded-xl border transition-all duration-300 overflow-hidden ${s.enabled ? "border-slate-300 bg-white shadow-sm" : "border-slate-100 bg-slate-50/50"}`}>
-                                            <div className="flex items-center justify-between px-6 py-5">
+                                        <div key={scope} className="flex flex-col">
+                                            {/* Top Level Workspace Header */}
+                                            <div className="flex items-center justify-between pb-6 border-b border-slate-100 mb-6">
                                                 <div>
-                                                    <p className={`font-semibold text-sm ${s.enabled ? "text-slate-800" : "text-slate-500"}`}>{label} Access</p>
-                                                    <p className="text-sm text-slate-500 mt-0.5">{description}</p>
+                                                    <p className="font-semibold text-base text-slate-800">{label} Access Control</p>
+                                                    <p className="text-sm text-slate-500 mt-1">{description}</p>
                                                 </div>
-                                                <div className="flex items-center gap-5">
-                                                    {!hasSubPerms && s.enabled && (
-                                                        <span className="text-xs font-medium text-slate-500 bg-slate-100 rounded-md px-2.5 py-1">Full Access</span>
-                                                    )}
-                                                    <button onClick={() => toggleSection(scope)}
-                                                        className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 ${s.enabled ? 'bg-slate-800' : 'bg-slate-300'}`}>
-                                                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${s.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                                                    </button>
-                                                </div>
+                                                <button onClick={() => toggleSection(scope)}
+                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${s.enabled ? 'bg-slate-900' : 'bg-slate-200'}`}>
+                                                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${s.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                                                </button>
                                             </div>
 
-                                            {s.enabled && hasSubPerms && (
-                                                <div className="px-6 pb-6 pt-2">
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        {subPerms.map(({ key, label: subLabel, desc }) => (
-                                                            <div key={key} onClick={() => toggleSubPerm(scope, key)}
-                                                                className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all select-none group ${s[key] ? "border-slate-800 bg-slate-800/5" : "border-slate-200 bg-white hover:border-slate-300"}`}>
-                                                                <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center transition-all shrink-0 border ${s[key] ? "bg-slate-800 border-slate-800 text-white" : "bg-white border-slate-300 group-hover:border-slate-400"}`}>
-                                                                    {s[key] && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                            {/* Sub Modules (Groups, Settings) as Clean Cards */}
+                                            {s.enabled && (
+                                                <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                                    {subPerms.map((sub) => {
+                                                        const isModuleOn = !!s[sub.key];
+                                                        
+                                                        return (
+                                                            <div key={sub.key} className={`border rounded-2xl transition-all duration-200 overflow-hidden ${isModuleOn ? 'border-slate-300 shadow-sm bg-white' : 'border-slate-200 bg-slate-50/50'}`}>
+                                                                
+                                                                {/* Module Header */}
+                                                                <div className="p-6 flex items-center justify-between">
+                                                                    <div>
+                                                                        <h4 className={`font-semibold ${isModuleOn ? 'text-slate-800' : 'text-slate-600'}`}>{sub.label} Module</h4>
+                                                                        <p className="text-sm text-slate-500 mt-1">{sub.desc}</p>
+                                                                    </div>
+                                                                    <button onClick={() => toggleSubPerm(scope, sub.key)}
+                                                                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isModuleOn ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                                                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isModuleOn ? 'translate-x-4' : 'translate-x-0'}`} />
+                                                                    </button>
                                                                 </div>
-                                                                <div>
-                                                                    <span className={`block font-semibold text-sm ${s[key] ? "text-slate-800" : "text-slate-600"}`}>{subLabel}</span>
-                                                                    <span className="block text-xs text-slate-500 mt-0.5">{desc}</span>
-                                                                </div>
+
+                                                                {/* Granular Permissions (Shown if Module is ON) */}
+                                                                {isModuleOn && sub.nested && sub.nested.length > 0 && (
+                                                                    <div className="border-t border-slate-100 bg-slate-50/50 p-6 animate-in fade-in duration-300">
+                                                                        <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-5">Granular Permissions</h5>
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8">
+                                                                            {sub.nested.map(n => (
+                                                                                <label key={n.key} className="flex items-start gap-3.5 cursor-pointer group">
+                                                                                    <div className="mt-0.5 relative flex items-center justify-center">
+                                                                                        <input type="checkbox" checked={!!s[n.key]} onChange={() => toggleSubPerm(scope, n.key)}
+                                                                                            className="peer w-5 h-5 appearance-none border-2 border-slate-300 rounded-md checked:bg-slate-900 checked:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-1 transition-all cursor-pointer" />
+                                                                                        <svg className="absolute w-3.5 h-3.5 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                                                        </svg>
+                                                                                    </div>
+                                                                                    <div className="flex-1">
+                                                                                        <span className={`block text-sm font-medium transition-colors ${s[n.key] ? 'text-slate-900' : 'text-slate-600 group-hover:text-slate-800'}`}>{n.label}</span>
+                                                                                        <span className="block text-xs text-slate-500 mt-0.5">{n.desc}</span>
+                                                                                    </div>
+                                                                                </label>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        ))}
-                                                    </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>
