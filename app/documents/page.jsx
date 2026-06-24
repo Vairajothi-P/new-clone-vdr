@@ -290,7 +290,7 @@ function UnifiedWorkspace() {
                 {/* ── TOP ACTION BAR (Exact Firmata Match) ── */}
                 <div className="flex items-center px-6 py-4 bg-white border-b border-slate-200">
                     <div className="flex items-center gap-3">
-                        {currentView !== 'trash' && canUploadHere && (
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canUploadHere && (
                             <>
                                 <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
@@ -325,7 +325,7 @@ function UnifiedWorkspace() {
                             </div>
                         )}
 
-                        {currentView !== 'trash' && canUser('can_export') && (
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canUser('can_export') && (
                             <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                                 Export
