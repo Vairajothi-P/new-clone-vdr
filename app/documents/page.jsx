@@ -39,6 +39,7 @@ function UnifiedWorkspace() {
     const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isPermDeleteModalOpen, setIsPermDeleteModalOpen] = useState(false);
     const [uploadQueue, setUploadQueue] = useState([]);
 
     const fileInputRef = useRef(null);
@@ -96,7 +97,8 @@ function UnifiedWorkspace() {
                     .map(f => ({
                         id: f.id, parentId: f.parent_folder_id || null, index: f.index_number ? f.index_number.toString() : '1',
                         name: f.name, type: 'folder', size: '--', uploadedBy: userMap[f.created_by] || 'System',
-                        dateCreated: new Date(f.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        dateCreated: new Date(f.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                        is_bookmarked: f.is_bookmarked
                     }));
 
                 // Docs Map
@@ -108,13 +110,15 @@ function UnifiedWorkspace() {
                         size: doc.file_size_bytes > 1024 * 1024 ? `${(doc.file_size_bytes / (1024 * 1024)).toFixed(1)} MB` : `${(doc.file_size_bytes / 1024).toFixed(0)} KB`,
                         uploadedBy: userMap[doc.uploaded_by] || 'System',
                         dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                        deletedBy: userMap[doc.deleted_by] || 'Unknown',
+                        deletedAt: doc.deleted_at ? new Date(doc.deleted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '--',
                         is_bookmarked: doc.is_bookmarked, is_downloaded: doc.is_downloaded, is_deleted: doc.is_deleted,
                         file_path: doc.file_path, dek_ref: doc.dek_ref, mime_type: doc.mime_type
                     }));
 
                 setMergedPerms(myPerms);
                 setFiles([...mappedFolders, ...mappedDocs]);
-                setBookmarkedIds(new Set((docsData || []).filter(d => d.is_bookmarked).map(d => d.id)));
+                setBookmarkedIds(new Set([...(docsData || []).filter(d => d.is_bookmarked).map(d => d.id), ...(foldersData || []).filter(f => f.is_bookmarked).map(f => f.id)]));
                 setDownloadedIds(new Set((docsData || []).filter(d => d.is_downloaded).map(d => d.id)));
                 setDeletedIds(new Set((docsData || []).filter(d => d.is_deleted).map(d => d.id)));
             } catch (err) { console.error('Fetch error:', err); }
@@ -171,6 +175,21 @@ function UnifiedWorkspace() {
 
     const handleSelectAll = () => setSelectedIds(prev => prev.size === filteredItems.length ? new Set() : new Set(filteredItems.map(f => f.id)));
 
+    const handleToggleBookmark = async (item, e) => {
+        e.stopPropagation();
+        try {
+            const isBookmarked = bookmarkedIds.has(item.id);
+            const table = item.type === 'folder' ? 'folders' : 'documents';
+            await supabase.from(table).update({ is_bookmarked: !isBookmarked }).eq('id', item.id);
+            setBookmarkedIds(prev => {
+                const n = new Set(prev);
+                if (isBookmarked) n.delete(item.id);
+                else n.add(item.id);
+                return n;
+            });
+        } catch (err) { console.error('Bookmark toggle failed', err); }
+    };
+
     const handleItemClick = (item) => {
         if (item.type === 'folder') {
             setCurrentFolderId(item.id); setSelectedIds(new Set()); setSearchQuery('');
@@ -219,7 +238,42 @@ function UnifiedWorkspace() {
     };
 
     const handleExport = () => { /* Your CSV logic */ };
-    const executeSoftDelete = async () => { /* Your Trash logic */ };
+    const executeSoftDelete = async () => {
+        try {
+            const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+            if (docIds.length > 0) {
+                await supabase.from('documents').update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: session.id }).in('id', docIds);
+                setDeletedIds(prev => { const n = new Set(prev); docIds.forEach(id => n.add(id)); return n; });
+                setFiles(prev => prev.map(f => docIds.includes(f.id) ? { ...f, deletedBy: session.name, deletedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) } : f));
+            }
+            setSelectedIds(new Set());
+            setIsDeleteModalOpen(false);
+        } catch (err) { console.error('Trash failed', err); }
+    };
+
+    const executeRecover = async () => {
+        try {
+            const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+            if (docIds.length > 0) {
+                await supabase.from('documents').update({ is_deleted: false, deleted_at: null, deleted_by: null }).in('id', docIds);
+                setDeletedIds(prev => { const n = new Set(prev); docIds.forEach(id => n.delete(id)); return n; });
+            }
+            setSelectedIds(new Set());
+        } catch (err) { console.error('Recover failed', err); }
+    };
+
+    const executePermanentDelete = async () => {
+        try {
+            const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+            if (docIds.length > 0) {
+                await supabase.from('documents').delete().in('id', docIds);
+                setFiles(prev => prev.filter(f => !docIds.includes(f.id)));
+                setDeletedIds(prev => { const n = new Set(prev); docIds.forEach(id => n.delete(id)); return n; });
+            }
+            setSelectedIds(new Set());
+            setIsPermDeleteModalOpen(false);
+        } catch (err) { console.error('Permanent delete failed', err); }
+    };
 
     if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>;
 
@@ -235,7 +289,7 @@ function UnifiedWorkspace() {
                 {/* ── TOP ACTION BAR (Exact Firmata Match) ── */}
                 <div className="flex items-center px-6 py-4 bg-white border-b border-slate-200">
                     <div className="flex items-center gap-3">
-                        {canUploadHere && (
+                        {currentView !== 'trash' && canUploadHere && (
                             <>
                                 <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
@@ -249,7 +303,7 @@ function UnifiedWorkspace() {
                         )}
 
                         {/* Download Dropdown Logic */}
-                        {(canDownloadSecureSelected || canDownloadOriginalSelected) && (
+                        {currentView !== 'trash' && (canDownloadSecureSelected || canDownloadOriginalSelected) && (
                             <div className="relative">
                                 <button onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
@@ -270,18 +324,31 @@ function UnifiedWorkspace() {
                             </div>
                         )}
 
-                        {canUser('can_export') && (
+                        {currentView !== 'trash' && canUser('can_export') && (
                             <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                                 Export
                             </button>
                         )}
 
-                        {canEditSelected && selectedIds.size > 0 && (
+                        {currentView !== 'trash' && canEditSelected && selectedIds.size > 0 && (
                             <button onClick={() => setIsDeleteModalOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
                                 Delete
                             </button>
+                        )}
+
+                        {currentView === 'trash' && (
+                            <>
+                                <button disabled={selectedIds.size === 0} onClick={executeRecover} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 ? 'text-slate-600 cursor-not-allowed' : 'text-emerald-600 hover:bg-emerald-50'}`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
+                                    Recover
+                                </button>
+                                <button disabled={selectedIds.size === 0} onClick={() => setIsPermDeleteModalOpen(true)} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 ? 'text-slate-600 cursor-not-allowed' : 'text-rose-600 hover:bg-rose-50'}`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
+                                    Permanent Delete
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>
@@ -305,8 +372,18 @@ function UnifiedWorkspace() {
                                     <th className="py-4 px-5 w-10">
                                         <input type="checkbox" checked={selectedIds.size === filteredItems.length && filteredItems.length > 0} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
                                     </th>
+                                    {currentView !== 'trash' && (
+                                        <th className="py-4 px-2 w-8 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Star</th>
+                                    )}
                                     <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Index and Name</th>
-                                    <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Created At</th>
+                                    {currentView === 'trash' ? (
+                                        <>
+                                            <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deleted By</th>
+                                            <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deleted At</th>
+                                        </>
+                                    ) : (
+                                        <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Created At</th>
+                                    )}
                                     <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Size</th>
                                 </tr>
                             </thead>
@@ -321,6 +398,13 @@ function UnifiedWorkspace() {
                                             <td className="py-4 px-5" onClick={e => e.stopPropagation()}>
                                                 <input type="checkbox" checked={isChecked} onChange={e => handleToggleSelect(item.id, e)} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
                                             </td>
+                                            {currentView !== 'trash' && (
+                                                <td className="py-4 px-2 text-center" onClick={e => handleToggleBookmark(item, e)}>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={bookmarkedIds.has(item.id) ? "#fbbf24" : "none"} stroke={bookmarkedIds.has(item.id) ? "#fbbf24" : "#cbd5e1"} strokeWidth="2.5" className="cursor-pointer transition-colors hover:stroke-amber-400 mx-auto">
+                                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                    </svg>
+                                                </td>
+                                            )}
                                             <td className="py-4 px-3">
                                                 <div className="flex items-center gap-3">
                                                     {isFolder ? (
@@ -332,7 +416,14 @@ function UnifiedWorkspace() {
                                                     {isDL && <span className="ml-2 text-[10px] text-emerald-600 font-bold animate-pulse">Downloading...</span>}
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.dateCreated}</td>
+                                            {currentView === 'trash' ? (
+                                                <>
+                                                    <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.deletedBy}</td>
+                                                    <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.deletedAt}</td>
+                                                </>
+                                            ) : (
+                                                <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.dateCreated}</td>
+                                            )}
                                             <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.size}</td>
                                         </tr>
                                     );
@@ -380,6 +471,70 @@ function UnifiedWorkspace() {
                 )}
             </aside>
 
+            {/* Modals */}
+            {isPermDeleteModalOpen && (
+                <Modal onClose={() => setIsPermDeleteModalOpen(false)}>
+                    <h3 className="text-[16px] font-black text-slate-900 mb-2">Permanently Delete?</h3>
+                    <p className="text-[13px] text-slate-500 mb-6">Are you sure you want to permanently delete these items? This action cannot be undone.</p>
+                    <div className="flex gap-2">
+                        <button onClick={() => setIsPermDeleteModalOpen(false)} className="flex-1 py-3 bg-slate-200 text-slate-700 cursor-pointer hover:bg-slate-300 font-bold rounded-xl text-[14px]">Cancel</button>
+                        <button onClick={executePermanentDelete} className="flex-1 py-3 bg-rose-500 text-white cursor-pointer hover:bg-rose-600 font-bold rounded-xl text-[14px]">Delete</button>
+                    </div>
+                </Modal>
+            )}
+
+            {isDeleteModalOpen && (
+                <Modal onClose={() => setIsDeleteModalOpen(false)}>
+                    <h3 className="text-[16px] font-black text-slate-900 mb-2">Send to Trash?</h3>
+                    <p className="text-[13px] text-slate-500 mb-6">These files will be moved to the Trash bin.</p>
+                    <div className="flex gap-2">
+                        <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-3 bg-slate-200 text-slate-700 cursor-pointer hover:bg-slate-300 font-bold rounded-xl text-[14px]">Cancel</button>
+                        <button onClick={executeSoftDelete} className="flex-1 py-3 bg-slate-800 text-white cursor-pointer hover:bg-slate-900 font-bold rounded-xl text-[14px]">Send to Trash</button>
+                    </div>
+                </Modal>
+            )}
+
+            {isNewFolderOpen && (
+                <Modal onClose={() => setIsNewFolderOpen(false)}>
+                    <h3 className="text-[16px] font-black mb-4">Create New Folder</h3>
+                    <input type="text" placeholder="Folder name..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:border-slate-400 focus:outline-none" />
+                    <button onClick={handleCreateFolder} className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl">Create</button>
+                </Modal>
+            )}
+
+            {isUploadModalOpen && (
+                <Modal onClose={() => setIsUploadModalOpen(false)}>
+                    <h3 className="text-[16px] font-black text-slate-800 mb-5">Secure Upload</h3>
+                    <div onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-3 p-10 border-2 border-dashed border-slate-200 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100">
+                        <span className="text-[13px] font-bold text-slate-700">Click to Browse Files</span>
+                        <span className="text-[11px] text-slate-400">Files are AES-256 Encrypted on upload</span>
+                    </div>
+                    {uploadQueue.length > 0 && (
+                        <div className="mt-4 space-y-2 max-h-48 overflow-auto">
+                            {uploadQueue.map(item => (
+                                <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[12px] font-semibold text-slate-700 truncate">{item.name}</p>
+                                    </div>
+                                    {item.status === 'completed' ? <span className="text-emerald-500 text-xs font-bold">Done</span> : <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Modal>
+            )}
+
+        </div>
+    );
+}
+
+function Modal({ children, onClose, maxWidth = 'max-w-lg' }) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div onClick={onClose} className="absolute inset-0 bg-slate-900/40 backdrop-blur-[3px]" />
+            <div className={`relative bg-white rounded-2xl shadow-2xl w-full ${maxWidth} p-6 z-10`}>
+                {children}
+            </div>
         </div>
     );
 }
