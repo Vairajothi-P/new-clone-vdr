@@ -16,7 +16,7 @@ export default function SettingsSidebar({ isOpen = true }) {
     // { name: 'Doc Labels', href: '/settings/doc-labels', icon: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><rect x="8" y="13" width="8" height="4" rx="1"/></> },
     // { name: 'Doc Settings', href: '/settings/doc-settings', icon: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6M9 15h6"/></> },
     // { name: 'Intelligent Search', href: '/settings/search', icon: <><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></> },
-    // { name: '2FA', href: '/settings/2fa', icon: <><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></> },
+    { name: '2FA', href: '/settings/2fa', icon: <><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></> },
     // { name: 'Package', href: '/settings/package', icon: <><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></> },
     // { name: 'Activity Report', href: '/settings/activity-report', icon: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2M8 17h2M14 13h2M14 17h2"/></> },
     // { name: 'QnA >', href: '/settings/qna', icon: <><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></> },
