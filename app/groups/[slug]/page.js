@@ -186,7 +186,6 @@ export default function DynamicGroupPage() {
                         can_access_documents: row?.can_access_documents ?? false,
                         can_access_groups: row?.can_access_groups ?? false,
                         can_access_settings: row?.can_access_settings ?? false,
-                        workspace_id: row?.workspace_id ?? null,
                         existingId: row?.id ?? null,
                     };
                 });
@@ -244,7 +243,6 @@ export default function DynamicGroupPage() {
                 const payload = {
                     company_id: groupData.company_id,
                     group_id: groupData.id,
-                    workspace_id: groupData.company_id,
                     scope,
                     can_view: scope === "settings" ? true : false,
                     can_add_members: s.can_add_members || false,
