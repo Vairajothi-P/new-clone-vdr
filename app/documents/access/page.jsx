@@ -349,7 +349,7 @@ function AccessPageContent() {
                                 <thead>
                                     <tr className="bg-slate-100/50 border-b border-slate-200">
                                         <th colSpan="2" className="py-2.5 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Apply to All Below →</th>
-                                        {['can_view', 'can_edit', 'can_upload', 'can_download_secure', 'can_download_original'].map(field => {
+                                        {['can_view', 'can_edit', 'can_upload', 'can_download_secure', 'can_download_original', 'can_delete'].map(field => {
                                             const isAllChecked = field === 'can_upload'
                                                 ? (displayFolders.length > 0 && displayFolders.every(f => permissions[`${selectedGroup}_fol_${f.id}`]?.can_upload))
                                                 : (displayDocs.length > 0 && displayDocs.every(d => permissions[`${selectedGroup}_doc_${d.id}`]?.[field]));
@@ -422,7 +422,7 @@ function AccessPageContent() {
                                                     fill="none"
                                                     stroke="currentColor"
                                                     strokeWidth="2"
-                                                    className="text-red-500 group-hover:text-red-700"
+                                                    className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors"
                                                 >
                                                     <path d="M3 6h18" />
                                                     <path d="M8 6V4h8v2" />
