@@ -25,6 +25,8 @@ export default function TokenRegisterPage() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loadingInvite, setLoadingInvite] = useState(true);
     const [errorState, setErrorState] = useState(null);
+    const [mobileError, setMobileError] = useState("");
+    const [passwordError, setPasswordError] = useState("");
 
     // Invitation Details Storage
     const [invitationDetails, setInvitationDetails] = useState(null);
@@ -77,6 +79,36 @@ export default function TokenRegisterPage() {
 
         checkInvitation();
     }, [token]);
+
+    // Debounced Mobile Check
+    useEffect(() => {
+        const checkMobile = async () => {
+            if (!formData.mobile) return;
+            const { data } = await supabase
+                .from("users")
+                .select("id")
+                .eq("phone_number", formData.mobile)
+                .maybeSingle();
+
+            if (data) {
+                setMobileError("This mobile number already exists");
+            } else {
+                setMobileError("");
+            }
+        };
+
+        const timeoutId = setTimeout(checkMobile, 500);
+        return () => clearTimeout(timeoutId);
+    }, [formData.mobile]);
+
+    // Password Match Check
+    useEffect(() => {
+        if (formData.confirmPassword && formData.password !== formData.confirmPassword) {
+            setPasswordError("Passwords do not match");
+        } else {
+            setPasswordError("");
+        }
+    }, [formData.password, formData.confirmPassword]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -264,7 +296,7 @@ export default function TokenRegisterPage() {
                 .update({ status: "accepted" })
                 .eq("id", invitationDetails.id);
 
-            setStep(3);
+            setStep(2);
 
         } catch (err) {
             console.error("Registration Error:", err);
@@ -379,10 +411,13 @@ export default function TokenRegisterPage() {
                                         value={formData.mobile}
                                         onChange={handleChange}
                                         placeholder="Enter your mobile number"
-                                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className={`w-full pl-12 pr-4 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${mobileError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                                         required
                                     />
                                 </div>
+                                {mobileError && (
+                                    <p className="text-red-500 text-xs mt-1 font-semibold">{mobileError}</p>
+                                )}
                             </div>
 
                             <div>
@@ -422,7 +457,7 @@ export default function TokenRegisterPage() {
                                         value={formData.confirmPassword}
                                         onChange={handleChange}
                                         placeholder="Confirm password"
-                                        className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className={`w-full pl-12 pr-12 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${passwordError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                                         required
                                     />
                                     <button
@@ -433,6 +468,9 @@ export default function TokenRegisterPage() {
                                         {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
                                     </button>
                                 </div>
+                                {passwordError && (
+                                    <p className="text-red-500 text-xs mt-1 font-semibold">{passwordError}</p>
+                                )}
                             </div>
 
                             <button
@@ -441,50 +479,24 @@ export default function TokenRegisterPage() {
                                         alert("Please fill all required fields.");
                                         return;
                                     }
-                                    setStep(2);
+                                    if (mobileError) {
+                                        alert("Please resolve the errors before continuing.");
+                                        return;
+                                    }
+                                    if (passwordError || formData.password !== formData.confirmPassword) {
+                                        alert("Passwords do not match.");
+                                        return;
+                                    }
+                                    handleFinalSubmit();
                                 }}
                                 className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold transition"
-                            >
-                                Continue
-                            </button>
-                        </div>
-                    )}
-
-                    {step === 2 && (
-                        <div className="space-y-6">
-                            <div className="text-center">
-                                <h2 className="text-xl font-bold text-slate-900">
-                                    Email Verification
-                                </h2>
-                                <p className="text-gray-600 mt-2">
-                                    Enter the 6-digit OTP sent to your email address
-                                </p>
-                            </div>
-
-                            <div className="flex justify-center gap-3">
-                                {otp.map((digit, index) => (
-                                    <input
-                                        id={`otp-${index}`}
-                                        key={index}
-                                        maxLength={1}
-                                        value={digit}
-                                        onChange={(e) => handleOtpChange(e.target.value, index)}
-                                        onKeyDown={(e) => handleOtpKeyDown(e, index)}
-                                        className="w-12 h-12 border border-gray-300 rounded-xl text-center text-xl font-bold text-slate-900"
-                                    />
-                                ))}
-                            </div>
-
-                            <button
-                                onClick={handleFinalSubmit}
-                                className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold"
                             >
                                 Verify & Create Account
                             </button>
                         </div>
                     )}
 
-                    {step === 3 && (
+                    {step === 2 && (
                         <div className="text-center py-6">
                             <FaCheckCircle className="text-green-500 text-7xl mx-auto" />
                             <h2 className="text-3xl font-bold mt-4 text-slate-900">

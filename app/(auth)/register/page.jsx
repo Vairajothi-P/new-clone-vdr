@@ -67,9 +67,9 @@
 //             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
 //               1
 //             </div>
-
+//
 //             <div className="w-16 h-1 bg-gray-300 rounded"></div>
-
+//
 //             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
 //               2
 //             </div>
@@ -302,6 +302,8 @@ function RegisterContent() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [emailError, setEmailError] = useState("");
+  const [mobileError, setMobileError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   // Debounced Email Check
   useEffect(() => {
@@ -325,6 +327,37 @@ function RegisterContent() {
     const timeoutId = setTimeout(checkEmail, 500);
     return () => clearTimeout(timeoutId);
   }, [formData.email, token]);
+
+  // Debounced Mobile Check
+  useEffect(() => {
+    const checkMobile = async () => {
+      if (!formData.mobile) return;
+      
+      const { data } = await supabase
+        .from("users")
+        .select("id")
+        .eq("phone_number", formData.mobile)
+        .maybeSingle();
+
+      if (data) {
+        setMobileError("This mobile number already exists");
+      } else {
+        setMobileError("");
+      }
+    };
+
+    const timeoutId = setTimeout(checkMobile, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.mobile]);
+
+  // Password Match Check
+  useEffect(() => {
+    if (formData.confirmPassword && formData.password !== formData.confirmPassword) {
+      setPasswordError("Passwords do not match");
+    } else {
+      setPasswordError("");
+    }
+  }, [formData.password, formData.confirmPassword]);
 
   // 1. Fetch Invitation Details if token exists in URL
   useEffect(() => {
@@ -453,39 +486,41 @@ function RegisterContent() {
     try {
       const enteredOtp = otp.join("");
 
-      const { data: otpRecord } =
+      if (!token) {
+        const { data: otpRecord } =
+          await supabase
+            .from("email_otps")
+            .select("*")
+            .eq("email", formData.email)
+            .eq("otp", enteredOtp)
+            .eq("verified", false)
+            .order("created_at", {
+              ascending: false,
+            })
+            .limit(1)
+            .single();
+
+        if (!otpRecord) {
+          alert("Invalid OTP");
+          return;
+        }
+
+        if (
+          new Date(
+            otpRecord.expires_at
+          ) < new Date()
+        ) {
+          alert("OTP Expired");
+          return;
+        }
+
         await supabase
           .from("email_otps")
-          .select("*")
-          .eq("email", formData.email)
-          .eq("otp", enteredOtp)
-          .eq("verified", false)
-          .order("created_at", {
-            ascending: false,
+          .update({
+            verified: true,
           })
-          .limit(1)
-          .single();
-
-      if (!otpRecord) {
-        alert("Invalid OTP");
-        return;
+          .eq("id", otpRecord.id);
       }
-
-      if (
-        new Date(
-          otpRecord.expires_at
-        ) < new Date()
-      ) {
-        alert("OTP Expired");
-        return;
-      }
-
-      await supabase
-        .from("email_otps")
-        .update({
-          verified: true,
-        })
-        .eq("id", otpRecord.id);
 
       const { data: existingUser } =
         await supabase
@@ -557,7 +592,7 @@ function RegisterContent() {
       }
 
       // Proceed to success page
-      setStep(3);
+      setStep(token ? 2 : 3);
     }
     catch (err) {
       console.error("Registration Error:", err);
@@ -597,8 +632,8 @@ function RegisterContent() {
 
             <div className="w-16 h-1 bg-gray-300 rounded"></div>
 
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
-              2
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${(token ? step >= 2 : step >= 3) ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
+              <FaCheckCircle className={(token ? step >= 2 : step >= 3) ? "text-white" : "text-gray-400"} />
             </div>
           </div>
         </div>
@@ -681,10 +716,13 @@ function RegisterContent() {
                         value={formData.mobile}
                         onChange={handleChange}
                         placeholder="Enter your mobile number"
-                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className={`w-full pl-12 pr-4 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${mobileError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                         required
                       />
                     </div>
+                    {mobileError && (
+                      <p className="text-red-500 text-xs mt-1 font-semibold">{mobileError}</p>
+                    )}
                   </div>
 
                   <div>
@@ -724,7 +762,7 @@ function RegisterContent() {
                         value={formData.confirmPassword}
                         onChange={handleChange}
                         placeholder="Confirm password"
-                        className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className={`w-full pl-12 pr-12 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${passwordError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                         required
                       />
                       <button
@@ -735,6 +773,9 @@ function RegisterContent() {
                         {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
                       </button>
                     </div>
+                    {passwordError && (
+                      <p className="text-red-500 text-xs mt-1 font-semibold">{passwordError}</p>
+                    )}
                   </div>
 
                   <button
@@ -750,17 +791,26 @@ function RegisterContent() {
                         return;
                       }
 
-                      if (emailError) {
-                        alert("Please use a different email address.");
+                      if (emailError || mobileError) {
+                        alert("Please resolve the errors before continuing.");
                         return;
                       }
 
-                      await sendOtp();
+                      if (passwordError || formData.password !== formData.confirmPassword) {
+                        alert("Passwords do not match.");
+                        return;
+                      }
+
+                      if (token) {
+                        await handleFinalSubmit();
+                      } else {
+                        await sendOtp();
+                      }
                     }}
                     disabled={isSendingOtp}
                     className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold transition"
                   >
-                    {isSendingOtp ? "Sending OTP..." : "Continue"}
+                    {isSendingOtp ? "Sending OTP..." : token ? "Verify & Create Account" : "Continue"}
                   </button>
                 </div>
               )}
@@ -799,7 +849,7 @@ function RegisterContent() {
                 </div>
               )}
 
-              {step === 3 && (
+              {step === (token ? 2 : 3) && (
                 <div className="text-center py-6">
                   <FaCheckCircle className="text-green-500 text-7xl mx-auto" />
                   <h2 className="text-3xl font-bold mt-4 text-slate-900">
