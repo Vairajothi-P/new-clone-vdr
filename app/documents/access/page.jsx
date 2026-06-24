@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
 import { hasPermission } from '@/lib/access/permissions';
+import { FaEye, FaEdit, FaUpload, FaShieldAlt, FaDownload } from 'react-icons/fa';
 
 export default function AccessPage() {
     return (
@@ -365,11 +366,51 @@ function AccessPageContent() {
                                     <tr className="border-b border-slate-100 bg-slate-50/60">
                                         <th className="py-3.5 px-4 w-16 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Index</th>
                                         <th className="py-3.5 px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</th>
-                                        <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">View</th>
-                                        <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Edit</th>
-                                        <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Upload</th>
-                                        <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">DL Secure</th>
-                                        <th className="py-3.5 px-3 w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">DL Orig</th>
+                                        <th className="py-3.5 px-3 w-24 text-center">
+                                            <div className="inline-block relative group cursor-pointer">
+                                                <FaEye className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
+                                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                    View
+                                                    <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                </div>
+                                            </div>
+                                        </th>
+                                        <th className="py-3.5 px-3 w-24 text-center">
+                                            <div className="inline-block relative group cursor-pointer">
+                                                <FaEdit className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
+                                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                    Edit
+                                                    <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                </div>
+                                            </div>
+                                        </th>
+                                        <th className="py-3.5 px-3 w-24 text-center">
+                                            <div className="inline-block relative group cursor-pointer">
+                                                <FaUpload className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
+                                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                    Upload
+                                                    <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                </div>
+                                            </div>
+                                        </th>
+                                        <th className="py-3.5 px-3 w-24 text-center">
+                                            <div className="inline-block relative group cursor-pointer">
+                                                <FaShieldAlt className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
+                                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                    DL Secure
+                                                    <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                </div>
+                                            </div>
+                                        </th>
+                                        <th className="py-3.5 px-3 w-24 text-center">
+                                            <div className="inline-block relative group cursor-pointer">
+                                                <FaDownload className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
+                                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                    DL Original
+                                                    <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                </div>
+                                            </div>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -479,7 +520,7 @@ function AccessPageContent() {
                         }
                     }} className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl hover:bg-slate-800 hover:-translate-y-0.5 transition-all active:scale-95">
                         <span>Submit & Return</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                     </button>
                 </div>
             </div>
