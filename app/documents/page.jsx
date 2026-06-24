@@ -4,6 +4,7 @@ import React, { useState, useMemo, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
 import fernet from 'fernet';
+import { FaEye, FaEdit, FaUpload, FaShieldAlt, FaDownload } from 'react-icons/fa';
 
 export default function DocumentsPage() {
     return (
@@ -372,10 +373,11 @@ function UnifiedWorkspace() {
                                     <th className="py-4 px-5 w-10">
                                         <input type="checkbox" checked={selectedIds.size === filteredItems.length && filteredItems.length > 0} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
                                     </th>
+                                    <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center w-16">Index</th>
+                                    <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Name</th>
                                     {currentView !== 'trash' && (
                                         <th className="py-4 px-2 w-8 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Star</th>
                                     )}
-                                    <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Index and Name</th>
                                     {currentView === 'trash' ? (
                                         <>
                                             <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deleted By</th>
@@ -385,6 +387,9 @@ function UnifiedWorkspace() {
                                         <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Created At</th>
                                     )}
                                     <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Size</th>
+                                    {currentView !== 'trash' && (
+                                        <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Permission Details</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -398,13 +403,9 @@ function UnifiedWorkspace() {
                                             <td className="py-4 px-5" onClick={e => e.stopPropagation()}>
                                                 <input type="checkbox" checked={isChecked} onChange={e => handleToggleSelect(item.id, e)} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
                                             </td>
-                                            {currentView !== 'trash' && (
-                                                <td className="py-4 px-2 text-center" onClick={e => handleToggleBookmark(item, e)}>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={bookmarkedIds.has(item.id) ? "#fbbf24" : "none"} stroke={bookmarkedIds.has(item.id) ? "#fbbf24" : "#cbd5e1"} strokeWidth="2.5" className="cursor-pointer transition-colors hover:stroke-amber-400 mx-auto">
-                                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                                    </svg>
-                                                </td>
-                                            )}
+                                            <td className="py-4 px-3 text-center text-[12px] font-mono font-semibold text-slate-500">
+                                                {item.index || '—'}
+                                            </td>
                                             <td className="py-4 px-3">
                                                 <div className="flex items-center gap-3">
                                                     {isFolder ? (
@@ -412,10 +413,17 @@ function UnifiedWorkspace() {
                                                     ) : (
                                                         <div className="w-5 h-5 bg-slate-100 rounded text-[8px] font-black text-slate-500 flex items-center justify-center">{item.type.toUpperCase().slice(0, 3)}</div>
                                                     )}
-                                                    <span className="text-[13px] font-semibold text-slate-800">{item.index} {item.name}</span>
+                                                    <span className="text-[13px] font-semibold text-slate-800">{item.name}</span>
                                                     {isDL && <span className="ml-2 text-[10px] text-emerald-600 font-bold animate-pulse">Downloading...</span>}
                                                 </div>
                                             </td>
+                                            {currentView !== 'trash' && (
+                                                <td className="py-4 px-2 text-center" onClick={e => handleToggleBookmark(item, e)}>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={bookmarkedIds.has(item.id) ? "#fbbf24" : "none"} stroke={bookmarkedIds.has(item.id) ? "#fbbf24" : "#cbd5e1"} strokeWidth="2.5" className="cursor-pointer transition-colors hover:stroke-amber-400 mx-auto">
+                                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                    </svg>
+                                                </td>
+                                            )}
                                             {currentView === 'trash' ? (
                                                 <>
                                                     <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.deletedBy}</td>
@@ -425,6 +433,17 @@ function UnifiedWorkspace() {
                                                 <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.dateCreated}</td>
                                             )}
                                             <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.size}</td>
+                                            {currentView !== 'trash' && (
+                                                <td className="py-4 px-3">
+                                                    <div className="flex items-center gap-5">
+                                                        {canUser('can_view', item) ? <FaEye className="text-slate-600 text-[15px]" title="View" /> : <FaEye className="text-slate-200 text-[15px]" title="No View Access" />}
+                                                        {canUser('can_edit', item) ? <FaEdit className="text-slate-600 text-[15px]" title="Edit" /> : <FaEdit className="text-slate-200 text-[15px]" title="No Edit Access" />}
+                                                        {item.type === 'folder' && (canUser('can_upload', item) ? <FaUpload className="text-slate-600 text-[15px]" title="Upload" /> : <FaUpload className="text-slate-200 text-[15px]" title="No Upload Access" />)}
+                                                        {canUser('can_download_secure', item) ? <FaShieldAlt className="text-slate-600 text-[15px]" title="Download Secure" /> : <FaShieldAlt className="text-slate-200 text-[15px]" title="No Secure DL Access" />}
+                                                        {canUser('can_download_original', item) ? <FaDownload className="text-slate-600 text-[15px]" title="Download Original" /> : <FaDownload className="text-slate-200 text-[15px]" title="No Original DL Access" />}
+                                                    </div>
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })}
@@ -434,42 +453,7 @@ function UnifiedWorkspace() {
                 </div>
             </div>
 
-            {/* ── RIGHT SIDEBAR: PERMISSION DETAILS ── */}
-            <aside className="w-[300px] shrink-0 border-l border-slate-200 bg-white flex flex-col h-full overflow-hidden">
-                <div className="p-6 border-b border-slate-100">
-                    <h3 className="text-[14px] font-black text-slate-800">Permission Details</h3>
-                </div>
 
-                {selectedItemsArray.length === 1 ? (
-                    <div className="p-6 flex flex-col gap-4">
-                        <div className="mb-2">
-                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Selected File</p>
-                            <p className="text-[14px] font-bold text-slate-800 break-words">{selectedItemsArray[0].name}</p>
-                        </div>
-
-                        <div className="space-y-3">
-                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Your Access</p>
-
-                            <PermRow label="View File" hasAccess={canUser('can_view', selectedItemsArray[0])} />
-                            <PermRow label="Edit / Delete" hasAccess={canUser('can_edit', selectedItemsArray[0])} />
-                            <PermRow label="Download Secure" hasAccess={canUser('can_download_secure', selectedItemsArray[0])} />
-                            <PermRow label="Download Original" hasAccess={canUser('can_download_original', selectedItemsArray[0])} />
-                            {selectedItemsArray[0].type === 'folder' && (
-                                <PermRow label="Upload to Folder" hasAccess={canUser('can_upload', selectedItemsArray[0])} />
-                            )}
-                        </div>
-                    </div>
-                ) : selectedItemsArray.length > 1 ? (
-                    <div className="p-6 flex flex-col items-center justify-center h-48 text-slate-400 text-center">
-                        <span className="text-[24px] font-black text-slate-800 mb-2">{selectedItemsArray.length}</span>
-                        <p className="text-[13px] font-semibold">Items Selected</p>
-                    </div>
-                ) : (
-                    <div className="p-6 flex flex-col items-center justify-center h-48 text-slate-400 text-center">
-                        <p className="text-[13px] font-semibold">Select an item to view your permissions.</p>
-                    </div>
-                )}
-            </aside>
 
             {/* Modals */}
             {isPermDeleteModalOpen && (
