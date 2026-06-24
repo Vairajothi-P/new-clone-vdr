@@ -1,18 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { FaUserPlus, FaCog } from "react-icons/fa";
 import { NAV_ITEMS } from "@/lib/nav-items";
 
 export default function ActivatePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   // MULTI SELECT MEMBERS
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [selectedPermissions, setSelectedPermissions] = useState([]);
 
   const [showToast, setShowToast] = useState(false);
-  const [showPermissionPage, setShowPermissionPage] = useState(false);
+  const [showPermissionPage, setShowPermissionPage] = useState(searchParams.get('view') === 'permissions');
   const [showInviteModal, setShowInviteModal] = useState(false);
 
   const [inviteEmail, setInviteEmail] = useState("");
@@ -289,6 +292,23 @@ export default function ActivatePage() {
                       </div>
                   )}
               </div>
+
+              {/* FILES ACCESS NAVIGATION */}
+              <div onClick={() => router.push('/documents/access?group=subadmin')}
+                   className="rounded-xl border border-slate-200 bg-white hover:border-slate-300 cursor-pointer transition-all duration-300 overflow-hidden group">
+                  <div className="flex items-center justify-between px-6 py-5">
+                      <div>
+                          <p className="font-semibold text-sm text-slate-800">Files Access</p>
+                          <p className="text-sm text-slate-500 mt-0.5">Navigate to advanced folder & document permissions</p>
+                      </div>
+                      <div className="flex items-center gap-5">
+                          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-800 group-hover:text-white transition-colors">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
             </div>
 
             <div className="mt-8 flex justify-end">

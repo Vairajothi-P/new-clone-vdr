@@ -16,7 +16,7 @@ export default function AccessPage() {
 function AccessPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const urlGroupId = searchParams.get('groupId');
+    const urlGroupId = searchParams.get('group') || searchParams.get('groupId');
 
     const [session, setSession] = useState(null);
 
@@ -465,6 +465,22 @@ function AccessPageContent() {
                             </table>
                         </div>
                     )}
+                </div>
+
+                {/* RETURN/SUBMIT BUTTON */}
+                <div className="absolute bottom-8 right-8 z-50">
+                    <button onClick={() => {
+                        if (selectedGroup === 'subadmin') {
+                            router.push('/groups/subadmin?view=permissions');
+                        } else if (selectedGroup) {
+                            router.push(`/groups/${selectedGroup}?view=permissions`);
+                        } else {
+                            router.push('/groups');
+                        }
+                    }} className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl hover:bg-slate-800 hover:-translate-y-0.5 transition-all active:scale-95">
+                        <span>Submit & Return</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </button>
                 </div>
             </div>
         </div>
