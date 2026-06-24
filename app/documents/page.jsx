@@ -163,6 +163,7 @@ function UnifiedWorkspace() {
     const selectedItemsArray = files.filter(f => selectedIds.has(f.id));
 
     // Nav Bar Logic Flags
+    const selectionEnabled = !['bookmarks', 'downloads'].includes(currentView);
     const canUploadHere = currentFolderId === null ? canUser('can_upload') : canUser('can_upload', { type: 'folder', id: currentFolderId });
     const canEditSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => canUser('can_edit', item));
     const canDownloadSecureSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => item.type !== 'folder' && canUser('can_download_secure', item));
@@ -304,7 +305,7 @@ function UnifiedWorkspace() {
                         )}
 
                         {/* Download Dropdown Logic */}
-                        {currentView !== 'trash' && (canDownloadSecureSelected || canDownloadOriginalSelected) && (
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && (canDownloadSecureSelected || canDownloadOriginalSelected) && (
                             <div className="relative">
                                 <button onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
@@ -332,7 +333,7 @@ function UnifiedWorkspace() {
                             </button>
                         )}
 
-                        {currentView !== 'trash' && canEditSelected && selectedIds.size > 0 && (
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canEditSelected && selectedIds.size > 0 && (
                             <button onClick={() => setIsDeleteModalOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
                                 Delete
@@ -370,9 +371,11 @@ function UnifiedWorkspace() {
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-white border-b border-slate-100">
                                 <tr>
-                                    <th className="py-4 px-5 w-10">
-                                        <input type="checkbox" checked={selectedIds.size === filteredItems.length && filteredItems.length > 0} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
-                                    </th>
+                                    {selectionEnabled ? (
+                                        <th className="py-4 px-5 w-10">
+                                            <input type="checkbox" checked={selectedIds.size === filteredItems.length && filteredItems.length > 0} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
+                                        </th>
+                                    ) : null}
                                     <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center w-16">Index</th>
                                     <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Name</th>
                                     {currentView !== 'trash' && (
@@ -399,10 +402,12 @@ function UnifiedWorkspace() {
                                     const isDL = downloading[item.id];
 
                                     return (
-                                        <tr key={item.id} onClick={() => handleItemClick(item)} className={`group cursor-pointer transition-colors ${isChecked ? 'bg-slate-50' : 'hover:bg-slate-50/50'}`}>
-                                            <td className="py-4 px-5" onClick={e => e.stopPropagation()}>
-                                                <input type="checkbox" checked={isChecked} onChange={e => handleToggleSelect(item.id, e)} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
-                                            </td>
+                                        <tr key={item.id} className={`group transition-colors ${selectionEnabled ? 'cursor-pointer' : ''} ${isChecked ? 'bg-slate-50' : 'hover:bg-slate-50/50'}`} onClick={selectionEnabled ? () => handleItemClick(item) : undefined}>
+                                            {selectionEnabled ? (
+                                                <td className="py-4 px-5" onClick={e => e.stopPropagation()}>
+                                                    <input type="checkbox" checked={isChecked} onChange={e => handleToggleSelect(item.id, e)} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
+                                                </td>
+                                            ) : null}
                                             <td className="py-4 px-3 text-center text-[12px] font-mono font-semibold text-slate-500">
                                                 {item.index || '—'}
                                             </td>
