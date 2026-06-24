@@ -112,7 +112,9 @@ export default function DynamicGroupPage() {
                     .from("users")
                     .select("id, name, email, phone_number, status")
                     .in("id", userIds)
-                    .eq("company_id", companyId);
+                    .eq("role", group.role)
+                // .eq("company_id", companyId)
+                // .eq("status", "active");
 
                 if (usersError) { setMembers([]); return; }
                 setMembers(users || []);
@@ -182,7 +184,7 @@ export default function DynamicGroupPage() {
                         can_add_members: row?.can_add_members ?? false,
                         can_remove_members: row?.can_remove_members ?? false,
                         can_create_group: row?.can_create_group ?? false,
-                        can_delete_group: row?.can_delete_group ?? false, 
+                        can_delete_group: row?.can_delete_group ?? false,
                         existingId: row?.id ?? null,
                     };
                 });
@@ -358,7 +360,7 @@ export default function DynamicGroupPage() {
                             {groupData?.description || "Manage access and administration settings for members in this group."}
                         </p>
                     </div>
-                    
+
                     {!showPermissionPage && (
                         <div className="flex items-center gap-3">
                             {canAddMembers && (
@@ -371,7 +373,7 @@ export default function DynamicGroupPage() {
                             <button onClick={() => setShowPermissionPage(true)}
                                 className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl font-medium text-sm hover:bg-slate-800 transition-all shadow-md active:scale-95">
                                 <FaCog size={14} className="text-white/80" />
-                                <span>Edit Permissions</span>
+                                <span>Permissions</span>
                             </button>
                         </div>
                     )}
@@ -386,7 +388,7 @@ export default function DynamicGroupPage() {
                             <h3 className="font-semibold text-sm text-slate-700">Active Members</h3>
                             <span className="bg-slate-200 text-slate-600 font-medium text-xs px-2.5 py-0.5 rounded-full">{members.length}</span>
                         </div>
-                        
+
                         <div className="flex-1 overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
@@ -501,8 +503,8 @@ export default function DynamicGroupPage() {
                                 })}
 
                                 {/* STANDALONE FILES ACCESS LINK */}
-                                <div onClick={() => { if(groupData?.id) router.push(`/documents/access?group=${groupData.id}`) }}
-                                     className="rounded-xl border border-slate-200 bg-white hover:border-slate-300 cursor-pointer transition-all duration-300 overflow-hidden group">
+                                <div onClick={() => { if (groupData?.id) router.push(`/documents/access?group=${groupData.id}`) }}
+                                    className="rounded-xl border border-slate-200 bg-white hover:border-slate-300 cursor-pointer transition-all duration-300 overflow-hidden group">
                                     <div className="flex items-center justify-between px-6 py-5">
                                         <div>
                                             <p className="font-semibold text-sm text-slate-800">Files Access</p>
@@ -510,7 +512,7 @@ export default function DynamicGroupPage() {
                                         </div>
                                         <div className="flex items-center gap-5">
                                             <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-800 group-hover:text-white transition-colors">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                                             </div>
                                         </div>
                                     </div>
@@ -536,16 +538,16 @@ export default function DynamicGroupPage() {
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-8 relative animate-in zoom-in-95 duration-200">
                         <button onClick={() => setShowInviteModal(false)}
                             className="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">✕</button>
-                        
+
                         <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5">
                             <FaUserPlus size={16} />
                         </div>
-                        
+
                         <h2 className="text-xl font-semibold text-slate-800 mb-1">Invite Member</h2>
                         <p className="text-sm text-slate-500 mb-6">
                             Add a new member to <span className="font-semibold text-slate-700">{groupData?.name}</span>
                         </p>
-                        
+
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Candidate Email</label>

@@ -50,7 +50,7 @@ export default function TokenRegisterPage() {
             try {
                 const { data: invitation, error } = await supabase
                     .from("invitations")
-                    .select("*, groups(name,company_id),inviter:users!invitations_invited_by_fkey(company_id)")
+                    .select("*, groups(name,company_id,role),inviter:users!invitations_invited_by_fkey(company_id)")
                     .eq("token", token)
                     .single();
 
@@ -255,10 +255,11 @@ export default function TokenRegisterPage() {
 
         try {
             // Set role based on group name (if it matches enum, use it; else external_user)
-            const VALID_ROLES = ["admin", "sub_admin", "super_admin", "external_user"];
-            const groupName = invitationDetails?.groups?.name || "";
-            const normalizedName = groupName.trim().toLowerCase().replace(/\s+/g, "_");
-            const targetRole = VALID_ROLES.includes(normalizedName) ? normalizedName : "external_user";
+            // const VALID_ROLES = ["admin", "sub_admin", "super_admin", "external_user"];
+            // const groupName = invitationDetails?.groups?.name || "";
+            // const normalizedName = groupName.trim().toLowerCase().replace(/\s+/g, "_");
+            // const targetRole = VALID_ROLES.includes(normalizedName) ? normalizedName : "external_user";
+            const targetRole = invitationDetails?.groups?.role || "external_user";
 
             const targetCompany =
                 invitationDetails?.groups?.company_id ||
