@@ -86,6 +86,18 @@ export default function TokenRegisterPage() {
         const updatedOtp = [...otp];
         updatedOtp[index] = value;
         setOtp(updatedOtp);
+
+        if (value && index < 5) {
+            const nextInput = document.getElementById(`otp-${index + 1}`);
+            if (nextInput) nextInput.focus();
+        }
+    };
+
+    const handleOtpKeyDown = (e, index) => {
+        if (e.key === "Backspace" && !otp[index] && index > 0) {
+            const prevInput = document.getElementById(`otp-${index - 1}`);
+            if (prevInput) prevInput.focus();
+        }
     };
 
     // 2. Perform database user registration and complete invitation status update
@@ -452,10 +464,12 @@ export default function TokenRegisterPage() {
                             <div className="flex justify-center gap-3">
                                 {otp.map((digit, index) => (
                                     <input
+                                        id={`otp-${index}`}
                                         key={index}
                                         maxLength={1}
                                         value={digit}
                                         onChange={(e) => handleOtpChange(e.target.value, index)}
+                                        onKeyDown={(e) => handleOtpKeyDown(e, index)}
                                         className="w-12 h-12 border border-gray-300 rounded-xl text-center text-xl font-bold text-slate-900"
                                     />
                                 ))}

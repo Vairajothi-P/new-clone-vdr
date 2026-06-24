@@ -301,6 +301,30 @@ function RegisterContent() {
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [emailError, setEmailError] = useState("");
+
+  // Debounced Email Check
+  useEffect(() => {
+    const checkEmail = async () => {
+      // Don't check if empty or if using a token (token emails are already validated/invited)
+      if (!formData.email || !!token) return;
+      
+      const { data } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", formData.email)
+        .maybeSingle();
+
+      if (data) {
+        setEmailError("This email already exists");
+      } else {
+        setEmailError("");
+      }
+    };
+
+    const timeoutId = setTimeout(checkEmail, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.email, token]);
 
   // 1. Fetch Invitation Details if token exists in URL
   useEffect(() => {
@@ -352,6 +376,18 @@ function RegisterContent() {
     const updatedOtp = [...otp];
     updatedOtp[index] = value;
     setOtp(updatedOtp);
+
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      if (nextInput) nextInput.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (e, index) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      if (prevInput) prevInput.focus();
+    }
   };
   const sendOtp = async () => {
     try {
@@ -624,10 +660,13 @@ function RegisterContent() {
                         onChange={handleChange}
                         disabled={!!invitationDetails} // Read-only if using invitation token
                         placeholder="Enter your email address"
-                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-slate-500"
+                        className={`w-full pl-12 pr-4 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-slate-500 ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                         required
                       />
                     </div>
+                    {emailError && (
+                      <p className="text-red-500 text-xs mt-1 font-semibold">{emailError}</p>
+                    )}
                   </div>
 
                   <div>
@@ -711,6 +750,11 @@ function RegisterContent() {
                         return;
                       }
 
+                      if (emailError) {
+                        alert("Please use a different email address.");
+                        return;
+                      }
+
                       await sendOtp();
                     }}
                     disabled={isSendingOtp}
@@ -735,10 +779,12 @@ function RegisterContent() {
                   <div className="flex justify-center gap-3">
                     {otp.map((digit, index) => (
                       <input
+                        id={`otp-${index}`}
                         key={index}
                         maxLength={1}
                         value={digit}
                         onChange={(e) => handleOtpChange(e.target.value, index)}
+                        onKeyDown={(e) => handleOtpKeyDown(e, index)}
                         className="w-12 h-12 border border-gray-300 rounded-xl text-center text-xl font-bold text-slate-900"
                       />
                     ))}
