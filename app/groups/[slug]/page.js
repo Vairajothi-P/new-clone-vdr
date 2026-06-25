@@ -246,7 +246,7 @@ export default function DynamicGroupPage() {
                 const s = perms[scope];
                 if (!s) continue;
 
-                if (!s.enabled) {
+                if (!s.enabled && !s.can_access_edit_permissions) {
                     if (s.existingId) {
                         const { error } = await supabase
                             .from("permissions").delete().eq("id", s.existingId);
@@ -493,7 +493,6 @@ export default function DynamicGroupPage() {
 
                                     const handleToggleEditPerm = async () => {
                                         const newVal = !isOn;
-                                        // Update local state immediately
                                         setPerms(prev => ({
                                             ...prev,
                                             workspace: { ...prev.workspace, can_access_edit_permissions: newVal }
@@ -501,14 +500,12 @@ export default function DynamicGroupPage() {
 
                                         try {
                                             if (ws.existingId) {
-                                                // Row exists — update it
                                                 const { error } = await supabase
                                                     .from('permissions')
                                                     .update({ can_access_edit_permissions: newVal, updated_at: new Date().toISOString() })
                                                     .eq('id', ws.existingId);
                                                 if (error) throw error;
                                             } else {
-                                                // No row yet — insert new workspace scope row
                                                 const { data: inserted, error } = await supabase
                                                     .from('permissions')
                                                     .insert({
@@ -516,18 +513,29 @@ export default function DynamicGroupPage() {
                                                         group_id: groupData.id,
                                                         scope: 'workspace',
                                                         can_access_edit_permissions: newVal,
+                                                        can_view: false,
+                                                        can_add_members: false,
+                                                        can_remove_members: false,
+                                                        can_create_group: false,
+                                                        can_delete_group: false,
+                                                        can_access_documents: false,
+                                                        can_access_groups: false,
+                                                        can_access_settings: false,
+                                                        can_access_branding: false,
+                                                        can_access_watermarks: false,
                                                     })
                                                     .select('id')
                                                     .single();
                                                 if (error) throw error;
                                                 setPerms(prev => ({
                                                     ...prev,
-                                                    workspace: { ...prev.workspace, existingId: inserted.id, enabled: true }
+                                                    workspace: { ...prev.workspace, existingId: inserted.id }
                                                 }));
                                             }
+                                            triggerToast("Permissions saved successfully");
                                         } catch (err) {
                                             console.error('Failed to save edit permission:', err);
-                                            // Revert on failure
+                                            triggerToast("Failed to save: " + err.message);
                                             setPerms(prev => ({
                                                 ...prev,
                                                 workspace: { ...prev.workspace, can_access_edit_permissions: isOn }
