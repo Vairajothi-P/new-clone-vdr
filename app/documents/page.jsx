@@ -205,7 +205,7 @@ function UnifiedWorkspace() {
     };
 
     // ... (File Upload & Fernet Encryption Logic remains exactly the same) ...
-    
+
 
     const handleFileChange = async (e) => {
         const chosenFiles = Array.from(e.target.files);
@@ -613,7 +613,7 @@ function UnifiedWorkspace() {
                                                         {item.type === 'folder' && (canUser('can_upload', item) ? <FaUpload className="text-slate-600 text-[15px]" title="Upload" /> : <FaUpload className="text-slate-200 text-[15px]" title="No Upload Access" />)}
                                                         {canUser('can_download_secure', item) ? <FaShieldAlt className="text-slate-600 text-[15px]" title="Download Secure" /> : <FaShieldAlt className="text-slate-200 text-[15px]" title="No Secure DL Access" />}
                                                         {canUser('can_download_original', item) ? <FaDownload className="text-slate-600 text-[15px]" title="Download Original" /> : <FaDownload className="text-slate-200 text-[15px]" title="No Original DL Access" />}
-                                                        {canUser('can_delete', item) ? <FaTrash className="text-rose-600 text-[14px]" title="Delete" /> : <FaTrash className="text-slate-200 text-[14px]" title="No Delete Access" />}
+                                                        {canUser('can_delete', item) ? <FaTrash className="text-slate-600 text-[14px]" title="Delete" /> : <FaTrash className="text-slate-200 text-[14px]" title="No Delete Access" />}
                                                     </div>
                                                 </td>
                                             )}
