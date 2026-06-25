@@ -126,12 +126,35 @@ function UnifiedWorkspace() {
                 const userMap = {};
                 (usersData || []).forEach(u => userMap[u.id] = u.name);
 
+                const calculateFolderSize = (folderId) => {
+                    let total = 0;
+
+                    const addFolderSize = (id) => {
+                        // Files inside this folder
+                        (docsData || []).forEach(doc => {
+                            if (doc.folder_id === id) {
+                                total += doc.file_size_bytes || 0;
+                            }
+                        });
+
+                        // Child folders
+                        (foldersData || []).forEach(folder => {
+                            if (folder.parent_folder_id === id) {
+                                addFolderSize(folder.id);
+                            }
+                        });
+                    };
+
+                    addFolderSize(folderId);
+
+                    return formatBytes(total);
+                };
                 // Folders Map
                 const mappedFolders = (foldersData || [])
                     .filter(f => isGodMode || myPerms[`fol_${f.id}`]?.can_view || session.role === 'admin' || session.role === 'subadmin')
                     .map(f => ({
                         id: f.id, parentId: f.parent_folder_id || null, index: f.index_number ? f.index_number.toString() : '1',
-                        name: f.name, type: 'folder', size: '--', uploadedBy: userMap[f.created_by] || 'System',
+                        name: f.name, type: 'folder', size: calculateFolderSize(f.id), uploadedBy: userMap[f.created_by] || 'System',
                         dateCreated: new Date(f.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                         is_bookmarked: f.is_bookmarked
                     }));
@@ -352,7 +375,7 @@ function UnifiedWorkspace() {
 
             setFiles(prev => [...prev, {
                 id: dbFolder.id, parentId: dbFolder.parent_folder_id || null, index: newIndex.toString(),
-                name: dbFolder.name, type: 'folder', size: '--', uploadedBy: session.name,
+                name: dbFolder.name, type: 'folder', size: formatBytes(0), uploadedBy: session.name,
                 dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
             }]);
             setNewFolderName(''); setIsNewFolderOpen(false);
