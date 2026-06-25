@@ -344,7 +344,7 @@ function AccessPageContent() {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-auto px-7 py-5">
+                <div className="flex-1 overflow-auto px-7 py-5 pb-28">
                     {!sidebarOpen && (
                         <button onClick={() => setSidebarOpen(true)} className="absolute left-0 top-4 p-2 hover:bg-slate-100 rounded-lg transition-colors z-50">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-slate-600"><polyline points="9 18 15 12 9 6" /></svg>
