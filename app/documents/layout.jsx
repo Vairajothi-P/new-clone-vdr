@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import MainSidebar from '@/components/MainSidebar';
 import { supabase } from '@/utils/supabase/client';
+import { hasPermission } from '@/lib/access/permissions';
 
 function LayoutContent({ children }) {
     const pathname = usePathname();
@@ -47,7 +48,7 @@ function LayoutContent({ children }) {
     };
 
     const isSuperAdmin = session?.role === 'super_admin';
-    const isAdminOrSuper = session?.role === 'admin' || isSuperAdmin;
+    const hasAccessControlAccess = session ? hasPermission(session.role, 'manage_access') : false;
     const currentView = searchParams.get('view');
 
     const isActive = (href) => {
@@ -61,7 +62,7 @@ function LayoutContent({ children }) {
             href: '/documents', label: 'Files',
             icon: <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
         },
-        ...(isAdminOrSuper ? [{
+        ...(hasAccessControlAccess ? [{
             href: '/documents/access', label: 'Access Control',
             icon: <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
         }] : []),

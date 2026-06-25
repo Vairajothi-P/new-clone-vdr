@@ -642,6 +642,13 @@ function UnifiedWorkspace() {
     //     } catch (err) { console.error('Permanent delete failed', err); }
     // };
 
+    // ── ACCESS CONTROL FLAGS FOR BUTTON VISIBILITY ──
+
+    const hasAnyRenameAccess = isGod || canUser('can_edit', { type: 'folder', id: currentFolderId }) || filteredItems.some(f => canUser('can_edit', f));
+    const hasAnyDownloadAccess = isGod || canUser('can_download_secure', { type: 'folder', id: currentFolderId }) || canUser('can_download_original', { type: 'folder', id: currentFolderId }) || filteredItems.some(f => canUser('can_download_secure', f) || canUser('can_download_original', f));
+    const hasAnyDeleteAccess = isGod || globalFolderPerms.can_delete || canUser('can_delete', { type: 'folder', id: currentFolderId }) || filteredItems.some(f => canUser('can_delete', f));
+    const hasAnyExportAccess = isGod || canUser('can_export');
+
     if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>;
 
     return (
@@ -672,7 +679,7 @@ function UnifiedWorkspace() {
                             </button>
                         )}
                         {/* 3. RENAME BUTTON */}
-                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && (
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && hasAnyRenameAccess && (
                             <button disabled={selectedIds.size !== 1} onClick={() => {
                                 const item = files.find(f => f.id === [...selectedIds][0]);
                                 if (item) {
@@ -700,7 +707,7 @@ function UnifiedWorkspace() {
                         )} */}
 
                         {/* Download Dropdown Logic */}
-                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && (
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && hasAnyDownloadAccess && (
                             <div className="relative">
                                 <button disabled={selectedIds.size === 0} onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
@@ -724,7 +731,7 @@ function UnifiedWorkspace() {
                             </div>
                         )}
 
-                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canUser('can_export') && (
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && hasAnyExportAccess && (
                             <button disabled={selectedIds.size === 0} onClick={handleExport} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                                 Export
@@ -738,13 +745,13 @@ function UnifiedWorkspace() {
                             </button>
                         )} */}
                         {/* 🔥 Switched from canEditSelected to canDeleteSelected */}
-                        {currentView !== 'trash' && (
+                        {currentView !== 'trash' && hasAnyDeleteAccess && (
                             <button disabled={selectedIds.size === 0 || !canDeleteSelected} onClick={() => setIsDeleteModalOpen(true)} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 || !canDeleteSelected ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-rose-600 hover:bg-rose-50'}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
                                 Delete
                             </button>
                         )}
-                        {currentView !== 'trash' && (
+                        {currentView !== 'trash' && canMergeFolder && (
                             <button disabled={selectedIds.size === 0 || !canMergeFolder} onClick={() => setIsMoveModalOpen(true)} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 || !canMergeFolder ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-blue-600 hover:bg-blue-50'}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="5 9 2 12 5 15" /><polyline points="9 5 12 2 15 5" /><line x1="2" y1="12" x2="22" y2="12" /><line x1="12" y1="2" x2="12" y2="22" /></svg>
                                 Move Items
