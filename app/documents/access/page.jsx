@@ -35,6 +35,7 @@ function AccessPageContent() {
     const [expandedGroups, setExpandedGroups] = useState(new Set());
     const [searchQuery, setSearchQuery] = useState('');
     const [currentFolderId, setCurrentFolderId] = useState(null);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
 
     // ── SESSION ──────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -245,16 +246,26 @@ function AccessPageContent() {
         }
     };
 
+    // ── SORT HELPER ──────────────────────────────────────────────────────────
+    const sortItemsByIndex = (a, b) => {
+        const aIndex = Number.isFinite(+(a.index_number || a.index)) ? +(a.index_number || a.index) : 999999;
+        const bIndex = Number.isFinite(+(b.index_number || b.index)) ? +(b.index_number || b.index) : 999999;
+        if (aIndex !== bIndex) return aIndex - bIndex;
+        return a.name.localeCompare(b.name);
+    };
+
     // ── RENDER ───────────────────────────────────────────────────────────────
     const activeGroup = groups.find(g => g.id === selectedGroup);
-    const displayFolders = folders.filter(f => f.parent_folder_id === currentFolderId && f.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    const displayDocs = documents.filter(d => d.folder_id === currentFolderId && d.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const sortedFolders = folders.filter(f => f.parent_folder_id === currentFolderId && f.name.toLowerCase().includes(searchQuery.toLowerCase())).sort(sortItemsByIndex);
+    const sortedDocs = documents.filter(d => d.folder_id === currentFolderId && d.name.toLowerCase().includes(searchQuery.toLowerCase())).sort(sortItemsByIndex);
+    const displayFolders = sortedFolders.map((f, idx) => ({ ...f, displayIndex: (idx + 1).toString() }));
+    const displayDocs = sortedDocs.map((d, idx) => ({ ...d, displayIndex: (idx + displayFolders.length + 1).toString() }));
 
     if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>;
 
     return (
         <div className="relative flex w-full h-full bg-[#F8F9FB] overflow-hidden text-slate-800 font-sans">
-            <aside className="w-[280px] shrink-0 border-r border-slate-200 bg-white flex flex-col h-full overflow-hidden">
+            <aside className={`${sidebarOpen ? 'w-[280px]' : 'w-0'} shrink-0 border-r border-slate-200 bg-white flex flex-col h-full overflow-hidden transition-all duration-300`}>
                 <div className="px-5 pt-5 pb-3 border-b border-slate-100">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Room Groups</p>
                     <p className="text-[11px] text-slate-400 mt-1">{groups.length} group{groups.length !== 1 ? 's' : ''}</p>
@@ -335,16 +346,17 @@ function AccessPageContent() {
                         </div>
                     ) : (
                         <div className="rounded-2xl border border-slate-200 bg-white shadow-[0_2px_16px_rgba(0,0,0,0.04)] overflow-hidden">
-                            <div className="bg-white px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-                                <button onClick={() => setCurrentFolderId(null)} className={`text-[12px] font-bold ${currentFolderId === null ? 'text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>Root Directory</button>
+                            <div className="bg-white px-4 py-3 border-b border-slate-100 flex items-center gap-2 overflow-x-auto">
+                                <button onClick={() => setCurrentFolderId(null)} className={`text-[12px] font-bold whitespace-nowrap ${currentFolderId === null ? 'text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>Root Directory</button>
                                 {getBreadcrumbs().map(crumb => (
                                     <React.Fragment key={crumb.id}>
-                                        <span className="text-slate-300">/</span>
-                                        <button onClick={() => setCurrentFolderId(crumb.id)} className={`text-[12px] font-bold ${currentFolderId === crumb.id ? 'text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>{crumb.name}</button>
+                                        <span className="text-slate-300 shrink-0">/</span>
+                                        <button onClick={() => setCurrentFolderId(crumb.id)} className={`text-[12px] font-bold whitespace-nowrap ${currentFolderId === crumb.id ? 'text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>{crumb.name}</button>
                                     </React.Fragment>
                                 ))}
                             </div>
 
+                            <div className="overflow-x-auto">
                             <table className="w-full min-w-[750px] border-collapse text-left">
                                 <thead>
                                     <tr className="bg-slate-100/50 border-b border-slate-200">
@@ -449,7 +461,7 @@ function AccessPageContent() {
 
                                         return (
                                             <tr key={folder.id} className="group hover:bg-slate-50/60 transition-all duration-150 cursor-pointer" onDoubleClick={() => setCurrentFolderId(folder.id)}>
-                                                <td className="py-3.5 px-4 text-center font-mono text-[11.5px] font-semibold text-slate-400">{folder.index_number || '—'}</td>
+                                                <td className="py-3.5 px-4 text-center font-mono text-[11.5px] font-semibold text-slate-400">{folder.displayIndex}</td>
                                                 <td className="py-3.5 px-3" onClick={() => setCurrentFolderId(folder.id)}>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-amber-50 border border-amber-100 text-amber-500">
@@ -529,6 +541,7 @@ function AccessPageContent() {
                                     })}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     )}
                 </div>

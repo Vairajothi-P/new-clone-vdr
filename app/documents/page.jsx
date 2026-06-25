@@ -35,6 +35,22 @@ function UnifiedWorkspace() {
     const [downloadedIds, setDownloadedIds] = useState(new Set());
     const [downloading, setDownloading] = useState({});
 
+    const formatBytes = (bytes) => {
+        if (typeof bytes !== 'number' || Number.isNaN(bytes)) return '--';
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+        if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+    };
+
+    const sortItemsByIndex = (a, b) => {
+        const aIndex = Number.isFinite(+a.index) ? +a.index : 999999;
+        const bIndex = Number.isFinite(+b.index) ? +b.index : 999999;
+        if (aIndex !== bIndex) return aIndex - bIndex;
+        if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+        return a.name.localeCompare(b.name);
+    };
+
     // Dropdowns & Modals
     const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -127,7 +143,7 @@ function UnifiedWorkspace() {
                     .map(doc => ({
                         id: doc.id, parentId: doc.folder_id || null, index: doc.index ? doc.index.toString().replace('.0', '') : '99',
                         name: doc.name, type: doc.name.split('.').pop().toLowerCase() || 'file',
-                        size: doc.file_size_bytes > 1024 * 1024 ? `${(doc.file_size_bytes / (1024 * 1024)).toFixed(1)} MB` : `${(doc.file_size_bytes / 1024).toFixed(0)} KB`,
+                        size: formatBytes(doc.file_size_bytes),
                         uploadedBy: userMap[doc.uploaded_by] || 'System',
                         dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                         deletedBy: userMap[doc.deleted_by] || 'Unknown',
@@ -180,7 +196,12 @@ function UnifiedWorkspace() {
         return files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
     }, [currentFolderId, files, currentView, deletedIds, bookmarkedIds, downloadedIds]);
 
-    const filteredItems = currentItems.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const filteredItems = useMemo(() => {
+        return currentItems
+            .filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+            .sort(sortItemsByIndex)
+            .map((item, idx) => ({ ...item, displayIndex: (idx + 1).toString() }));
+    }, [currentItems, searchQuery]);
     const selectedItemsArray = files.filter(f => selectedIds.has(f.id));
 
     // Nav Bar Logic Flags
@@ -247,7 +268,7 @@ function UnifiedWorkspace() {
 
         setUploadQueue(chosenFiles.map((f, i) => ({
             id: `up-${Date.now()}-${i}`, name: f.name, progress: 0, status: 'uploading',
-            size: f.size > 1024 * 1024 ? `${(f.size / (1024 * 1024)).toFixed(1)} MB` : `${(f.size / 1024).toFixed(0)} KB`
+            size: formatBytes(f.size)
         })));
         setIsUploadModalOpen(true);
 
@@ -302,7 +323,7 @@ function UnifiedWorkspace() {
                 setFiles(prev => [...prev, {
                     id: docId, parentId: currentFolderId, index: '99', name: file.name,
                     type: file.name.split('.').pop().toLowerCase() || 'file',
-                    size: file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${(file.size / 1024).toFixed(0)} KB`,
+                    size: formatBytes(file.size),
                     uploadedBy: session.name, dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     file_path: secureStoragePath, original_file_path: originalStoragePath, dek_ref: fernetKey, mime_type: file.type
                 }]);
@@ -726,7 +747,7 @@ function UnifiedWorkspace() {
                                                 </td>
                                             ) : null}
                                             <td className="py-4 px-3 text-center text-[12px] font-mono font-semibold text-slate-500">
-                                                {item.index || '—'}
+                                                {item.displayIndex || '—'}
                                             </td>
                                             <td className="py-4 px-3">
                                                 <div className="flex items-center gap-3">
@@ -763,7 +784,7 @@ function UnifiedWorkspace() {
                                                         {item.type === 'folder' && (canUser('can_upload', item) ? <FaUpload className="text-slate-600 text-[15px]" title="Upload" /> : <FaUpload className="text-slate-200 text-[15px]" title="No Upload Access" />)}
                                                         {canUser('can_download_secure', item) ? <FaShieldAlt className="text-slate-600 text-[15px]" title="Download Secure" /> : <FaShieldAlt className="text-slate-200 text-[15px]" title="No Secure DL Access" />}
                                                         {canUser('can_download_original', item) ? <FaDownload className="text-slate-600 text-[15px]" title="Download Original" /> : <FaDownload className="text-slate-200 text-[15px]" title="No Original DL Access" />}
-                                                        {canUser('can_delete', item) ? <FaTrash className="text-rose-600 text-[14px]" title="Delete" /> : <FaTrash className="text-slate-200 text-[14px]" title="No Delete Access" />}
+                                                        {canUser('can_delete', item) ? <FaTrash className="text-slate-600 text-[14px]" title="Delete" /> : <FaTrash className="text-slate-200 text-[14px]" title="No Delete Access" />}
                                                     </div>
                                                 </td>
                                             )}
