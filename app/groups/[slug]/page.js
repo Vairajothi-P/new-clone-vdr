@@ -64,6 +64,7 @@ export default function DynamicGroupPage() {
 
     const [canAddMembers, setCanAddMembers] = useState(false);
     const [canRemoveMembers, setCanRemoveMembers] = useState(false);
+    const [canEditPermissions, setCanEditPermissions] = useState(false);
 
     const [perms, setPerms] = useState({});
     const [permsLoading, setPermsLoading] = useState(false);
@@ -134,20 +135,25 @@ export default function DynamicGroupPage() {
             if (session.role === 'super_admin') {
                 setCanAddMembers(true);
                 setCanRemoveMembers(true);
+                setCanEditPermissions(true);
                 return;
             }
 
-            const { data: ugRows } = await supabase
-                .from('user_groups')
-                .select('group_id')
-                .eq('user_id', session.id);
+            // const { data: ugRows } = await supabase
+            //     .from('user_groups')
+            //     .select('group_id')
+            //     .eq('user_id', session.id);
 
+            // const groupIds = ugRows?.map(r => r.group_id) || [];
+            // if (!groupIds.length) return;
+
+            const { data: ugRows } = await supabase.from('user_groups').select('group_id').eq('user_id', session.id);
             const groupIds = ugRows?.map(r => r.group_id) || [];
             if (!groupIds.length) return;
 
             const { data: perms } = await supabase
                 .from('permissions')
-                .select('can_add_members, can_remove_members')
+                .select('can_add_members, can_remove_members, can_access_edit_permissions') // 🔥 Added column
                 .eq('company_id', companyId)
                 .eq('scope', 'workspace')
                 .in('group_id', groupIds);
@@ -155,7 +161,20 @@ export default function DynamicGroupPage() {
             if (perms && perms.length > 0) {
                 setCanAddMembers(perms.some(p => p.can_add_members));
                 setCanRemoveMembers(perms.some(p => p.can_remove_members));
+                setCanEditPermissions(perms.some(p => p.can_access_edit_permissions)); // 🔥 Set state
             }
+
+            // const { data: perms } = await supabase
+            //     .from('permissions')
+            //     .select('can_add_members, can_remove_members')
+            //     .eq('company_id', companyId)
+            //     .eq('scope', 'workspace')
+            //     .in('group_id', groupIds);
+
+            // if (perms && perms.length > 0) {
+            //     setCanAddMembers(perms.some(p => p.can_add_members));
+            //     setCanRemoveMembers(perms.some(p => p.can_remove_members));
+            // }
         };
 
         checkGroupPermissions();
@@ -397,11 +416,19 @@ export default function DynamicGroupPage() {
                                     <span>Invite Member</span>
                                 </button>
                             )}
-                            <button onClick={() => setShowPermissionPage(true)}
+                            {/* <button onClick={() => setShowPermissionPage(true)}
                                 className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl font-medium text-sm hover:bg-slate-800 transition-all shadow-md active:scale-95">
                                 <FaCog size={14} className="text-white/80" />
                                 <span>Edit Permissions</span>
-                            </button>
+                            </button> */}
+
+                            {canEditPermissions && (
+                                <button onClick={() => setShowPermissionPage(true)}
+                                    className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl font-medium text-sm hover:bg-slate-800 transition-all shadow-md active:scale-95">
+                                    <FaCog size={14} className="text-white/80" />
+                                    <span>Edit Permissions</span>
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>

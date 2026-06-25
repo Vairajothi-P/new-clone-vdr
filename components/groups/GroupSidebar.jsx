@@ -60,7 +60,7 @@ export default function GroupsSidebar({ isOpen = true }) {
                         .from('permissions')
                         .select('can_create_group, can_delete_group')
                         .eq('company_id', companyId)
-                        .eq('scope', 'group')
+                        .eq('scope', 'workspace')
                         .in('group_id', groupIds);
 
                     if (perms && perms.length > 0) {
