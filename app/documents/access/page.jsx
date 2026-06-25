@@ -245,10 +245,20 @@ function AccessPageContent() {
         }
     };
 
+    // ── SORT HELPER ──────────────────────────────────────────────────────────
+    const sortItemsByIndex = (a, b) => {
+        const aIndex = Number.isFinite(+(a.index_number || a.index)) ? +(a.index_number || a.index) : 999999;
+        const bIndex = Number.isFinite(+(b.index_number || b.index)) ? +(b.index_number || b.index) : 999999;
+        if (aIndex !== bIndex) return aIndex - bIndex;
+        return a.name.localeCompare(b.name);
+    };
+
     // ── RENDER ───────────────────────────────────────────────────────────────
     const activeGroup = groups.find(g => g.id === selectedGroup);
-    const displayFolders = folders.filter(f => f.parent_folder_id === currentFolderId && f.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    const displayDocs = documents.filter(d => d.folder_id === currentFolderId && d.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const sortedFolders = folders.filter(f => f.parent_folder_id === currentFolderId && f.name.toLowerCase().includes(searchQuery.toLowerCase())).sort(sortItemsByIndex);
+    const sortedDocs = documents.filter(d => d.folder_id === currentFolderId && d.name.toLowerCase().includes(searchQuery.toLowerCase())).sort(sortItemsByIndex);
+    const displayFolders = sortedFolders.map((f, idx) => ({ ...f, displayIndex: (idx + 1).toString() }));
+    const displayDocs = sortedDocs.map((d, idx) => ({ ...d, displayIndex: (idx + displayFolders.length + 1).toString() }));
 
     if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>;
 
@@ -449,7 +459,7 @@ function AccessPageContent() {
 
                                         return (
                                             <tr key={folder.id} className="group hover:bg-slate-50/60 transition-all duration-150 cursor-pointer" onDoubleClick={() => setCurrentFolderId(folder.id)}>
-                                                <td className="py-3.5 px-4 text-center font-mono text-[11.5px] font-semibold text-slate-400">{folder.index_number || '—'}</td>
+                                                <td className="py-3.5 px-4 text-center font-mono text-[11.5px] font-semibold text-slate-400">{folder.displayIndex}</td>
                                                 <td className="py-3.5 px-3" onClick={() => setCurrentFolderId(folder.id)}>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-amber-50 border border-amber-100 text-amber-500">
