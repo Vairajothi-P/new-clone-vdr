@@ -35,6 +35,7 @@ function AccessPageContent() {
     const [expandedGroups, setExpandedGroups] = useState(new Set());
     const [searchQuery, setSearchQuery] = useState('');
     const [currentFolderId, setCurrentFolderId] = useState(null);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // ── SESSION ──────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -264,10 +265,15 @@ function AccessPageContent() {
 
     return (
         <div className="relative flex w-full h-full bg-[#F8F9FB] overflow-hidden text-slate-800 font-sans">
-            <aside className="w-[280px] shrink-0 border-r border-slate-200 bg-white flex flex-col h-full overflow-hidden">
-                <div className="px-5 pt-5 pb-3 border-b border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Room Groups</p>
-                    <p className="text-[11px] text-slate-400 mt-1">{groups.length} group{groups.length !== 1 ? 's' : ''}</p>
+            <aside className={`${sidebarOpen ? 'w-[280px]' : 'w-0'} shrink-0 border-r border-slate-200 bg-white flex flex-col h-full overflow-hidden transition-all duration-300`}>
+                <div className="px-5 pt-5 pb-3 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Room Groups</p>
+                        <p className="text-[11px] text-slate-400 mt-1">{groups.length} group{groups.length !== 1 ? 's' : ''}</p>
+                    </div>
+                    <button onClick={() => setSidebarOpen(false)} className="flex-shrink-0 p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-slate-400 hover:text-slate-600"><polyline points="15 18 9 12 15 6" /></svg>
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto py-2 px-2">
@@ -339,6 +345,11 @@ function AccessPageContent() {
                 </div>
 
                 <div className="flex-1 overflow-auto px-7 py-5">
+                    {!sidebarOpen && (
+                        <button onClick={() => setSidebarOpen(true)} className="absolute left-0 top-4 p-2 hover:bg-slate-100 rounded-lg transition-colors z-50">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-slate-600"><polyline points="9 18 15 12 9 6" /></svg>
+                        </button>
+                    )}
                     {!selectedGroup ? (
                         <div className="flex flex-col items-center justify-center h-64 text-slate-400 gap-3">
                             <p className="text-[13px] font-bold">Select a group to manage access</p>
