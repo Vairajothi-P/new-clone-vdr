@@ -19,13 +19,13 @@ export default function MainSidebar() {
     setIsAdmin(session.role === 'admin');
 
     const checkSettingsPermission = async () => {
-      // super_admin always has access
-      if (session.role === 'super_admin' || session.role === 'admin') {
+      // 1. ONLY Super Admin gets the automatic free pass
+      if (session.role === 'super_admin') {
         setHasSettingsAccess(true);
         return;
       }
 
-      // Get all groups this user belongs to
+      // 2. Everyone else (including normal Admins) MUST check the DB
       const { data: ugRows } = await supabase
         .from('user_groups')
         .select('group_id')
@@ -34,16 +34,16 @@ export default function MainSidebar() {
       const groupIds = ugRows?.map(r => r.group_id) || [];
       if (!groupIds.length) return;
 
-      // Check if any of those groups have settings permission enabled
+      // 3. ONLY check the main 'can_access_settings' column for the gear icon
       const { data: perms } = await supabase
         .from('permissions')
-        .select('id')
-        .eq('company_id', session.company_id)
-        .eq('scope', 'settings')
-        .eq('can_view', true)
+        .select('can_access_settings')
+        .eq('scope', 'workspace')
         .in('group_id', groupIds);
 
-      setHasSettingsAccess(!!(perms && perms.length > 0));
+      // 4. If they have the main settings module ON, show the icon
+      const canAccess = perms?.some(p => p.can_access_settings);
+      setHasSettingsAccess(!!canAccess);
     };
 
     checkSettingsPermission();
@@ -63,7 +63,7 @@ export default function MainSidebar() {
       {/* Nav Items — Driven by NAV_ITEMS config in lib/nav-items.js */}
       <div className="flex flex-col gap-2 flex-1">
         {NAV_ITEMS.map((item) => {
-          // Hide settings from non-admins
+          // Hide settings from users who don't have the toggle enabled
           if (item.key === 'settings' && !hasSettingsAccess) return null;
 
           const isActive = pathname?.startsWith(item.href);
@@ -78,11 +78,10 @@ export default function MainSidebar() {
               {isActive && (
                 <div className="absolute left-0 w-1 h-8 bg-slate-900 rounded-r-md" />
               )}
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                isActive
-                  ? 'bg-slate-100 text-slate-900 shadow-inner'
-                  : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
-              }`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive
+                ? 'bg-slate-100 text-slate-900 shadow-inner'
+                : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+                }`}>
                 {item.icon}
               </div>
               <span className="absolute left-16 bg-slate-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
