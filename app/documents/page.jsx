@@ -56,6 +56,8 @@ function UnifiedWorkspace() {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
+    const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+    const [renameValue, setRenameValue] = useState('');
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isPermDeleteModalOpen, setIsPermDeleteModalOpen] = useState(false);
     const [uploadQueue, setUploadQueue] = useState([]);
@@ -358,7 +360,7 @@ function UnifiedWorkspace() {
                     uploadedBy: session.name, dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     file_path: secureStoragePath, original_file_path: originalStoragePath, dek_ref: fernetKey, mime_type: file.type
                 }]);
-                
+
                 nextIndex++; // Increment for the next file in the loop
             } catch (err) {
                 console.error('Upload failed:', err);
@@ -391,6 +393,27 @@ function UnifiedWorkspace() {
             setNewFolderName(''); setIsNewFolderOpen(false);
         } catch (err) {
             alert("Failed to create folder: " + err.message);
+        }
+    };
+
+    const handleRename = async (e) => {
+        e.preventDefault();
+        if (!renameValue.trim() || selectedIds.size !== 1) return;
+        const itemId = [...selectedIds][0];
+        const item = files.find(f => f.id === itemId);
+        if (!item) return;
+
+        try {
+            if (item.type === 'folder') {
+                await supabase.from('folders').update({ name: renameValue.trim() }).eq('id', itemId);
+            } else {
+                await supabase.from('documents').update({ name: renameValue.trim() }).eq('id', itemId);
+            }
+            setFiles(prev => prev.map(f => f.id === itemId ? { ...f, name: renameValue.trim() } : f));
+            setIsRenameModalOpen(false);
+            setSelectedIds(new Set());
+        } catch (err) {
+            alert("Failed to rename: " + err.message);
         }
     };
     //const handleCreateFolder = async (e) => { /* Your Folder create logic */ };
@@ -648,6 +671,19 @@ function UnifiedWorkspace() {
                                 Add Folder
                             </button>
                         )}
+                        {/* 3. RENAME BUTTON */}
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && (
+                            <button disabled={selectedIds.size !== 1} onClick={() => {
+                                const item = files.find(f => f.id === [...selectedIds][0]);
+                                if (item) {
+                                    setRenameValue(item.name);
+                                    setIsRenameModalOpen(true);
+                                }
+                            }} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size !== 1 ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                                Rename
+                            </button>
+                        )}
                         {/* {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canUploadHere && (
                             <>
                                 <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
@@ -884,6 +920,19 @@ function UnifiedWorkspace() {
                     <h3 className="text-[16px] font-black mb-4">Create New Folder</h3>
                     <input type="text" placeholder="Folder name..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:border-slate-400 focus:outline-none" />
                     <button onClick={handleCreateFolder} className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl">Create</button>
+                </Modal>
+            )}
+
+            {isRenameModalOpen && (
+                <Modal onClose={() => setIsRenameModalOpen(false)}>
+                    <h3 className="text-[16px] font-black text-slate-900 mb-4">Rename Item</h3>
+                    <form onSubmit={handleRename}>
+                        <input type="text" placeholder="New name..." value={renameValue} onChange={e => setRenameValue(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:border-slate-400 focus:outline-none" autoFocus />
+                        <div className="flex gap-2">
+                            <button type="button" onClick={() => setIsRenameModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-700 cursor-pointer hover:bg-slate-300 font-bold rounded-xl text-[14px]">Cancel</button>
+                            <button type="submit" className="flex-1 py-3 bg-slate-800 text-white cursor-pointer hover:bg-slate-900 font-bold rounded-xl text-[14px]">Rename</button>
+                        </div>
+                    </form>
                 </Modal>
             )}
 

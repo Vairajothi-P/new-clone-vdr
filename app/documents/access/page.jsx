@@ -35,7 +35,7 @@ function AccessPageContent() {
     const [expandedGroups, setExpandedGroups] = useState(new Set());
     const [searchQuery, setSearchQuery] = useState('');
     const [currentFolderId, setCurrentFolderId] = useState(null);
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // ── SESSION ──────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -321,6 +321,12 @@ function AccessPageContent() {
             <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
                 <div className="flex items-center justify-between px-7 pt-6 pb-4 border-b border-slate-200 bg-white">
                     <div className="flex items-center gap-3">
+                        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" title="Toggle Groups Sidebar">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 2v20M12 22a4 4 0 0 1-4-4v-4" /> {/* Hook shape */}
+                                <circle cx="12" cy="4" r="2" />
+                            </svg>
+                        </button>
                         {activeGroup && (
                             <>
                                 <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-[12px] font-black text-white shrink-0">
