@@ -133,7 +133,7 @@ function UnifiedWorkspace() {
                         // Files inside this folder
                         (docsData || []).forEach(doc => {
                             if (doc.folder_id === id) {
-                                total += doc.file_size_bytes || 0;
+                                total += Number(doc.file_size_bytes) || 0;
                             }
                         });
 
@@ -156,7 +156,9 @@ function UnifiedWorkspace() {
                         id: f.id, parentId: f.parent_folder_id || null, index: f.index_number ? f.index_number.toString() : '1',
                         name: f.name, type: 'folder', size: calculateFolderSize(f.id), uploadedBy: userMap[f.created_by] || 'System',
                         dateCreated: new Date(f.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                        is_bookmarked: f.is_bookmarked
+                        deletedBy: userMap[f.deleted_by] || 'Unknown',
+                        deletedAt: f.deleted_at ? new Date(f.deleted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '--',
+                        is_bookmarked: f.is_bookmarked, is_deleted: f.is_deleted
                     }));
 
                 // Docs Map
@@ -181,7 +183,10 @@ function UnifiedWorkspace() {
                 setFiles([...mappedFolders, ...mappedDocs]);
                 setBookmarkedIds(new Set([...(docsData || []).filter(d => d.is_bookmarked).map(d => d.id), ...(foldersData || []).filter(f => f.is_bookmarked).map(f => f.id)]));
                 setDownloadedIds(new Set((docsData || []).filter(d => d.is_downloaded).map(d => d.id)));
-                setDeletedIds(new Set((docsData || []).filter(d => d.is_deleted).map(d => d.id)));
+                setDeletedIds(new Set([
+                    ...(docsData || []).filter(d => d.is_deleted).map(d => d.id),
+                    ...(foldersData || []).filter(f => f.is_deleted).map(f => f.id)
+                ]));
             } catch (err) { console.error('Fetch error:', err); }
             finally { setLoading(false); }
         })();
