@@ -13,8 +13,8 @@ const PERMISSION_SECTIONS = [
         description: "Control access to navigation modules and group management",
         subPerms: [
             {
-                key: "can_access_groups", 
-                label: "Groups", 
+                key: "can_access_groups",
+                label: "Groups",
                 desc: "Can access the Groups module and manage group settings",
                 nested: [
                     { key: "can_add_members", label: "Add Members", desc: "Can invite & add users to groups" },
@@ -24,8 +24,8 @@ const PERMISSION_SECTIONS = [
                 ]
             },
             {
-                key: "can_access_settings", 
-                label: "Settings", 
+                key: "can_access_settings",
+                label: "Settings",
                 desc: "Can access the Settings module and workspace configurations",
                 nested: [
                     { key: "can_access_branding", label: "Branding", desc: "Can customize workspace branding" },
@@ -181,7 +181,7 @@ export default function DynamicGroupPage() {
                         can_add_members: row?.can_add_members ?? false,
                         can_remove_members: row?.can_remove_members ?? false,
                         can_create_group: row?.can_create_group ?? false,
-                        can_delete_group: row?.can_delete_group ?? false, 
+                        can_delete_group: row?.can_delete_group ?? false,
                         can_access_documents: row?.can_access_documents ?? false,
                         can_access_groups: row?.can_access_groups ?? false,
                         can_access_settings: row?.can_access_settings ?? false,
@@ -191,14 +191,15 @@ export default function DynamicGroupPage() {
                     };
                 });
 
-                // File access permissions — UI only, not connected to DB yet
+                const filesRow = data?.find(r => r.scope === 'files');
                 built['files'] = {
-                    enabled: false,
-                    can_create_folder: false,
-                    can_merge_folder: false,
-                    can_delete_folder: false,
-                    existingId: null,
+                    enabled: !!filesRow,
+                    can_create_folder: filesRow?.can_create_folder ?? false,
+                    can_merge_folder: filesRow?.can_merge_folder ?? false,
+                    can_delete_folder: filesRow?.can_delete_folder ?? false,
+                    existingId: filesRow?.id ?? null,
                 };
+
                 setPerms(built);
             } catch (err) {
                 console.error("Load perms error:", err);
@@ -237,7 +238,10 @@ export default function DynamicGroupPage() {
         if (!groupData) return;
         setSaving(true);
         try {
-            for (const { scope } of PERMISSION_SECTIONS) {
+            // for (const { scope } of PERMISSION_SECTIONS) {
+            //     const s = perms[scope];
+            const ALL_SECTIONS = [...PERMISSION_SECTIONS, { scope: 'files' }];
+            for (const { scope } of ALL_SECTIONS) {
                 const s = perms[scope];
                 if (!s) continue;
 
@@ -266,6 +270,9 @@ export default function DynamicGroupPage() {
                     can_access_watermarks: s.can_access_watermarks || false,
                     folder_id: null,
                     document_id: null,
+                    can_create_folder: s.can_create_folder || false,   
+                    can_merge_folder: s.can_merge_folder || false,    
+                    can_delete_folder: s.can_delete_folder || false,
                 };
 
                 if (s.existingId) {
@@ -378,7 +385,7 @@ export default function DynamicGroupPage() {
                             {groupData?.description || "Manage access and administration settings for members in this group."}
                         </p>
                     </div>
-                    
+
                     {!showPermissionPage && (
                         <div className="flex items-center gap-3">
                             {canAddMembers && (
@@ -406,7 +413,7 @@ export default function DynamicGroupPage() {
                             <h3 className="font-semibold text-sm text-slate-700">Active Members</h3>
                             <span className="bg-slate-200 text-slate-600 font-medium text-xs px-2.5 py-0.5 rounded-full">{members.length}</span>
                         </div>
-                        
+
                         <div className="flex-1 overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
@@ -478,7 +485,7 @@ export default function DynamicGroupPage() {
                             <div className="space-y-6 max-w-4xl">
                                 {PERMISSION_SECTIONS.map(({ label, scope, description, subPerms }) => {
                                     const s = perms[scope] || { enabled: false, ...DEFAULT_PERMS, existingId: null };
-                                    
+
                                     return (
                                         <div key={scope} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 flex flex-col">
                                             {/* Top Level Workspace Header */}
@@ -498,10 +505,10 @@ export default function DynamicGroupPage() {
                                                 <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                                     {subPerms.map((sub) => {
                                                         const isModuleOn = !!s[sub.key];
-                                                        
+
                                                         return (
                                                             <div key={sub.key} className={`border rounded-2xl transition-all duration-200 overflow-hidden ${isModuleOn ? 'border-slate-300 shadow-sm bg-white' : 'border-slate-200 bg-slate-50/50'}`}>
-                                                                
+
                                                                 {/* Module Header */}
                                                                 <div className="p-6 flex items-center justify-between">
                                                                     <div>
@@ -567,7 +574,7 @@ export default function DynamicGroupPage() {
                                                             onClick={() => groupData?.id && router.push(`/documents/access?group=${groupData.id}`)}
                                                             title="Go to advanced file permissions"
                                                             className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                                                         </button>
                                                         <button onClick={() => setPerms(prev => ({ ...prev, files: { ...(prev.files || {}), enabled: !fs.enabled } }))}
                                                             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${fs.enabled ? 'bg-slate-900' : 'bg-slate-200'}`}>
@@ -632,16 +639,16 @@ export default function DynamicGroupPage() {
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-8 relative animate-in zoom-in-95 duration-200">
                         <button onClick={() => setShowInviteModal(false)}
                             className="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">✕</button>
-                        
+
                         <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5">
                             <FaUserPlus size={16} />
                         </div>
-                        
+
                         <h2 className="text-xl font-semibold text-slate-800 mb-1">Invite Member</h2>
                         <p className="text-sm text-slate-500 mb-6">
                             Add a new member to <span className="font-semibold text-slate-700">{groupData?.name}</span>
                         </p>
-                        
+
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Candidate Email</label>

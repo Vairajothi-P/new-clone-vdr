@@ -23,6 +23,7 @@ function UnifiedWorkspace() {
     // Core Data
     const [files, setFiles] = useState([]);
     const [mergedPerms, setMergedPerms] = useState({});
+    const [globalFolderPerms, setGlobalFolderPerms] = useState({ can_create: false, can_merge: false, can_delete: false });
 
     // UI State
     const [loading, setLoading] = useState(true);
@@ -43,6 +44,9 @@ function UnifiedWorkspace() {
     const [isPermDeleteModalOpen, setIsPermDeleteModalOpen] = useState(false);
     const [uploadQueue, setUploadQueue] = useState([]);
 
+    const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+    const [movingToFolderId, setMovingToFolderId] = useState(null);
+
     const fileInputRef = useRef(null);
     const folderInputRef = useRef(null);
 
@@ -60,7 +64,10 @@ function UnifiedWorkspace() {
             setLoading(true);
             try {
                 const isGodMode = session.role === 'super_admin';
+
+                // 🔥 Declare BOTH variables up here so the whole function can access them!
                 let myPerms = {};
+                let globalTemp = { can_create: false, can_merge: false, can_delete: false };
 
                 if (!isGodMode) {
                     const { data: myGroups } = await supabase.from('user_groups').select('group_id').eq('user_id', session.id);
@@ -68,8 +75,18 @@ function UnifiedWorkspace() {
 
                     if (groupIds.length > 0) {
                         const { data: perms } = await supabase.from('permissions').select('*').in('group_id', groupIds);
+
                         (perms || []).forEach(p => {
+                            // Catch the new global 'files' scope
+                            if (p.scope === 'files') {
+                                globalTemp.can_create = globalTemp.can_create || p.can_create_folder;
+                                globalTemp.can_merge = globalTemp.can_merge || p.can_merge_folder;
+                                globalTemp.can_delete = globalTemp.can_delete || p.can_delete_folder;
+                            }
+
                             const key = p.scope === 'folder' ? `fol_${p.folder_id}` : `doc_${p.document_id}`;
+
+
                             if (!myPerms[key]) {
                                 myPerms[key] = { ...p };
                             } else {
@@ -121,6 +138,7 @@ function UnifiedWorkspace() {
                         dek_ref: doc.dek_ref, mime_type: doc.mime_type
                     }));
                 setMergedPerms(myPerms);
+                setGlobalFolderPerms(globalTemp);
                 setFiles([...mappedFolders, ...mappedDocs]);
                 setBookmarkedIds(new Set([...(docsData || []).filter(d => d.is_bookmarked).map(d => d.id), ...(foldersData || []).filter(f => f.is_bookmarked).map(f => f.id)]));
                 setDownloadedIds(new Set((docsData || []).filter(d => d.is_downloaded).map(d => d.id)));
@@ -167,11 +185,27 @@ function UnifiedWorkspace() {
 
     // Nav Bar Logic Flags
     const selectionEnabled = !['bookmarks', 'downloads'].includes(currentView);
+
+    // const canUploadHere = currentFolderId === null ? canUser('can_upload') : canUser('can_upload', { type: 'folder', id: currentFolderId });
+    // const canEditSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => canUser('can_edit', item));
+    // const canDownloadSecureSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => item.type !== 'folder' && canUser('can_download_secure', item));
+    // const canDownloadOriginalSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => item.type !== 'folder' && canUser('can_download_original', item));
+    // const canDeleteSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => canUser('can_delete', item)); // 🔥 Added Delete Flag
+
+    const isGod = session?.role === 'super_admin' || session?.role === 'admin';
+
     const canUploadHere = currentFolderId === null ? canUser('can_upload') : canUser('can_upload', { type: 'folder', id: currentFolderId });
-    const canEditSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => canUser('can_edit', item));
+    const canCreateFolder = isGod || globalFolderPerms.can_create;
+    const canMergeFolder = isGod || globalFolderPerms.can_merge;
+
     const canDownloadSecureSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => item.type !== 'folder' && canUser('can_download_secure', item));
     const canDownloadOriginalSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => item.type !== 'folder' && canUser('can_download_original', item));
-    const canDeleteSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => canUser('can_delete', item)); // 🔥 Added Delete Flag
+
+    // Delete logic checks if it's a folder (needs folder_delete) or a file (needs file_delete)
+    const canDeleteSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => {
+        if (item.type === 'folder') return isGod || globalFolderPerms.can_delete;
+        return canUser('can_delete', item);
+    });
 
     // ── HANDLERS ─────────────────────────────────────────────────────────────
     const handleToggleSelect = (id, e) => {
@@ -401,42 +435,135 @@ function UnifiedWorkspace() {
     };
 
     const handleExport = () => { /* Your CSV logic */ };
+    const executeMoveToFolder = async () => {
+        try {
+            const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+            const folderIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type === 'folder');
+
+            // Move documents
+            if (docIds.length > 0) await supabase.from('documents').update({ folder_id: movingToFolderId }).in('id', docIds);
+            // Move folders (update parent_folder_id)
+            if (folderIds.length > 0) await supabase.from('folders').update({ parent_folder_id: movingToFolderId }).in('id', folderIds);
+
+            setFiles(prev => prev.map(f => selectedIds.has(f.id) ? { ...f, parentId: movingToFolderId } : f));
+            setSelectedIds(new Set());
+            setIsMoveModalOpen(false);
+        } catch (err) { alert('Move failed: ' + err.message); }
+    };
+    // const executeMoveToFolder = async () => {
+    //     try {
+    //         const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+    //         const folderIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type === 'folder');
+
+    //         // Move documents
+    //         if (docIds.length > 0) {
+    //             const { error } = await supabase.from('documents').update({ folder_id: movingToFolderId }).in('id', docIds);
+    //             if (error) throw new Error("Doc Move Error: " + error.message);
+    //         }
+    //         // Move folders
+    //         if (folderIds.length > 0) {
+    //             const { error } = await supabase.from('folders').update({ parent_folder_id: movingToFolderId }).in('id', folderIds);
+    //             if (error) throw new Error("Folder Move Error: " + error.message);
+    //         }
+
+    //         setFiles(prev => prev.map(f => selectedIds.has(f.id) ? { ...f, parentId: movingToFolderId } : f));
+    //         setSelectedIds(new Set());
+    //         setIsMoveModalOpen(false);
+    //     } catch (err) { alert('Move failed: ' + err.message); }
+    // };
+
     const executeSoftDelete = async () => {
         try {
             const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+            const folderIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type === 'folder');
+
             if (docIds.length > 0) {
                 await supabase.from('documents').update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: session.id }).in('id', docIds);
-                setDeletedIds(prev => { const n = new Set(prev); docIds.forEach(id => n.add(id)); return n; });
-                setFiles(prev => prev.map(f => docIds.includes(f.id) ? { ...f, deletedBy: session.name, deletedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) } : f));
             }
+
+            if (folderIds.length > 0) {
+                await supabase.from('folders').update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: session.id }).in('id', folderIds);
+            }
+
+            // Add to trash tracker
+            const allDeleted = [...docIds, ...folderIds];
+            setDeletedIds(prev => { const n = new Set(prev); allDeleted.forEach(id => n.add(id)); return n; });
+
+            // Update UI: Keep them in the files array, just mark them as deleted (don't filter them out!)
+            setFiles(prev => prev.map(f => selectedIds.has(f.id) ? { ...f, deletedBy: session.name, deletedAt: new Date().toLocaleDateString() } : f));
+
             setSelectedIds(new Set());
             setIsDeleteModalOpen(false);
-        } catch (err) { console.error('Trash failed', err); }
+        } catch (err) {
+            alert('Trash failed: ' + err.message);
+            console.error('Trash failed', err);
+        }
     };
 
     const executeRecover = async () => {
         try {
             const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
-            if (docIds.length > 0) {
-                await supabase.from('documents').update({ is_deleted: false, deleted_at: null, deleted_by: null }).in('id', docIds);
-                setDeletedIds(prev => { const n = new Set(prev); docIds.forEach(id => n.delete(id)); return n; });
-            }
+            const folderIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type === 'folder');
+
+            if (docIds.length > 0) await supabase.from('documents').update({ is_deleted: false, deleted_at: null, deleted_by: null }).in('id', docIds);
+            if (folderIds.length > 0) await supabase.from('folders').update({ is_deleted: false, deleted_at: null, deleted_by: null }).in('id', folderIds);
+
+            setDeletedIds(prev => { const n = new Set(prev);[...docIds, ...folderIds].forEach(id => n.delete(id)); return n; });
             setSelectedIds(new Set());
-        } catch (err) { console.error('Recover failed', err); }
+        } catch (err) { alert('Recover failed: ' + err.message); }
     };
 
     const executePermanentDelete = async () => {
         try {
             const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
-            if (docIds.length > 0) {
-                await supabase.from('documents').delete().in('id', docIds);
-                setFiles(prev => prev.filter(f => !docIds.includes(f.id)));
-                setDeletedIds(prev => { const n = new Set(prev); docIds.forEach(id => n.delete(id)); return n; });
-            }
+            const folderIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type === 'folder');
+
+            if (docIds.length > 0) await supabase.from('documents').delete().in('id', docIds);
+            if (folderIds.length > 0) await supabase.from('folders').delete().in('id', folderIds);
+
+            setFiles(prev => prev.filter(f => !selectedIds.has(f.id)));
+            setDeletedIds(prev => { const n = new Set(prev);[...docIds, ...folderIds].forEach(id => n.delete(id)); return n; });
+
             setSelectedIds(new Set());
             setIsPermDeleteModalOpen(false);
-        } catch (err) { console.error('Permanent delete failed', err); }
+        } catch (err) { alert('Permanent delete failed: ' + err.message); }
     };
+    // const executeSoftDelete = async () => {
+    //     try {
+    //         const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+    //         if (docIds.length > 0) {
+    //             await supabase.from('documents').update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: session.id }).in('id', docIds);
+    //             setDeletedIds(prev => { const n = new Set(prev); docIds.forEach(id => n.add(id)); return n; });
+    //             setFiles(prev => prev.map(f => docIds.includes(f.id) ? { ...f, deletedBy: session.name, deletedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) } : f));
+    //         }
+    //         setSelectedIds(new Set());
+    //         setIsDeleteModalOpen(false);
+    //     } catch (err) { console.error('Trash failed', err); }
+    // };
+
+    // const executeRecover = async () => {
+    //     try {
+    //         const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+    //         if (docIds.length > 0) {
+    //             await supabase.from('documents').update({ is_deleted: false, deleted_at: null, deleted_by: null }).in('id', docIds);
+    //             setDeletedIds(prev => { const n = new Set(prev); docIds.forEach(id => n.delete(id)); return n; });
+    //         }
+    //         setSelectedIds(new Set());
+    //     } catch (err) { console.error('Recover failed', err); }
+    // };
+
+    // const executePermanentDelete = async () => {
+    //     try {
+    //         const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
+    //         if (docIds.length > 0) {
+    //             await supabase.from('documents').delete().in('id', docIds);
+    //             setFiles(prev => prev.filter(f => !docIds.includes(f.id)));
+    //             setDeletedIds(prev => { const n = new Set(prev); docIds.forEach(id => n.delete(id)); return n; });
+    //         }
+    //         setSelectedIds(new Set());
+    //         setIsPermDeleteModalOpen(false);
+    //     } catch (err) { console.error('Permanent delete failed', err); }
+    // };
 
     if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>;
 
@@ -452,18 +579,35 @@ function UnifiedWorkspace() {
                 {/* ── TOP ACTION BAR (Exact Firmata Match) ── */}
                 <div className="flex items-center px-6 py-4 bg-white border-b border-slate-200">
                     <div className="flex items-center gap-3">
+                        {/* 1. UPLOAD BUTTON */}
                         {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canUploadHere && (
+                            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                                Upload
+                            </button>
+                        )}
+
+                        {/* 2. ADD FOLDER BUTTON (Now independent!) */}
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canCreateFolder && (
+                            <button onClick={() => setIsNewFolderOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+                                Add Folder
+                            </button>
+                        )}
+                        {/* {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canUploadHere && (
                             <>
                                 <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                                     Upload
                                 </button>
+
+                               
                                 <button onClick={() => setIsNewFolderOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
                                     Add Folder
                                 </button>
                             </>
-                        )}
+                        )} */}
 
                         {/* Download Dropdown Logic */}
                         {!['trash', 'bookmarks', 'downloads'].includes(currentView) && (canDownloadSecureSelected || canDownloadOriginalSelected) && (
@@ -505,6 +649,12 @@ function UnifiedWorkspace() {
                             <button onClick={() => setIsDeleteModalOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
                                 Delete
+                            </button>
+                        )}
+                        {currentView !== 'trash' && canMergeFolder && selectedIds.size > 0 && (
+                            <button onClick={() => setIsMoveModalOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="5 9 2 12 5 15" /><polyline points="9 5 12 2 15 5" /><line x1="2" y1="12" x2="22" y2="12" /><line x1="12" y1="2" x2="12" y2="22" /></svg>
+                                Move Items
                             </button>
                         )}
                         {currentView === 'trash' && (
@@ -626,6 +776,27 @@ function UnifiedWorkspace() {
                 </div>
             </div>
 
+            {isMoveModalOpen && (
+                <Modal onClose={() => setIsMoveModalOpen(false)}>
+                    <h3 className="text-[15px] font-black mb-4">Move {selectedIds.size} items to...</h3>
+                    <div className="space-y-1 max-h-64 overflow-y-auto mb-4">
+                        <button onClick={() => setMovingToFolderId(null)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === null ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}>
+                            Root Directory
+                        </button>
+
+                        {/* Only show folders we can move to (not deleted, not currently selected) */}
+                        {files.filter(f => f.type === 'folder' && !deletedIds.has(f.id) && !selectedIds.has(f.id)).map(folder => (
+                            <button key={folder.id} onClick={() => setMovingToFolderId(folder.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === folder.id ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}>
+                                <span className="truncate">{folder.name}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => setIsMoveModalOpen(false)} className="flex-1 py-2.5 bg-slate-100 font-bold rounded-xl text-[13px]">Cancel</button>
+                        <button onClick={executeMoveToFolder} className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl text-[13px]">Move Here</button>
+                    </div>
+                </Modal>
+            )}
 
 
             {/* Modals */}
