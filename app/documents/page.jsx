@@ -193,8 +193,8 @@ function UnifiedWorkspace() {
         if (session.role === 'super_admin') return true;
 
         if (!item) {
-            if (action === 'can_upload' && currentFolderId === null) return session.role === 'admin' || session.role === 'subadmin';
-            if (action === 'can_export') return session.role === 'admin' || session.role === 'subadmin';
+            if (action === 'can_upload' && currentFolderId === null) return session.role === 'super_admin';
+            if (action === 'can_export') return session.role === 'super_admin';
             return false;
         }
 
@@ -236,7 +236,7 @@ function UnifiedWorkspace() {
     // const canDownloadOriginalSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => item.type !== 'folder' && canUser('can_download_original', item));
     // const canDeleteSelected = selectedItemsArray.length > 0 && selectedItemsArray.every(item => canUser('can_delete', item)); // 🔥 Added Delete Flag
 
-    const isGod = session?.role === 'super_admin' || session?.role === 'admin';
+    const isGod = session?.role === 'super_admin';
 
     const canUploadHere = currentFolderId === null ? canUser('can_upload') : canUser('can_upload', { type: 'folder', id: currentFolderId });
     const canCreateFolder = isGod || globalFolderPerms.can_create;

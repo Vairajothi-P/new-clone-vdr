@@ -184,6 +184,7 @@ export default function DynamicGroupPage() {
                         can_delete_group: row?.can_delete_group ?? false,
                         can_access_documents: row?.can_access_documents ?? false,
                         can_access_groups: row?.can_access_groups ?? false,
+                        can_access_edit_permissions: row?.can_access_edit_permissions ?? false,
                         can_access_settings: row?.can_access_settings ?? false,
                         can_access_branding: row?.can_access_branding ?? false,
                         can_access_watermarks: row?.can_access_watermarks ?? false,
@@ -265,6 +266,7 @@ export default function DynamicGroupPage() {
                     can_delete_group: s.can_delete_group || false,
                     can_access_documents: s.can_access_documents || false,
                     can_access_groups: s.can_access_groups || false,
+                    can_access_edit_permissions: s.can_access_edit_permissions || false,
                     can_access_settings: s.can_access_settings || false,
                     can_access_branding: s.can_access_branding || false,
                     can_access_watermarks: s.can_access_watermarks || false,
@@ -483,6 +485,71 @@ export default function DynamicGroupPage() {
                             <div className="py-24 flex justify-center"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>
                         ) : (
                             <div className="space-y-6 max-w-4xl">
+
+                                {/* EDIT PERMISSIONS CARD — standalone like File Access Control */}
+                                {(() => {
+                                    const ws = perms['workspace'] || { enabled: false, existingId: null };
+                                    const isOn = !!ws.can_access_edit_permissions;
+
+                                    const handleToggleEditPerm = async () => {
+                                        const newVal = !isOn;
+                                        // Update local state immediately
+                                        setPerms(prev => ({
+                                            ...prev,
+                                            workspace: { ...prev.workspace, can_access_edit_permissions: newVal }
+                                        }));
+
+                                        try {
+                                            if (ws.existingId) {
+                                                // Row exists — update it
+                                                const { error } = await supabase
+                                                    .from('permissions')
+                                                    .update({ can_access_edit_permissions: newVal, updated_at: new Date().toISOString() })
+                                                    .eq('id', ws.existingId);
+                                                if (error) throw error;
+                                            } else {
+                                                // No row yet — insert new workspace scope row
+                                                const { data: inserted, error } = await supabase
+                                                    .from('permissions')
+                                                    .insert({
+                                                        company_id: groupData.company_id,
+                                                        group_id: groupData.id,
+                                                        scope: 'workspace',
+                                                        can_access_edit_permissions: newVal,
+                                                    })
+                                                    .select('id')
+                                                    .single();
+                                                if (error) throw error;
+                                                setPerms(prev => ({
+                                                    ...prev,
+                                                    workspace: { ...prev.workspace, existingId: inserted.id, enabled: true }
+                                                }));
+                                            }
+                                        } catch (err) {
+                                            console.error('Failed to save edit permission:', err);
+                                            // Revert on failure
+                                            setPerms(prev => ({
+                                                ...prev,
+                                                workspace: { ...prev.workspace, can_access_edit_permissions: isOn }
+                                            }));
+                                        }
+                                    };
+
+                                    return (
+                                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 flex flex-col">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="font-semibold text-base text-slate-800">Edit Permissions</p>
+                                                    <p className="text-sm text-slate-500 mt-1">Allow this group to access and modify permission settings for other groups</p>
+                                                </div>
+                                                <button onClick={handleToggleEditPerm}
+                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${isOn ? 'bg-slate-900' : 'bg-slate-200'}`}>
+                                                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isOn ? 'translate-x-5' : 'translate-x-0'}`} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                                 {PERMISSION_SECTIONS.map(({ label, scope, description, subPerms }) => {
                                     const s = perms[scope] || { enabled: false, ...DEFAULT_PERMS, existingId: null };
 
