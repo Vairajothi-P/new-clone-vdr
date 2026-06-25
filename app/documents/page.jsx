@@ -302,6 +302,9 @@ function UnifiedWorkspace() {
             reader.readAsDataURL(file);
         });
 
+        const peers = files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
+        let nextIndex = peers.reduce((m, it) => Math.max(m, parseInt(it.index) || 0), 0) + 1;
+
         for (let i = 0; i < chosenFiles.length; i++) {
             const file = chosenFiles[i];
             try {
@@ -331,7 +334,7 @@ function UnifiedWorkspace() {
                     body: JSON.stringify({
                         company_id: session.company_id, folder_id: currentFolderId, uploaded_by: session.id,
                         name: file.name, file_path: secureStoragePath, mime_type: file.type || 'application/octet-stream',
-                        file_size_bytes: file.size, dek_ref: fernetKey, index: '99', security: 'Fernet Encrypted'
+                        file_size_bytes: file.size, dek_ref: fernetKey, index: nextIndex.toString(), security: 'Fernet Encrypted'
                     })
                 });
 
@@ -344,12 +347,14 @@ function UnifiedWorkspace() {
                 // 6. Update UI
                 setUploadQueue(prev => prev.map((it, idx) => idx === i ? { ...it, progress: 100, status: 'completed' } : it));
                 setFiles(prev => [...prev, {
-                    id: docId, parentId: currentFolderId, index: '99', name: file.name,
+                    id: docId, parentId: currentFolderId, index: nextIndex.toString(), name: file.name,
                     type: file.name.split('.').pop().toLowerCase() || 'file',
                     size: formatBytes(file.size),
                     uploadedBy: session.name, dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     file_path: secureStoragePath, original_file_path: originalStoragePath, dek_ref: fernetKey, mime_type: file.type
                 }]);
+                
+                nextIndex++; // Increment for the next file in the loop
             } catch (err) {
                 console.error('Upload failed:', err);
                 alert("Upload error for " + file.name + ": " + err.message);
@@ -364,7 +369,7 @@ function UnifiedWorkspace() {
         if (!newFolderName.trim()) return;
         try {
             const peers = files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
-            const newIndex = currentFolderId === null ? (peers.reduce((m, it) => Math.max(m, parseInt(it.index) || 0), 0) + 1).toString() : '99';
+            const newIndex = (peers.reduce((m, it) => Math.max(m, parseInt(it.index) || 0), 0) + 1).toString();
 
             const { data: dbFolder, error } = await supabase.from('folders').insert({
                 company_id: session.company_id, parent_folder_id: currentFolderId,
