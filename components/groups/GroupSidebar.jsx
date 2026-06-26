@@ -88,7 +88,7 @@ export default function GroupsSidebar({ isOpen = true }) {
                     .eq('company_id', companyId);
 
                 setNavItems((data || []).map(g => ({
-                    id: g.id, name: g.name, href: `/groups/${g.id}`
+                    id: g.id, name: g.name, href: `/groups/${g.id}`, role: g.role || ''
                 })));
 
             } else {
@@ -146,7 +146,7 @@ export default function GroupsSidebar({ isOpen = true }) {
                 }
 
                 setNavItems(groups.map(g => ({
-                    id: g.id, name: g.name, href: `/groups/${g.id}`
+                    id: g.id, name: g.name, href: `/groups/${g.id}`, role: g.role || ''
                 })));
             }
 
@@ -193,7 +193,8 @@ export default function GroupsSidebar({ isOpen = true }) {
                 setNavItems(prev => [{
                     id: data.id,
                     name: data.name,
-                    href: `/groups/${data.id}`
+                    href: `/groups/${data.id}`,
+                    role: data.role || ''
                 }, ...prev]);
                 setIsAddGroupModalOpen(false);
                 setNewGroupName('');
@@ -232,22 +233,38 @@ export default function GroupsSidebar({ isOpen = true }) {
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={active ? 'text-[var(--brand)]' : 'text-gray-400'}>
                                                 {GROUP_ICON}
                                             </svg>
-                                            <span className="text-[14px] font-sans truncate">{item.name}</span>
+                                            <span className="text-[14px] font-sans truncate max-w-[120px]">{item.name}</span>
                                         </div>
 
-                                        {canDeleteGroup && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    setDeleteTarget({ id: item.id, name: item.name });
-                                                }}
-                                                className="text-gray-800 hover:text-red-500 transition-colors"
-                                                title="Delete group"
-                                            >
-                                                {TRASH_ICON}
-                                            </button>
-                                        )}
+                                        <div className="flex flex-col items-end gap-1 shrink-0">
+                                            {canDeleteGroup && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        setDeleteTarget({ id: item.id, name: item.name });
+                                                    }}
+                                                    className="text-gray-400 hover:text-red-500 transition-colors"
+                                                    title="Delete group"
+                                                >
+                                                    {TRASH_ICON}
+                                                </button>
+                                            )}
+                                            {item.role && (() => {
+                                                const roleLabels = {
+                                                    super_admin:   'Super Admin',
+                                                    admin:         'Admin',
+                                                    sub_admin:     'Sub Admin',
+                                                    user:          'User',
+                                                    external_user: 'External User',
+                                                };
+                                                return (
+                                                    <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">
+                                                        {roleLabels[item.role] || item.role}
+                                                    </span>
+                                                );
+                                            })()}
+                                        </div>
                                     </Link>
                                 );
                             })

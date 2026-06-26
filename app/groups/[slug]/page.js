@@ -61,6 +61,7 @@ export default function DynamicGroupPage() {
     const [inviteDescription, setInviteDescription] = useState("");
     const [showToast, setShowToast] = useState(false);
     const [toastMsg, setToastMsg] = useState("");
+    const [inviting, setInviting] = useState(false);
 
     const [canAddMembers, setCanAddMembers] = useState(false);
     const [canRemoveMembers, setCanRemoveMembers] = useState(false);
@@ -291,8 +292,8 @@ export default function DynamicGroupPage() {
                     can_access_watermarks: s.can_access_watermarks || false,
                     folder_id: null,
                     document_id: null,
-                    can_create_folder: s.can_create_folder || false,   
-                    can_merge_folder: s.can_merge_folder || false,    
+                    can_create_folder: s.can_create_folder || false,
+                    can_merge_folder: s.can_merge_folder || false,
                     can_delete_folder: s.can_delete_folder || false,
                 };
 
@@ -327,6 +328,7 @@ export default function DynamicGroupPage() {
 
     const handleInviteSubmit = async () => {
         if (!inviteEmail.trim()) { alert("Please enter a candidate email."); return; }
+        setInviting(true);
         try {
             const rawSession = localStorage.getItem("vdr_session");
             if (!rawSession) { alert("Session not found. Please log in again."); return; }
@@ -348,6 +350,8 @@ export default function DynamicGroupPage() {
         } catch (err) {
             console.error(err);
             alert("Error sending invitation: " + err.message);
+        } finally {
+            setInviting(false);
         }
     };
 
@@ -763,9 +767,11 @@ export default function DynamicGroupPage() {
                                 <textarea value={inviteDescription} onChange={e => setInviteDescription(e.target.value)} rows="3" placeholder="Brief invitation message..."
                                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-slate-800 resize-none transition-colors placeholder:text-slate-400 placeholder:font-normal" />
                             </div>
-                            <button onClick={handleInviteSubmit}
-                                className="w-full bg-[var(--brand)] text-white py-3 rounded-xl font-medium text-sm shadow-md shadow-[0_8px_30px_rgba(var(--brand-rgb),0.14)] hover:bg-[var(--brand-dark)] transition-all active:scale-95 mt-2">
-                                Send Invitation
+                            <button onClick={handleInviteSubmit} disabled={inviting || !inviteEmail.trim()}
+                                className="w-full bg-[var(--brand)] text-white py-3 rounded-xl font-medium text-sm shadow-md shadow-[0_8px_30px_rgba(var(--brand-rgb),0.14)] hover:bg-[var(--brand-dark)] transition-all active:scale-95 mt-2 disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center gap-2">
+                                {inviting ? (
+                                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Sending...</>
+                                ) : "Send Invitation"}
                             </button>
                         </div>
                     </div>
