@@ -50,22 +50,20 @@ export default function MainSidebar() {
   }, []);
 
   return (
-    <aside className="w-16 md:w-20 h-screen bg-white border-r border-slate-200 flex flex-col items-center py-6 shrink-0 z-50">
+    <aside className="w-16 md:w-20 h-screen bg-white/90 backdrop-blur-xl border-r border-gray-200/80 flex flex-col items-center py-6 shrink-0 z-50 shadow-[4px_0_24px_rgba(28,127,159,0.06)]">
 
-      {/* Top Logo / App Icon */}
-      <Link href="/dashboard" className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center mb-8 hover:opacity-80 transition-opacity shadow-md">
+      {/* Top Logo — PiBi gradient icon */}
+      <Link href="/dashboard" className="w-10 h-10 bg-gradient-to-br from-[var(--brand)] to-[var(--brand-secondary)] rounded-xl flex items-center justify-center mb-8 hover:shadow-lg hover:scale-105 transition-all duration-300 shadow-[var(--brand)]/30 shadow-md">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
       </Link>
 
-      {/* Nav Items — Driven by NAV_ITEMS config in lib/nav-items.js */}
-      <div className="flex flex-col gap-2 flex-1">
+      {/* Nav Items */}
+      <div className="flex flex-col gap-1.5 flex-1">
         {NAV_ITEMS.map((item) => {
-          // Hide settings from users who don't have the toggle enabled
           if (item.key === 'settings' && !hasSettingsAccess) return null;
-
           const isActive = pathname?.startsWith(item.href);
 
           return (
@@ -75,16 +73,18 @@ export default function MainSidebar() {
               title={item.label}
               className="group relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-300"
             >
+              {/* Active left accent bar */}
               {isActive && (
-                <div className="absolute left-0 w-1 h-8 bg-slate-900 rounded-r-md" />
+                <div className="absolute left-0 w-1 h-7 bg-gradient-to-b from-[var(--brand)] to-[var(--brand-secondary)] rounded-r-full shadow-sm" />
               )}
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive
-                ? 'bg-slate-100 text-slate-900 shadow-inner'
-                : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+                ? 'bg-[var(--brand)]/12 text-[var(--brand)]'
+                : 'text-gray-400 hover:bg-[var(--brand)]/8 hover:text-[var(--brand)]'
                 }`}>
                 {item.icon}
               </div>
-              <span className="absolute left-16 bg-slate-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
+              {/* Tooltip */}
+              <span className="absolute left-16 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white text-xs font-semibold px-3 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
                 {item.label}
               </span>
             </Link>
@@ -92,14 +92,14 @@ export default function MainSidebar() {
         })}
       </div>
 
-      {/* Sign Out Button */}
+      {/* Sign Out */}
       <div className="flex flex-col items-center gap-4 mt-auto">
         <button
           onClick={() => {
             localStorage.removeItem('vdr_session');
             window.location.href = '/login';
           }}
-          className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all duration-300"
+          className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-gray-400 hover:bg-rose-50 hover:text-rose-500 transition-all duration-300"
           title="Sign Out"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

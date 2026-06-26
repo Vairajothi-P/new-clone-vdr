@@ -392,8 +392,8 @@ export default function WatermarkPage() {
             <div className="h-3 w-1/2 bg-slate-200 rounded" />
             <div className="h-3 w-5/6 bg-slate-100 rounded" />
           </div>
-          <div className="w-16 h-16 bg-blue-100/50 rounded-xl flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          <div className="w-16 h-16 bg-brand-50/50 rounded-xl flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brand"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
           </div>
         </div>
       </div>
@@ -406,7 +406,7 @@ export default function WatermarkPage() {
     return (
       <div className="relative min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+          <div className="w-10 h-10 rounded-full border-4 border-brand border-t-transparent animate-spin" />
           <p className="text-gray-500 text-sm font-medium">Loading watermark settings…</p>
         </div>
       </div>
@@ -415,7 +415,7 @@ export default function WatermarkPage() {
 
   return (
     <div className="relative min-h-screen bg-[#F8FAFC]">
-      <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-50 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-brand-50 to-transparent pointer-events-none" />
 
       {/* ── Full A4 Preview Modal ──────────────────────────────── */}
       {showPreviewModal && (
@@ -503,8 +503,8 @@ export default function WatermarkPage() {
                       <div className="flex flex-col gap-4 relative z-0">
                         {/* Header */}
                         <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                          <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                          <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brand"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
                           </div>
                           <div className="text-right">
                             <div className="h-3 w-32 bg-slate-200 rounded mb-1.5" />
@@ -592,13 +592,13 @@ export default function WatermarkPage() {
                     <label className="block text-sm font-bold text-gray-700 mb-1.5">Template Name *</label>
                     <input value={templateForm.name} onChange={e => setTemplateForm(f => ({ ...f, name: e.target.value, custom_text: e.target.value }))}
                       placeholder="e.g. Client Review, Confidential..."
-                      className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
+                      className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-brand focus:border-brand transition-all" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1.5">Email Address</label>
                     <input type="email" value={templateForm.email_address} onChange={e => setTemplateForm(f => ({ ...f, email_address: e.target.value }))}
                       placeholder="e.g. user@example.com"
-                      className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
+                      className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-brand focus:border-brand transition-all" />
                   </div>
                 </div>
 
@@ -617,7 +617,7 @@ export default function WatermarkPage() {
                     <label className="block text-sm font-bold text-gray-700 mb-1.5">Font Size ({templateForm.font_size}px)</label>
                     <input type="range" min="10" max="32" value={templateForm.font_size}
                       onChange={e => setTemplateForm(f => ({ ...f, font_size: parseInt(e.target.value) }))}
-                      className="w-full accent-blue-600 mt-2" />
+                      className="w-full accent-[var(--brand)] mt-2" />
                   </div>
                 </div>
 
@@ -626,13 +626,13 @@ export default function WatermarkPage() {
                     <label className="block text-sm font-bold text-gray-700 mb-1.5">Opacity ({templateForm.text_opacity}%)</label>
                     <input type="range" min="5" max="100" value={templateForm.text_opacity}
                       onChange={e => setTemplateForm(f => ({ ...f, text_opacity: parseInt(e.target.value) }))}
-                      className="w-full accent-blue-600 mt-2" />
+                      className="w-full accent-[var(--brand)] mt-2" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1.5">Rotation ({templateForm.rotation}°)</label>
                     <input type="range" min="-90" max="90" value={templateForm.rotation}
                       onChange={e => setTemplateForm(f => ({ ...f, rotation: parseInt(e.target.value) }))}
-                      className="w-full accent-blue-600 mt-2" />
+                      className="w-full accent-brand mt-2" />
                   </div>
                 </div>
 
@@ -663,12 +663,12 @@ export default function WatermarkPage() {
                         <label className="block text-xs font-bold text-gray-500 mb-1">Logo Opacity ({Math.round(templateForm.logo_opacity * 100)}%)</label>
                         <input type="range" min="0.05" max="1" step="0.05" value={templateForm.logo_opacity}
                           onChange={e => setTemplateForm(f => ({ ...f, logo_opacity: parseFloat(e.target.value) }))}
-                          className="w-full accent-blue-600" />
+                          className="w-full accent-brand" />
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-500 mb-1">Logo Position</label>
                         <select value={templateForm.logo_position} onChange={e => setTemplateForm(f => ({ ...f, logo_position: e.target.value }))}
-className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-lg focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all">                          {['top-left','top-center','top-right','middle-left','middle-center','middle-right','bottom-left','bottom-center','bottom-right'].map(p => (
+className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-lg focus:outline-none focus:bg-white focus:ring-brand focus:border-brand transition-all">                          {['top-left','top-center','top-right','middle-left','middle-center','middle-right','bottom-left','bottom-center','bottom-right'].map(p => (
                             <option key={p} value={p}>{p.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}</option>
                           ))}
                         </select>
@@ -679,7 +679,7 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
 
                 <div className="flex gap-3 pt-2">
                   <button onClick={handleSaveTemplate} disabled={savingTemplate}
-                    className="flex-1 py-2.5 bg-gradient-to-r from-gray-900 to-black text-white text-sm font-bold rounded-xl hover:shadow-lg transition-all disabled:opacity-60">
+                    className="flex-1 py-2.5 bg-[var(--brand)] text-white text-sm font-bold rounded-xl hover:opacity-90 hover:shadow-lg transition-all disabled:opacity-60">
                     {savingTemplate ? 'Saving…' : editingTemplateId ? 'Update Template' : 'Save Template'}
                   </button>
                   {editingTemplateId && (
@@ -698,7 +698,7 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
                 </h3>
                 {loadingTemplates ? (
                   <div className="flex items-center justify-center py-12">
-                    <div className="w-8 h-8 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+                    <div className="w-8 h-8 rounded-full border-4 border-[var(--brand)] border-t-transparent animate-spin" />
                   </div>
                 ) : templates.length === 0 ? (
                   <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center">
@@ -709,11 +709,11 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
                     {templates.map(t => {
                       const isPresent = t.present === true || t.present === 'true';
                       return (
-                      <div key={t.id} className={`border rounded-2xl p-4 transition-all ${isPresent ? 'bg-blue-50/50 border-blue-200 shadow-sm' : 'bg-gray-50/30 border-gray-100 opacity-60 hover:opacity-100'}`}>
+                      <div key={t.id} className={`border rounded-2xl p-4 transition-all ${isPresent ? 'bg-brand-50/50 border-brand-200 shadow-sm' : 'bg-gray-50/30 border-gray-100 opacity-60 hover:opacity-100'}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             {/* Mini preview */}
-                            <div className={`w-12 h-14 bg-white border ${isPresent ? 'border-blue-200' : 'border-gray-200'} rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden relative`}>
+                            <div className={`w-12 h-14 bg-white border ${isPresent ? 'border-brand-200' : 'border-gray-200'} rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden relative`}>
                               <span style={{ color: t.text_color, fontSize: '5px', fontWeight: 'bold', transform: `rotate(${t.rotation}deg)`, opacity: t.text_opacity / 100, textAlign: 'center', lineHeight: 1.2 }}>
                                 {t.name?.substring(0, 8)}
                               </span>
@@ -724,18 +724,18 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-gray-900 text-sm truncate">{t.name}</p>
                               <p className="text-xs text-gray-500 mt-0.5">{t.name} {t.email_address ? `· ${t.email_address}` : ''} · {t.watermark_type} · {t.text_opacity}% opacity</p>
-                              {t.logo_path && <span className="text-xs text-blue-500 font-medium">🖼 Has logo</span>}
+                              {t.logo_path && <span className="text-xs text-brand font-medium">🖼 Has logo</span>}
                             </div>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
                             {isPresent ? (
-                              <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg flex items-center gap-1">
+                              <span className="px-3 py-1.5 bg-brand-100 text-brand-dark text-xs font-bold rounded-lg flex items-center gap-1">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                 Applied
                               </span>
                             ) : (
                               <button onClick={() => applyTemplate(t)}
-                                className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-xs font-bold rounded-lg transition-colors">Apply</button>
+                                className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-brand-50 hover:text-brand hover:border-brand-200 text-xs font-bold rounded-lg transition-colors">Apply</button>
                             )}
                             <button onClick={() => handleEditTemplate(t)}
                               className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-bold rounded-lg hover:bg-white transition-colors">Edit</button>
@@ -764,12 +764,12 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
           </div>
           <div className="flex items-center gap-3">
             <button onClick={openTemplateModal}
-              className="px-5 py-2.5 border border-gray-200 bg-white text-gray-700 text-sm font-bold rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
+              className="px-5 py-2.5 border border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand)] text-sm font-bold rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
               Watermark Templates
             </button>
             <button onClick={handleSave} disabled={saving}
-              className="px-6 py-2.5 bg-gradient-to-r from-gray-900 to-black text-white text-sm font-bold rounded-xl hover:shadow-lg hover:shadow-gray-900/20 hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+              className="px-6 py-2.5 bg-[var(--brand)] text-white text-sm font-bold rounded-xl hover:opacity-90 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
               {saving ? (
                 <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Saving…</>
               ) : 'Save Changes'}
@@ -792,13 +792,13 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Template Name</label>
                   <input type="text" value={customText} onChange={e => setCustomText(e.target.value)}
                     placeholder="Enter template name..."
-                    className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
+                    className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--brand)]/10 focus:border-[var(--brand)] transition-all" />
                 </div>
                 <div>
                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Email Address</label>
                   <input type="email" value={emailText} onChange={e => setEmailText(e.target.value)}
                     placeholder="Enter email to display in watermark..."
-                    className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
+                    className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--brand)]/10 focus:border-[var(--brand)] transition-all" />
                 </div>
 
 
@@ -808,11 +808,11 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Font Size ({fontSize}px)</label>
-                  <input type="range" min="10" max="32" value={fontSize} onChange={e => setFontSize(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+                  <input type="range" min="10" max="32" value={fontSize} onChange={e => setFontSize(parseInt(e.target.value))} className="w-full accent-[var(--brand)] cursor-pointer" />
                 </div>
                 <div>
                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Opacity ({textOpacity}%)</label>
-                  <input type="range" min="5" max="100" value={textOpacity} onChange={e => setTextOpacity(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+                  <input type="range" min="5" max="100" value={textOpacity} onChange={e => setTextOpacity(parseInt(e.target.value))} className="w-full accent-[var(--brand)] cursor-pointer" />
                 </div>
               </div>
 
@@ -820,7 +820,7 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Rotation ({rotation}°)</label>
-                  <input type="range" min="-90" max="90" value={rotation} onChange={e => setRotation(parseInt(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+                  <input type="range" min="-90" max="90" value={rotation} onChange={e => setRotation(parseInt(e.target.value))} className="w-full accent-[var(--brand)] cursor-pointer" />
                 </div>
                 <div>
                   <label className="block text-[14px] font-bold text-gray-800 mb-2">Watermark Color</label>
@@ -843,9 +843,9 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
                   const label = pos.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                   return (
                     <button key={pos} onClick={() => handlePositionToggle(pos)}
-                      className={`h-16 rounded-xl flex flex-col items-center justify-center gap-1.5 text-[11px] font-bold border transition-all ${positions[pos] ? 'bg-blue-500 border-blue-500 text-white shadow-sm scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'}`}>
+                      className={`h-16 rounded-xl flex flex-col items-center justify-center gap-1.5 text-[11px] font-bold border transition-all ${positions[pos] ? 'bg-brand border-brand text-white shadow-sm scale-[1.03]' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'}`}>
                       <span className="uppercase text-[9px] tracking-wider">{label}</span>
-                      <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${positions[pos] ? 'bg-white border-white text-blue-500' : 'border-gray-300 bg-gray-50'}`}>
+                      <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${positions[pos] ? 'bg-white border-white text-brand' : 'border-gray-300 bg-gray-50'}`}>
                         {positions[pos] && (
                           <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                         )}
@@ -951,8 +951,8 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
                     <div className="flex-1 p-6 flex flex-col scale-[0.85] origin-top overflow-y-auto">
                       <div className="flex flex-col gap-4 relative z-0 pb-10">
                         <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                          <div className="w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brand"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
                           </div>
                           <div className="text-right">
                             <div className="h-2.5 w-24 bg-slate-200 rounded mb-1" />
@@ -1000,7 +1000,7 @@ className="w-full px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50/50 bord
 
               {/* Preview Button */}
               <button onClick={() => setShowPreviewModal(true)}
-                className="mt-4 w-full flex items-center justify-center gap-2.5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-semibold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                className="mt-4 w-full flex items-center justify-center gap-2.5 py-3 bg-gradient-to-r from-brand to-brand-dark text-white rounded-xl font-semibold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
                 Preview Full A4 Document
               </button>

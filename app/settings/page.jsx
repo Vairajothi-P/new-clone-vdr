@@ -61,7 +61,7 @@ export default function SettingsIndexPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full w-full bg-[#F8FAFC]">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-[var(--brand)] rounded-full animate-spin"></div>
       </div>
     );
   }

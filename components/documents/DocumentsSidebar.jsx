@@ -92,18 +92,18 @@ export default function DocumentsSidebar({ isOpen = true }) {
                                 key={item.name}
                                 href={item.href}
                                 className={`flex items-center justify-between px-6 py-2.5 text-[14px] font-bold transition-colors ${active
-                                        ? 'text-slate-900 bg-slate-50 border-r-2 border-slate-900'
+                                        ? 'text-[var(--brand)] bg-[var(--brand-50)] border-r-2 border-[var(--brand)]'
                                         : 'text-gray-600 hover:bg-gray-50'
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={active ? 'text-slate-800' : 'text-gray-400'}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={active ? 'text-[var(--brand)]' : 'text-gray-400'}>
                                         {item.icon}
                                     </svg>
                                     <span>{item.name}</span>
                                 </div>
                                 {item.badge !== undefined && item.badge > 0 && (
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${active ? 'bg-slate-200 text-slate-800' : 'bg-gray-100 text-gray-500'
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${active ? 'bg-[var(--brand-100)] text-[var(--brand)]' : 'bg-gray-100 text-gray-500'
                                         }`}>
                                         {item.badge}
                                     </span>
@@ -130,12 +130,12 @@ export default function DocumentsSidebar({ isOpen = true }) {
 
                 {/* Progress gauge */}
                 <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden shadow-inner my-2">
-                    <div className="bg-slate-800 h-full rounded-full w-[82%]"></div>
+                    <div className="bg-[var(--brand)] h-full rounded-full w-[82%]"></div>
                 </div>
 
                 <div className="flex justify-between items-center text-[10px] font-bold text-gray-500">
                     <span>8.2 GB of 10.0 GB</span>
-                    <span className="text-slate-600 hover:text-slate-900 cursor-pointer hover:underline">Manage</span>
+                    <span className="text-slate-600 hover:text-[var(--brand)] cursor-pointer hover:underline">Manage</span>
                 </div>
             </div>
         </aside>

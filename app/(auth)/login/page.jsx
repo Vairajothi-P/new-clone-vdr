@@ -74,9 +74,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
-      <div className="absolute top-0 left-0 w-96 h-96 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-100 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+    <div className="min-h-screen bg-gradient-to-br from-[var(--brand)]/10 via-white to-[var(--brand-secondary)]/10 flex items-center justify-center p-4">
+      <div className="absolute top-0 left-0 w-96 h-96 bg-[var(--brand)]/10 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-[var(--brand-secondary)]/10 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
 
       <div className="relative w-full max-w-md">
 
@@ -129,7 +129,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900"
+                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900"
                   required
                 />
               </div>
@@ -149,7 +149,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900"
+                  className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900"
                   required
                 />
                 <button
@@ -170,7 +170,7 @@ export default function LoginPage() {
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   disabled={isLoading}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  className="w-4 h-4 rounded border-gray-300 text-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)] cursor-pointer"
                 />
                 <span className="text-gray-600">Remember me</span>
               </label>
@@ -226,7 +226,7 @@ export default function LoginPage() {
           {/* Sign Up Link */}
           <p className="text-center text-gray-600 text-sm p-2 mt-3">
             Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-blue-600 hover:text-blue-700 font-semibold transition">
+            <Link href="/register" className="text-[var(--brand)] hover:text-[var(--brand-dark)] font-semibold transition">
               Register
             </Link>
           </p>

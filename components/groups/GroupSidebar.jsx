@@ -88,7 +88,7 @@ export default function GroupsSidebar({ isOpen = true }) {
                     .eq('company_id', companyId);
 
                 setNavItems((data || []).map(g => ({
-                    id: g.id, name: g.name, role: g.role, href: `/groups/${g.id}`
+                    id: g.id, name: g.name, href: `/groups/${g.id}`, role: g.role || ''
                 })));
 
             } else {
@@ -146,7 +146,7 @@ export default function GroupsSidebar({ isOpen = true }) {
                 }
 
                 setNavItems(groups.map(g => ({
-                    id: g.id, name: g.name, role: g.role, href: `/groups/${g.id}`
+                    id: g.id, name: g.name, href: `/groups/${g.id}`, role: g.role || ''
                 })));
             }
 
@@ -193,8 +193,8 @@ export default function GroupsSidebar({ isOpen = true }) {
                 setNavItems(prev => [{
                     id: data.id,
                     name: data.name,
-                    role: data.role,
-                    href: `/groups/${data.id}`
+                    href: `/groups/${data.id}`,
+                    role: data.role || ''
                 }, ...prev]);
                 setIsAddGroupModalOpen(false);
                 setNewGroupName('');
@@ -225,38 +225,46 @@ export default function GroupsSidebar({ isOpen = true }) {
                                         key={item.id}
                                         href={item.href}
                                         className={`group flex items-center justify-between px-6 py-3 transition-all ${active
-                                            ? 'bg-slate-50 border-r-2 border-slate-900 text-slate-900 font-bold'
+                                            ? 'bg-[var(--brand-50)] border-r-2 border-[var(--brand)] text-[var(--brand)] font-bold'
                                             : 'text-gray-600 hover:bg-gray-50'
                                             }`}
                                     >
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`shrink-0 ${active ? 'text-slate-900' : 'text-gray-400'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={active ? 'text-[var(--brand)]' : 'text-gray-400'}>
                                                 {GROUP_ICON}
                                             </svg>
-                                            <div className="flex flex-col min-w-0">
-                                                <span className="text-[14px] font-sans truncate">{item.name}</span>
-                                                {item.role && (
-                                                    <span className="text-[10px] font-semibold font-sans uppercase tracking-wide px-1.5 py-0.5 rounded w-fit mt-0.5
-                                                        text-slate-600 bg-slate-100">
-                                                        {item.role.replace('_', ' ')}
-                                                    </span>
-                                                )}
-                                            </div>
+                                            <span className="text-[14px] font-sans truncate max-w-[120px]">{item.name}</span>
                                         </div>
 
-                                        {canDeleteGroup && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    setDeleteTarget({ id: item.id, name: item.name });
-                                                }}
-                                                className="text-gray-800 hover:text-red-500 transition-colors"
-                                                title="Delete group"
-                                            >
-                                                {TRASH_ICON}
-                                            </button>
-                                        )}
+                                        <div className="flex flex-col items-end gap-1 shrink-0">
+                                            {canDeleteGroup && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        setDeleteTarget({ id: item.id, name: item.name });
+                                                    }}
+                                                    className="text-gray-400 hover:text-red-500 transition-colors"
+                                                    title="Delete group"
+                                                >
+                                                    {TRASH_ICON}
+                                                </button>
+                                            )}
+                                            {item.role && (() => {
+                                                const roleLabels = {
+                                                    super_admin:   'Super Admin',
+                                                    admin:         'Admin',
+                                                    sub_admin:     'Sub Admin',
+                                                    user:          'User',
+                                                    external_user: 'External User',
+                                                };
+                                                return (
+                                                    <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">
+                                                        {roleLabels[item.role] || item.role}
+                                                    </span>
+                                                );
+                                            })()}
+                                        </div>
                                     </Link>
                                 );
                             })
@@ -266,7 +274,7 @@ export default function GroupsSidebar({ isOpen = true }) {
 
                 {canCreateGroup && (
                     <div className="p-5 border-t border-gray-100 bg-gray-50/30">
-                        <button onClick={() => setIsAddGroupModalOpen(true)} className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold font-sans text-[13px] hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-sm">
+                        <button onClick={() => setIsAddGroupModalOpen(true)} className="w-full py-2.5 bg-[var(--brand)] text-white rounded-lg font-bold font-sans text-[13px] hover:bg-[var(--brand-dark)] transition-all flex items-center justify-center gap-2 shadow-sm">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                             Add Groups
                         </button>
@@ -323,14 +331,14 @@ export default function GroupsSidebar({ isOpen = true }) {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-xs font-bold font-sans text-black uppercase tracking-widest mb-2">Group Name</label>
-                                <input type="text" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="Enter group name..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-slate-900 text-black font-sans" />
+                                <input type="text" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="Enter group name..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-[var(--brand)] text-black font-sans" />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold font-sans text-black uppercase tracking-widest mb-2">Role</label>
                                 <select
                                     value={newGroupRole}
                                     onChange={e => setNewGroupRole(e.target.value)}
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-slate-900 text-black font-sans"
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-[var(--brand)] text-black font-sans"
                                 >
                                     <option value="" disabled>Select Role</option>
                                     {/* admin — visible only to super_admin */}
@@ -347,11 +355,11 @@ export default function GroupsSidebar({ isOpen = true }) {
                             </div>
                             <div>
                                 <label className="block text-xs font-bold font-sans text-black uppercase tracking-widest mb-2">Description</label>
-                                <textarea value={newGroupDescription} onChange={e => setNewGroupDescription(e.target.value)} placeholder="Description (Optional)" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-slate-900 resize-none text-black font-sans" rows="3" />
+                                <textarea value={newGroupDescription} onChange={e => setNewGroupDescription(e.target.value)} placeholder="Description (Optional)" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-[var(--brand)] resize-none text-black font-sans" rows="3" />
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button onClick={() => setIsAddGroupModalOpen(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-bold font-sans">Cancel</button>
-                                <button onClick={handleCreateGroup} disabled={!newGroupName.trim() || isSubmitting} className="flex-1 py-3 bg-black text-white rounded-lg font-bold font-sans disabled:opacity-50">
+                                <button onClick={handleCreateGroup} disabled={!newGroupName.trim() || isSubmitting} className="flex-1 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-lg font-bold font-sans disabled:opacity-50">
                                     {isSubmitting ? "Creating..." : "Create"}
                                 </button>
                             </div>

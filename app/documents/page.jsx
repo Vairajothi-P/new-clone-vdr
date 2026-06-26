@@ -752,7 +752,7 @@ function UnifiedWorkspace() {
                             </button>
                         )}
                         {currentView !== 'trash' && canMergeFolder && (
-                            <button disabled={selectedIds.size === 0 || !canMergeFolder} onClick={() => setIsMoveModalOpen(true)} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 || !canMergeFolder ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-blue-600 hover:bg-blue-50'}`}>
+                            <button disabled={selectedIds.size === 0 || !canMergeFolder} onClick={() => setIsMoveModalOpen(true)} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 || !canMergeFolder ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-[var(--brand)] hover:bg-[var(--brand-soft)]'}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="5 9 2 12 5 15" /><polyline points="9 5 12 2 15 5" /><line x1="2" y1="12" x2="22" y2="12" /><line x1="12" y1="2" x2="12" y2="22" /></svg>
                                 Move Items
                             </button>
@@ -880,20 +880,20 @@ function UnifiedWorkspace() {
                 <Modal onClose={() => setIsMoveModalOpen(false)}>
                     <h3 className="text-[15px] font-black mb-4">Move {selectedIds.size} items to...</h3>
                     <div className="space-y-1 max-h-64 overflow-y-auto mb-4">
-                        <button onClick={() => setMovingToFolderId(null)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === null ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}>
+                        <button onClick={() => setMovingToFolderId(null)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === null ? 'bg-[var(--brand)] text-white' : 'hover:bg-slate-50 text-slate-700'}`}>
                             Root Directory
                         </button>
 
                         {/* Only show folders we can move to (not deleted, not currently selected) */}
                         {files.filter(f => f.type === 'folder' && !deletedIds.has(f.id) && !selectedIds.has(f.id)).map(folder => (
-                            <button key={folder.id} onClick={() => setMovingToFolderId(folder.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === folder.id ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}>
+                            <button key={folder.id} onClick={() => setMovingToFolderId(folder.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === folder.id ? 'bg-[var(--brand)] text-white' : 'hover:bg-slate-50 text-slate-700'}`}>
                                 <span className="truncate">{folder.name}</span>
                             </button>
                         ))}
                     </div>
                     <div className="flex gap-2">
                         <button onClick={() => setIsMoveModalOpen(false)} className="flex-1 py-2.5 bg-slate-100 font-bold rounded-xl text-[13px]">Cancel</button>
-                        <button onClick={executeMoveToFolder} className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl text-[13px]">Move Here</button>
+                        <button onClick={executeMoveToFolder} className="flex-1 py-2.5 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-bold rounded-xl text-[13px]">Move Here</button>
                     </div>
                 </Modal>
             )}
@@ -917,7 +917,7 @@ function UnifiedWorkspace() {
                     <p className="text-[13px] text-slate-500 mb-6">These files will be moved to the Trash bin.</p>
                     <div className="flex gap-2">
                         <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-3 bg-slate-200 text-slate-700 cursor-pointer hover:bg-slate-300 font-bold rounded-xl text-[14px]">Cancel</button>
-                        <button onClick={executeSoftDelete} className="flex-1 py-3 bg-slate-800 text-white cursor-pointer hover:bg-slate-900 font-bold rounded-xl text-[14px]">Send to Trash</button>
+                        <button onClick={executeSoftDelete} className="flex-1 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white cursor-pointer font-bold rounded-xl text-[14px]">Send to Trash</button>
                     </div>
                 </Modal>
             )}
@@ -925,8 +925,8 @@ function UnifiedWorkspace() {
             {isNewFolderOpen && (
                 <Modal onClose={() => setIsNewFolderOpen(false)}>
                     <h3 className="text-[16px] font-black mb-4">Create New Folder</h3>
-                    <input type="text" placeholder="Folder name..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:border-slate-400 focus:outline-none" />
-                    <button onClick={handleCreateFolder} className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl">Create</button>
+                    <input type="text" placeholder="Folder name..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:border-[var(--brand)] focus:outline-none" />
+                    <button onClick={handleCreateFolder} className="w-full py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-bold rounded-xl">Create</button>
                 </Modal>
             )}
 
@@ -934,10 +934,10 @@ function UnifiedWorkspace() {
                 <Modal onClose={() => setIsRenameModalOpen(false)}>
                     <h3 className="text-[16px] font-black text-slate-900 mb-4">Rename Item</h3>
                     <form onSubmit={handleRename}>
-                        <input type="text" placeholder="New name..." value={renameValue} onChange={e => setRenameValue(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:border-slate-400 focus:outline-none" autoFocus />
+                        <input type="text" placeholder="New name..." value={renameValue} onChange={e => setRenameValue(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:border-[var(--brand)] focus:outline-none" autoFocus />
                         <div className="flex gap-2">
                             <button type="button" onClick={() => setIsRenameModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-700 cursor-pointer hover:bg-slate-300 font-bold rounded-xl text-[14px]">Cancel</button>
-                            <button type="submit" className="flex-1 py-3 bg-slate-800 text-white cursor-pointer hover:bg-slate-900 font-bold rounded-xl text-[14px]">Rename</button>
+                            <button type="submit" className="flex-1 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white cursor-pointer font-bold rounded-xl text-[14px]">Rename</button>
                         </div>
                     </form>
                 </Modal>
