@@ -88,7 +88,7 @@ export default function GroupsSidebar({ isOpen = true }) {
                     .eq('company_id', companyId);
 
                 setNavItems((data || []).map(g => ({
-                    id: g.id, name: g.name, href: `/groups/${g.id}`
+                    id: g.id, name: g.name, role: g.role, href: `/groups/${g.id}`
                 })));
 
             } else {
@@ -146,7 +146,7 @@ export default function GroupsSidebar({ isOpen = true }) {
                 }
 
                 setNavItems(groups.map(g => ({
-                    id: g.id, name: g.name, href: `/groups/${g.id}`
+                    id: g.id, name: g.name, role: g.role, href: `/groups/${g.id}`
                 })));
             }
 
@@ -193,6 +193,7 @@ export default function GroupsSidebar({ isOpen = true }) {
                 setNavItems(prev => [{
                     id: data.id,
                     name: data.name,
+                    role: data.role,
                     href: `/groups/${data.id}`
                 }, ...prev]);
                 setIsAddGroupModalOpen(false);
@@ -228,11 +229,19 @@ export default function GroupsSidebar({ isOpen = true }) {
                                             : 'text-gray-600 hover:bg-gray-50'
                                             }`}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={active ? 'text-slate-900' : 'text-gray-400'}>
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`shrink-0 ${active ? 'text-slate-900' : 'text-gray-400'}`}>
                                                 {GROUP_ICON}
                                             </svg>
-                                            <span className="text-[14px] font-sans truncate">{item.name}</span>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-[14px] font-sans truncate">{item.name}</span>
+                                                {item.role && (
+                                                    <span className="text-[10px] font-semibold font-sans uppercase tracking-wide px-1.5 py-0.5 rounded w-fit mt-0.5
+                                                        text-slate-600 bg-slate-100">
+                                                        {item.role.replace('_', ' ')}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {canDeleteGroup && (
