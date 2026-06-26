@@ -26,7 +26,8 @@ export default function GroupsSidebar({ isOpen = true }) {
     const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
     const [newGroupName, setNewGroupName] = useState('');
     const [newGroupDescription, setNewGroupDescription] = useState('');
-    const [newGroupRole, setNewGroupRole] = useState('external_user');
+    const [newGroupRole, setNewGroupRole] = useState('');
+    const [currentUserRole, setCurrentUserRole] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [deleteTarget, setDeleteTarget] = useState(null);
@@ -42,6 +43,7 @@ export default function GroupsSidebar({ isOpen = true }) {
             const userRole = session?.role;
             const userId = session?.id;
             const companyId = session?.company_id;
+            setCurrentUserRole(userRole || '');
 
             // Check create/delete group permissions
             if (userRole === 'super_admin') {
@@ -99,15 +101,48 @@ export default function GroupsSidebar({ isOpen = true }) {
                 let groups = data || [];
 
                 if (userRole === 'admin') {
-                    groups = groups.filter(g => {
-                        const n = g.name.trim().toLowerCase().replace(/\s+/g, '_');
-                        return !['super_admin', 'admin'].includes(n);
-                    });
+                    // Show groups that have sub_admin or external_user members
+                    const { data: targetUsers } = await supabase
+                        .from('users')
+                        .select('id')
+                        .eq('company_id', companyId)
+                        .in('role', ['sub_admin', 'external_user']);
+
+                    const targetUserIds = (targetUsers || []).map(u => u.id);
+
+                    if (targetUserIds.length > 0) {
+                        const { data: ugRows } = await supabase
+                            .from('user_groups')
+                            .select('group_id')
+                            .in('user_id', targetUserIds);
+
+                        const validGroupIds = new Set((ugRows || []).map(r => r.group_id));
+                        groups = groups.filter(g => validGroupIds.has(g.id));
+                    } else {
+                        groups = [];
+                    }
+
                 } else if (userRole === 'sub_admin') {
-                    groups = groups.filter(g => {
-                        const n = g.name.trim().toLowerCase().replace(/\s+/g, '_');
-                        return !['super_admin', 'admin', 'sub_admin'].includes(n);
-                    });
+                    // Show groups that have external_user members only
+                    const { data: extUsers } = await supabase
+                        .from('users')
+                        .select('id')
+                        .eq('company_id', companyId)
+                        .eq('role', 'external_user');
+
+                    const extUserIds = (extUsers || []).map(u => u.id);
+
+                    if (extUserIds.length > 0) {
+                        const { data: ugExt } = await supabase
+                            .from('user_groups')
+                            .select('group_id')
+                            .in('user_id', extUserIds);
+
+                        const validGroupIds = new Set((ugExt || []).map(r => r.group_id));
+                        groups = groups.filter(g => validGroupIds.has(g.id));
+                    } else {
+                        groups = [];
+                    }
                 }
 
                 setNavItems(groups.map(g => ({
@@ -163,7 +198,7 @@ export default function GroupsSidebar({ isOpen = true }) {
                 setIsAddGroupModalOpen(false);
                 setNewGroupName('');
                 setNewGroupDescription('');
-                setNewGroupRole('external_user'); 
+                setNewGroupRole('external_user');
             }
         } finally {
             setIsSubmitting(false);
@@ -288,10 +323,17 @@ export default function GroupsSidebar({ isOpen = true }) {
                                     onChange={e => setNewGroupRole(e.target.value)}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-[var(--brand)] text-black font-sans"
                                 >
+                                    <option value="" disabled>Select Role</option>
+                                    {/* admin — visible only to super_admin */}
+                                    {currentUserRole === 'super_admin' && (
+                                        <option value="admin">Admin</option>
+                                    )}
+                                    {/* sub_admin — visible to admin & super_admin */}
+                                    {(currentUserRole === 'admin' || currentUserRole === 'super_admin') && (
+                                        <option value="sub_admin">Sub Admin</option>
+                                    )}
+                                    {/* external_user — visible to all */}
                                     <option value="external_user">External User</option>
-                                    <option value="sub_admin">Sub Admin</option>
-                                    <option value="admin">Admin</option>
-                                    <option value="super_admin">Super Admin</option>
                                 </select>
                             </div>
                             <div>
