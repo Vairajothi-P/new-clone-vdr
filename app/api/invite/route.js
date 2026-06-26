@@ -173,10 +173,12 @@ export async function POST(request) {
       return NextResponse.json({ error: inviteError.message }, { status: 500 });
     }
 
-    // 3. Construct the registration URL with the new App Router path structure
+    // 3. Construct the registration URL
     const host = request.headers.get("host") || "localhost:3000";
     const protocol = host.startsWith("localhost") ? "http" : "https";
-    const registrationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/register/${token}`;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+    const registrationUrl = `${baseUrl}/register/${token}`;
+
     // Log the registration URL to terminal console for easy developer access/testing
     console.log("\n--- GENERATED REGISTRATION URL FOR TESTING ---");
     console.log(registrationUrl);
