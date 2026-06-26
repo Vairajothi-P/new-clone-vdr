@@ -66,31 +66,31 @@ export default function Home() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 w-full bg-white/90 backdrop-blur-md shadow-md z-50 py-4 px-8 flex justify-between items-center">
         <div className="text-2xl font-bold text-gray-800">
-          <i className="fas fa-shield-alt text-blue-600 mr-2"></i> SecureVDR
+          <i className="fas fa-shield-alt text-[var(--brand)] mr-2"></i> SecureVDR
         </div>
         <div className="flex gap-4 items-center">
-          <Link href="/documents" className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full font-semibold shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg hover:shadow-blue-500/35 hover:scale-102 transition-all duration-300 flex items-center gap-2">
+          <Link href="/documents" className="px-5 py-2 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full font-semibold shadow-md shadow-[var(--brand)]/25 hover:from-[var(--brand-dark)] hover:to-[var(--brand-secondary)] hover:shadow-lg hover:shadow-[var(--brand)]/35 hover:scale-102 transition-all duration-300 flex items-center gap-2">
             <i className="fas fa-chart-line"></i> Dashboard
           </Link>
-          <a href="/login" className="px-5 py-2 border-2 border-blue-600 text-blue-600 rounded-full font-semibold hover:bg-blue-50 transition-all duration-300">Login</a>
-          <Link href="/register" className="px-5 py-2 border-2 border-blue-600 text-blue-600 rounded-full font-semibold hover:bg-blue-50 transition-all duration-300">Register</Link>
+          <a href="/login" className="px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300">Login</a>
+          <Link href="/register" className="px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300">Register</Link>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="min-h-screen flex flex-col md:flex-row items-center justify-between px-8 md:px-16 pt-32 pb-16 bg-gradient-to-br from-blue-50 to-indigo-100">
+      <section className="min-h-screen flex flex-col md:flex-row items-center justify-between px-8 md:px-16 pt-32 pb-16 bg-gradient-to-br from-[var(--brand)]/10 to-[var(--brand-secondary)]/10">
         <div className="flex-1 max-w-xl" data-aos="fade-right" data-aos-duration="800">
           <h1 className="text-5xl md:text-6xl font-extrabold text-gray-800 leading-tight mb-6">Secure Your Business Data with Smart VDR Platform</h1>
           <p className="text-xl text-gray-600 mb-8">IPO, Due Diligence, Legal Docs — All in One Place. Enterprise-grade security meets intelligent collaboration.</p>
           <div className="flex gap-4">
-            <Link href="/documents" className="px-8 py-3 bg-blue-600 text-white rounded-full font-semibold shadow-lg hover:bg-blue-700 hover:shadow-xl hover:scale-102 transition-all duration-300 flex items-center gap-2">Get Started <i className="fas fa-arrow-right"></i></Link>
-            <button className="px-8 py-3 border-2 border-blue-600 text-blue-600 rounded-full font-semibold hover:bg-blue-50 transition-all duration-300 flex items-center gap-2">Request Demo <i className="fas fa-play"></i></button>
+            <Link href="/documents" className="px-8 py-3 bg-[var(--brand)] text-white rounded-full font-semibold shadow-lg hover:bg-[var(--brand-dark)] hover:shadow-xl hover:scale-102 transition-all duration-300 flex items-center gap-2">Get Started <i className="fas fa-arrow-right"></i></Link>
+            <button className="px-8 py-3 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300 flex items-center gap-2">Request Demo <i className="fas fa-play"></i></button>
           </div>
         </div>
         <div className="flex-1 flex justify-center mt-12 md:mt-0" data-aos="fade-left" data-aos-duration="800">
           <div className="relative w-80 h-80">
             <div className="absolute top-0 left-0 bg-white p-5 rounded-2xl shadow-xl flex flex-col items-center gap-2 animate-float">
-              <FaFolderOpen className="text-4xl text-blue-600" />
+              <FaFolderOpen className="text-4xl text-[var(--brand)]" />
               <p className="font-semibold text-gray-700">Due Diligence</p>
             </div>
             <div className="absolute top-20 right-0 bg-white p-5 rounded-2xl shadow-xl flex flex-col items-center gap-2 animate-float-delayed">
@@ -110,32 +110,32 @@ export default function Home() {
         <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-12">Powerful Features for Modern Data Rooms</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
           <div className="bg-gray-50 p-6 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 text-center" data-aos="zoom-in" data-aos-delay="50">
-            <i className="fas fa-fingerprint text-5xl text-blue-500 mb-4"></i>
+            <i className="fas fa-fingerprint text-5xl text-brand mb-4"></i>
             <h3 className="text-xl font-semibold mb-2 text-gray-800">🔐 Secure Authentication</h3>
             <p className="text-gray-600">SSO, MFA & granular access.</p>
           </div>
           <div className="bg-gray-50 p-6 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 text-center" data-aos="zoom-in" data-aos-delay="100">
-            <i className="fas fa-folder-tree text-5xl text-blue-500 mb-4"></i>
+            <i className="fas fa-folder-tree text-5xl text-brand mb-4"></i>
             <h3 className="text-xl font-semibold mb-2 text-gray-800">📁 Data Rooms</h3>
             <p className="text-gray-600">Organize files with drag & drop.</p>
           </div>
           <div className="bg-gray-50 p-6 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 text-center" data-aos="zoom-in" data-aos-delay="150">
-            <i className="fas fa-users-cog text-5xl text-blue-500 mb-4"></i>
+            <i className="fas fa-users-cog text-5xl text-brand mb-4"></i>
             <h3 className="text-xl font-semibold mb-2 text-gray-800">👥 User Permissions</h3>
             <p className="text-gray-600">Role-based, fine-grained controls.</p>
           </div>
           <div className="bg-gray-50 p-6 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 text-center" data-aos="zoom-in" data-aos-delay="200">
-            <i className="fas fa-chart-pie text-5xl text-blue-500 mb-4"></i>
+            <i className="fas fa-chart-pie text-5xl text-brand mb-4"></i>
             <h3 className="text-xl font-semibold mb-2 text-gray-800">📊 Analytics Dashboard</h3>
             <p className="text-gray-600">Track views, downloads & heatmaps.</p>
           </div>
           <div className="bg-gray-50 p-6 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 text-center" data-aos="zoom-in" data-aos-delay="250">
-            <i className="fas fa-history text-5xl text-blue-500 mb-4"></i>
+            <i className="fas fa-history text-5xl text-brand mb-4"></i>
             <h3 className="text-xl font-semibold mb-2 text-gray-800">🧾 Audit Logs</h3>
             <p className="text-gray-600">Complete traceability & compliance.</p>
           </div>
           <div className="bg-gray-50 p-6 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 text-center" data-aos="zoom-in" data-aos-delay="300">
-            <i className="fas fa-comments text-5xl text-blue-500 mb-4"></i>
+            <i className="fas fa-comments text-5xl text-brand mb-4"></i>
             <h3 className="text-xl font-semibold mb-2 text-gray-800">💬 Q&A Collaboration</h3>
             <p className="text-gray-600">Secure internal Q&A module.</p>
           </div>
@@ -147,27 +147,27 @@ export default function Home() {
         <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-12">How It Works — Simple 5 Steps</h2>
         <div className="flex flex-wrap justify-center gap-8 max-w-5xl mx-auto">
           <div className="bg-white p-6 rounded-xl shadow-md w-48 text-center" data-aos="flip-up" data-aos-delay="0">
-            <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">1</div>
+            <div className="w-12 h-12 bg-[var(--brand)] text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">1</div>
             <h4 className="font-semibold text-lg text-gray-800">Register Company</h4>
             <p className="text-gray-500 text-sm">Sign up & verify business</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-md w-48 text-center" data-aos="flip-up" data-aos-delay="100">
-            <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">2</div>
+            <div className="w-12 h-12 bg-[var(--brand)] text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">2</div>
             <h4 className="font-semibold text-lg text-gray-800">Get Approval</h4>
             <p className="text-gray-500 text-sm">Fast KYC & onboarding</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-md w-48 text-center" data-aos="flip-up" data-aos-delay="200">
-            <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">3</div>
+            <div className="w-12 h-12 bg-[var(--brand)] text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">3</div>
             <h4 className="font-semibold text-lg text-gray-800">Create Data Room</h4>
             <p className="text-gray-500 text-sm">Upload & organize</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-md w-48 text-center" data-aos="flip-up" data-aos-delay="300">
-            <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">4</div>
+            <div className="w-12 h-12 bg-[var(--brand)] text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">4</div>
             <h4 className="font-semibold text-lg text-gray-800">Invite Users</h4>
             <p className="text-gray-500 text-sm">Add investors, admins</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-md w-48 text-center" data-aos="flip-up" data-aos-delay="400">
-            <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">5</div>
+            <div className="w-12 h-12 bg-[var(--brand)] text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">5</div>
             <h4 className="font-semibold text-lg text-gray-800">Securely Share</h4>
             <p className="text-gray-500 text-sm">Watermarked & expirable</p>
           </div>
@@ -185,7 +185,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-gray-700 p-4 rounded-xl text-white" data-aos="fade-right" data-aos-delay="80">
               <i className="fas fa-eye mr-2"></i> <strong>1,284</strong> <span className="text-sm">views</span>
-              <div className="h-2 bg-gray-600 rounded-full mt-2"><div className="h-2 bg-blue-400 rounded-full w-[70%]"></div></div>
+              <div className="h-2 bg-gray-600 rounded-full mt-2"><div className="h-2 bg-[var(--brand)]/70 rounded-full w-[70%]"></div></div>
             </div>
             <div className="bg-gray-700 p-4 rounded-xl text-white" data-aos="fade-up" data-aos-delay="150">
               <i className="fas fa-user-check mr-2"></i> <strong>42</strong> active users
@@ -208,22 +208,22 @@ export default function Home() {
         <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-12">Granular Roles & Access Control</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-center" data-aos="flip-left" data-aos-delay="0">
-            <i className="fas fa-building text-5xl text-blue-600 mb-4"></i>
+            <i className="fas fa-building text-5xl text-[var(--brand)] mb-4"></i>
             <h3 className="text-xl font-semibold text-gray-800">Company Owner</h3>
             <p className="text-gray-500">Full governance & master keys</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-center" data-aos="flip-left" data-aos-delay="100">
-            <i className="fas fa-crown text-5xl text-blue-600 mb-4"></i>
+            <i className="fas fa-crown text-5xl text-[var(--brand)] mb-4"></i>
             <h3 className="text-xl font-semibold text-gray-800">Super Admin</h3>
             <p className="text-gray-500">Platform-wide settings, audit</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-center" data-aos="flip-left" data-aos-delay="200">
-            <i className="fas fa-user-tie text-5xl text-blue-600 mb-4"></i>
+            <i className="fas fa-user-tie text-5xl text-[var(--brand)] mb-4"></i>
             <h3 className="text-xl font-semibold text-gray-800">Admin</h3>
             <p className="text-gray-500">Manage rooms & users</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-center" data-aos="flip-left" data-aos-delay="300">
-            <i className="fas fa-user-friends text-5xl text-blue-600 mb-4"></i>
+            <i className="fas fa-user-friends text-5xl text-[var(--brand)] mb-4"></i>
             <h3 className="text-xl font-semibold text-gray-800">External User</h3>
             <p className="text-gray-500">View-only + watermark</p>
           </div>
@@ -264,22 +264,22 @@ export default function Home() {
         <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-12">Military‑Grade Security Stack</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-center" data-aos="zoom-in-right">
-            <i className="fas fa-fingerprint text-5xl text-blue-600 mb-4"></i>
+            <i className="fas fa-fingerprint text-5xl text-brand mb-4"></i>
             <h3 className="text-xl font-semibold text-gray-800">🔒 Dynamic Watermarking</h3>
             <p className="text-gray-500">Prevent leaks with user-specific watermarks</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-center" data-aos="zoom-in">
-            <i className="fas fa-list-ul text-5xl text-blue-600 mb-4"></i>
+            <i className="fas fa-list-ul text-5xl text-brand mb-4"></i>
             <h3 className="text-xl font-semibold text-gray-800">📋 Activity Tracking</h3>
             <p className="text-gray-500">Every view, print, download logged</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-center" data-aos="zoom-in-left">
-            <i className="fas fa-shield-virus text-5xl text-blue-600 mb-4"></i>
+            <i className="fas fa-shield-virus text-5xl text-brand mb-4"></i>
             <h3 className="text-xl font-semibold text-gray-800">🔐 End‑to‑End Encryption</h3>
             <p className="text-gray-500">AES-256 + TLS 1.3, secure vaults</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-center" data-aos="zoom-in-left">
-            <i className="fas fa-file-signature text-5xl text-blue-600 mb-4"></i>
+            <i className="fas fa-file-signature text-5xl text-brand mb-4"></i>
             <h3 className="text-xl font-semibold text-gray-800">📄 NDA enforcement</h3>
             <p className="text-gray-500">Customizable legal agreements</p>
           </div>
@@ -318,19 +318,19 @@ export default function Home() {
               <li><i className="fas fa-check-circle text-green-500 mr-2"></i> 50 GB storage</li>
               <li><i className="fas fa-check-circle text-green-500 mr-2"></i> Basic analytics</li>
             </ul>
-            <button className="mt-6 w-full py-2 border-2 border-blue-600 text-blue-600 rounded-full font-semibold hover:bg-blue-50 transition-all duration-300">Get Basic</button>
+            <button className="mt-6 w-full py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300">Get Basic</button>
           </div>
-          <div className="bg-blue-600 text-white p-6 rounded-2xl shadow-xl scale-105 relative" data-aos="fade-up" data-aos-delay="150">
+          <div className="bg-[var(--brand)] text-white p-6 rounded-2xl shadow-xl scale-105 relative" data-aos="fade-up" data-aos-delay="150">
             <span className="absolute top-0 right-0 bg-yellow-400 text-gray-800 text-xs px-3 py-1 rounded-bl-xl rounded-tr-xl font-bold">Popular</span>
             <h3 className="text-2xl font-bold">Pro</h3>
             <div className="text-5xl font-bold mt-4">$599</div>
-            <p className="text-blue-100">/month</p>
+            <p className="text-[var(--brand)]/20">/month</p>
             <ul className="mt-6 space-y-2 text-left">
               <li><i className="fas fa-check-circle mr-2"></i> Unlimited users</li>
               <li><i className="fas fa-check-circle mr-2"></i> 500 GB + advanced logs</li>
               <li><i className="fas fa-check-circle mr-2"></i> Audit & watermarks</li>
             </ul>
-            <button className="mt-6 w-full py-2 bg-white text-blue-600 rounded-full font-semibold hover:bg-gray-100 transition-all duration-300">Start Pro</button>
+            <button className="mt-6 w-full py-2 bg-white text-[var(--brand)] rounded-full font-semibold hover:bg-gray-100 transition-all duration-300">Start Pro</button>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 text-center" data-aos="fade-up" data-aos-delay="300">
             <h3 className="text-2xl font-bold text-gray-800">Enterprise</h3>
@@ -341,7 +341,7 @@ export default function Home() {
               <li><i className="fas fa-check-circle text-green-500 mr-2"></i> Dedicated support</li>
               <li><i className="fas fa-check-circle text-green-500 mr-2"></i> Compliance (GDPR/SOC2)</li>
             </ul>
-            <button className="mt-6 w-full py-2 border-2 border-blue-600 text-blue-600 rounded-full font-semibold hover:bg-blue-50 transition-all duration-300">Contact Sales</button>
+            <button className="mt-6 w-full py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300">Contact Sales</button>
           </div>
         </div>
       </section>
@@ -386,7 +386,7 @@ export default function Home() {
       </footer>
 
       {/* Scroll to Top Button */}
-      <div id="scrollTopBtn" className="fixed bottom-6 right-6 bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg cursor-pointer opacity-0 invisible transition-all duration-300 hover:bg-blue-700 z-50 show:opacity-100 show:visible">
+      <div id="scrollTopBtn" className="fixed bottom-6 right-6 bg-[var(--brand)] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg cursor-pointer opacity-0 invisible transition-all duration-300 hover:bg-[var(--brand-dark)] z-50 show:opacity-100 show:visible">
         <i className="fas fa-arrow-up"></i>
       </div>
 

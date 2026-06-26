@@ -380,11 +380,12 @@ export default function DynamicGroupPage() {
     };
 
     return (
-        <div className="flex-1 flex flex-col h-screen overflow-hidden font-sans bg-[#F8F9FB] relative">
+        <div className="flex-1 flex flex-col h-screen overflow-hidden font-sans bg-[#F8FAFC] relative">
+            <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-[var(--brand)]/10 to-transparent pointer-events-none transition-colors duration-500"></div>
 
             {/* TOAST */}
             {showToast && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl z-[100] animate-in slide-in-from-bottom-8 fade-in duration-300 font-medium font-sans text-sm flex items-center gap-2">
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-[var(--brand-dark)] text-white px-6 py-3 rounded-full shadow-2xl z-[100] animate-in slide-in-from-bottom-8 fade-in duration-300 font-medium font-sans text-sm flex items-center gap-2">
                     <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                     {toastMsg}
                 </div>
@@ -395,7 +396,7 @@ export default function DynamicGroupPage() {
                 <div className="flex items-start justify-between">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                            <div className="w-10 h-10 rounded-xl bg-[var(--brand)] text-white flex items-center justify-center font-bold text-lg shadow-sm">
                                 {groupData?.name?.charAt(0).toUpperCase() || "G"}
                             </div>
                             <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">
@@ -411,20 +412,20 @@ export default function DynamicGroupPage() {
                         <div className="flex items-center gap-3">
                             {canAddMembers && (
                                 <button onClick={() => setShowInviteModal(true)}
-                                    className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl font-medium text-sm hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm active:scale-95">
+                                    className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 hover:border-gray-300 transition-all duration-500 shadow-sm active:scale-95 cursor-pointer">
                                     <FaUserPlus size={14} className="text-slate-500" />
                                     <span>Invite Member</span>
                                 </button>
                             )}
                             {/* <button onClick={() => setShowPermissionPage(true)}
-                                className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl font-medium text-sm hover:bg-slate-800 transition-all shadow-md active:scale-95">
+                                className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-xl font-medium text-sm hover:bg-[var(--brand-dark)] transition-all shadow-md active:scale-95">
                                 <FaCog size={14} className="text-white/80" />
                                 <span>Edit Permissions</span>
                             </button> */}
 
                             {canEditPermissions && (
                                 <button onClick={() => setShowPermissionPage(true)}
-                                    className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl font-medium text-sm hover:bg-slate-800 transition-all shadow-md active:scale-95">
+                                    className="flex items-center gap-2 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-500 shadow-[0_8px_30px_rgba(var(--brand-rgb),0.14)] active:scale-95 cursor-pointer">
                                     <FaCog size={14} className="text-white/80" />
                                     <span>Edit Permissions</span>
                                 </button>
@@ -437,7 +438,7 @@ export default function DynamicGroupPage() {
             <div className="flex-1 overflow-y-auto px-10 pb-12 mt-2">
                 {!showPermissionPage ? (
                     /* MEMBERS TABLE CARD */
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[500px]">
+                    <div className="bg-white/80 backdrop-blur-xl border border-gray-200/80 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col min-h-[500px] hover:border-gray-300 transition-all duration-500">
                         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                             <h3 className="font-semibold text-sm text-slate-700">Active Members</h3>
                             <span className="bg-slate-200 text-slate-600 font-medium text-xs px-2.5 py-0.5 rounded-full">{members.length}</span>
@@ -496,7 +497,7 @@ export default function DynamicGroupPage() {
                     </div>
                 ) : (
                     /* PERMISSIONS CONFIGURATION CARD */
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="bg-white/80 backdrop-blur-xl border border-gray-200/80 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-gray-300 transition-all duration-500 p-8 animate-in fade-in slide-in-from-bottom-4">
                         <div className="flex justify-between items-center mb-8 pb-6 border-b border-slate-100">
                             <div>
                                 <h2 className="text-xl font-semibold text-slate-800 tracking-tight">Permissions Matrix</h2>
@@ -578,7 +579,7 @@ export default function DynamicGroupPage() {
                                                     <p className="text-sm text-slate-500 mt-1">Allow this group to access and modify permission settings for other groups</p>
                                                 </div>
                                                 <button onClick={handleToggleEditPerm}
-                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${isOn ? 'bg-slate-900' : 'bg-slate-200'}`}>
+                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:ring-offset-2 ${isOn ? 'bg-[var(--brand)]' : 'bg-slate-200'}`}>
                                                     <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isOn ? 'translate-x-5' : 'translate-x-0'}`} />
                                                 </button>
                                             </div>
@@ -597,7 +598,7 @@ export default function DynamicGroupPage() {
                                                     <p className="text-sm text-slate-500 mt-1">{description}</p>
                                                 </div>
                                                 <button onClick={() => toggleSection(scope)}
-                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${s.enabled ? 'bg-slate-900' : 'bg-slate-200'}`}>
+                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:ring-offset-2 ${s.enabled ? 'bg-[var(--brand)]' : 'bg-slate-200'}`}>
                                                     <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${s.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
                                                 </button>
                                             </div>
@@ -632,7 +633,7 @@ export default function DynamicGroupPage() {
                                                                                 <label key={n.key} className="flex items-start gap-3.5 cursor-pointer group">
                                                                                     <div className="mt-0.5 relative flex items-center justify-center">
                                                                                         <input type="checkbox" checked={!!s[n.key]} onChange={() => toggleSubPerm(scope, n.key)}
-                                                                                            className="peer w-5 h-5 appearance-none border-2 border-slate-300 rounded-md checked:bg-slate-900 checked:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-1 transition-all cursor-pointer" />
+                                                                                            className="peer w-5 h-5 appearance-none border-2 border-slate-300 rounded-md checked:bg-[var(--brand)] checked:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:ring-offset-1 transition-all cursor-pointer" />
                                                                                         <svg className="absolute w-3.5 h-3.5 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                                                                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                                                                         </svg>
@@ -675,11 +676,11 @@ export default function DynamicGroupPage() {
                                                         <button
                                                             onClick={() => groupData?.id && router.push(`/documents/access?group=${groupData.id}`)}
                                                             title="Go to advanced file permissions"
-                                                            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                                                            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-[var(--brand-dark)] hover:text-white transition-colors">
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                                                         </button>
                                                         <button onClick={() => setPerms(prev => ({ ...prev, files: { ...(prev.files || {}), enabled: !fs.enabled } }))}
-                                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${fs.enabled ? 'bg-slate-900' : 'bg-slate-200'}`}>
+                                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:ring-offset-2 ${fs.enabled ? 'bg-[var(--brand)]' : 'bg-slate-200'}`}>
                                                             <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${fs.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
                                                         </button>
                                                     </div>
@@ -700,7 +701,7 @@ export default function DynamicGroupPage() {
                                                                             <div className="mt-0.5 relative flex items-center justify-center">
                                                                                 <input type="checkbox" checked={!!fs[fp.key]}
                                                                                     onChange={() => setPerms(prev => ({ ...prev, files: { ...prev.files, [fp.key]: !prev.files?.[fp.key] } }))}
-                                                                                    className="peer w-5 h-5 appearance-none border-2 border-slate-300 rounded-md checked:bg-slate-900 checked:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-1 transition-all cursor-pointer" />
+                                                                                    className="peer w-5 h-5 appearance-none border-2 border-slate-300 rounded-md checked:bg-[var(--brand)] checked:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:ring-offset-1 transition-all cursor-pointer" />
                                                                                 <svg className="absolute w-3.5 h-3.5 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                                                                 </svg>
@@ -725,7 +726,7 @@ export default function DynamicGroupPage() {
 
                         <div className="mt-8 flex justify-end">
                             <button onClick={handleSubmitPermissions} disabled={saving || permsLoading}
-                                className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-medium text-sm shadow-md shadow-slate-900/10 hover:shadow-lg hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white px-6 py-2.5 rounded-xl font-semibold text-sm shadow-[0_8px_30px_rgba(var(--brand-rgb),0.14)] hover:shadow-lg hover:-translate-y-0.5 transition-all duration-500 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer">
                                 {saving ? (
                                     <><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Saving Changes...</>
                                 ) : "Save Permissions"}
@@ -737,12 +738,12 @@ export default function DynamicGroupPage() {
 
             {/* INVITE MODAL - Premium Glassmorphic */}
             {showInviteModal && (
-                <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-[200] p-6 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-[var(--brand)]/20 backdrop-blur-sm flex items-center justify-center z-[200] p-6 animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-8 relative animate-in zoom-in-95 duration-200">
                         <button onClick={() => setShowInviteModal(false)}
                             className="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">✕</button>
 
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5">
+                        <div className="w-10 h-10 rounded-xl bg-[var(--brand-50)] text-[var(--brand)] flex items-center justify-center mb-5">
                             <FaUserPlus size={16} />
                         </div>
 
@@ -763,7 +764,7 @@ export default function DynamicGroupPage() {
                                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-slate-800 resize-none transition-colors placeholder:text-slate-400 placeholder:font-normal" />
                             </div>
                             <button onClick={handleInviteSubmit}
-                                className="w-full bg-slate-900 text-white py-3 rounded-xl font-medium text-sm shadow-md shadow-slate-900/10 hover:bg-slate-800 transition-all active:scale-95 mt-2">
+                                className="w-full bg-[var(--brand)] text-white py-3 rounded-xl font-medium text-sm shadow-md shadow-[0_8px_30px_rgba(var(--brand-rgb),0.14)] hover:bg-[var(--brand-dark)] transition-all active:scale-95 mt-2">
                                 Send Invitation
                             </button>
                         </div>

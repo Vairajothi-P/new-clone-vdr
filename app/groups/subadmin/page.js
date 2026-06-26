@@ -118,7 +118,7 @@ export default function ActivatePage() {
         <div className="flex items-start justify-between">
             <div>
                 <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--brand)] text-white flex items-center justify-center font-bold text-lg shadow-sm">
                         S
                     </div>
                     <h1 className="text-2xl font-semibold text-slate-800 tracking-tight">
@@ -138,7 +138,7 @@ export default function ActivatePage() {
                         <span>Invite Member</span>
                     </button>
                     <button onClick={() => setShowPermissionPage(true)}
-                        className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl font-medium text-sm hover:bg-slate-800 transition-all shadow-md active:scale-95">
+                        className="flex items-center gap-2 bg-[var(--brand)] text-white px-4 py-2 rounded-xl font-medium text-sm hover:bg-[var(--brand-dark)] transition-all shadow-md active:scale-95">
                         <FaCog size={14} className="text-white/80" />
                         <span>Edit Permissions</span>
                     </button>
@@ -228,7 +228,7 @@ export default function ActivatePage() {
                       </div>
                       <div className="flex items-center gap-5">
                           <button
-                              className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 ${selectedPermissions.some((p) => filePermissions.includes(p)) ? 'bg-slate-800' : 'bg-slate-300'}`}>
+                              className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand)] ${selectedPermissions.some((p) => filePermissions.includes(p)) ? 'bg-[var(--brand)]' : 'bg-slate-300'}`}>
                               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${selectedPermissions.some((p) => filePermissions.includes(p)) ? 'translate-x-5' : 'translate-x-0'}`} />
                           </button>
                       </div>
@@ -239,8 +239,8 @@ export default function ActivatePage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {filePermissions.map((permission, index) => (
                                   <div key={index} onClick={(e) => { e.stopPropagation(); handleCheckboxChange(permission); }}
-                                      className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all select-none group ${selectedPermissions.includes(permission) ? "border-slate-800 bg-slate-800/5" : "border-slate-200 bg-white hover:border-slate-300"}`}>
-                                      <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center transition-all shrink-0 border ${selectedPermissions.includes(permission) ? "bg-slate-800 border-slate-800 text-white" : "bg-white border-slate-300 group-hover:border-slate-400"}`}>
+                                      className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all select-none group ${selectedPermissions.includes(permission) ? "border-[var(--brand)] bg-[var(--brand-50)]" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                                      <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center transition-all shrink-0 border ${selectedPermissions.includes(permission) ? "bg-[var(--brand)] border-[var(--brand)] text-white" : "bg-white border-slate-300 group-hover:border-slate-400"}`}>
                                           {selectedPermissions.includes(permission) && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                       </div>
                                       <div>
@@ -268,7 +268,7 @@ export default function ActivatePage() {
                       </div>
                       <div className="flex items-center gap-5">
                           <button
-                              className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 ${selectedPermissions.some((p) => workspacePermissions.includes(p)) ? 'bg-slate-800' : 'bg-slate-300'}`}>
+                              className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand)] ${selectedPermissions.some((p) => workspacePermissions.includes(p)) ? 'bg-[var(--brand)]' : 'bg-slate-300'}`}>
                               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${selectedPermissions.some((p) => workspacePermissions.includes(p)) ? 'translate-x-5' : 'translate-x-0'}`} />
                           </button>
                       </div>
@@ -279,8 +279,8 @@ export default function ActivatePage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {workspacePermissions.map((permission, index) => (
                                   <div key={index} onClick={(e) => { e.stopPropagation(); handleCheckboxChange(permission); }}
-                                      className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all select-none group ${selectedPermissions.includes(permission) ? "border-slate-800 bg-slate-800/5" : "border-slate-200 bg-white hover:border-slate-300"}`}>
-                                      <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center transition-all shrink-0 border ${selectedPermissions.includes(permission) ? "bg-slate-800 border-slate-800 text-white" : "bg-white border-slate-300 group-hover:border-slate-400"}`}>
+                                      className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all select-none group ${selectedPermissions.includes(permission) ? "border-[var(--brand)] bg-[var(--brand-50)]" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                                      <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center transition-all shrink-0 border ${selectedPermissions.includes(permission) ? "bg-[var(--brand)] border-[var(--brand)] text-white" : "bg-white border-slate-300 group-hover:border-slate-400"}`}>
                                           {selectedPermissions.includes(permission) && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                       </div>
                                       <div>
@@ -313,7 +313,7 @@ export default function ActivatePage() {
 
             <div className="mt-8 flex justify-end">
                 <button onClick={handleSubmit}
-                    className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-medium text-sm shadow-md shadow-slate-900/10 hover:shadow-lg hover:bg-slate-800 transition-all active:scale-95">
+                    className="bg-[var(--brand)] text-white px-6 py-2.5 rounded-xl font-medium text-sm shadow-md shadow-[var(--brand)]/10 hover:shadow-lg hover:bg-[var(--brand-dark)] transition-all active:scale-95">
                     Save Permissions
                 </button>
             </div>
@@ -323,12 +323,12 @@ export default function ActivatePage() {
 
       {/* INVITE MODAL - Premium Glassmorphic */}
       {showInviteModal && (
-          <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-[200] p-6 animate-in fade-in duration-200">
+          <div className="fixed inset-0 bg-[var(--brand)]/20 backdrop-blur-sm flex items-center justify-center z-[200] p-6 animate-in fade-in duration-200">
               <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-8 relative animate-in zoom-in-95 duration-200">
                   <button onClick={() => setShowInviteModal(false)}
                       className="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">✕</button>
                   
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-[var(--brand-50)] text-[var(--brand)] flex items-center justify-center mb-5">
                       <FaUserPlus size={16} />
                   </div>
                   
@@ -341,15 +341,15 @@ export default function ActivatePage() {
                       <div>
                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Candidate Email</label>
                           <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} type="email" placeholder="colleague@company.com"
-                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-slate-800 transition-colors placeholder:text-slate-400 placeholder:font-normal" />
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-[var(--brand)] transition-colors placeholder:text-slate-400 placeholder:font-normal" />
                       </div>
                       <div>
                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Message (Optional)</label>
                           <textarea value={inviteDescription} onChange={e => setInviteDescription(e.target.value)} rows="3" placeholder="Brief invitation message..."
-                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-slate-800 resize-none transition-colors placeholder:text-slate-400 placeholder:font-normal" />
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-[var(--brand)] resize-none transition-colors placeholder:text-slate-400 placeholder:font-normal" />
                       </div>
                       <button onClick={handleInviteSubmit}
-                          className="w-full bg-slate-900 text-white py-3 rounded-xl font-medium text-sm shadow-md shadow-slate-900/10 hover:bg-slate-800 transition-all active:scale-95 mt-2">
+                          className="w-full bg-[var(--brand)] text-white py-3 rounded-xl font-medium text-sm shadow-md shadow-[var(--brand)]/10 hover:bg-[var(--brand-dark)] transition-all active:scale-95 mt-2">
                           Send Invitation
                       </button>
                   </div>

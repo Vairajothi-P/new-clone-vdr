@@ -10,7 +10,7 @@ export default function Button({
 
   const variants = {
     primary:
-      "bg-blue-600 hover:bg-blue-700 text-white",
+      "bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white",
 
     secondary:
       "bg-gray-200 hover:bg-gray-300 text-gray-800",
