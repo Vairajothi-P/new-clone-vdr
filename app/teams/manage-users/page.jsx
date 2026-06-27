@@ -46,9 +46,20 @@ export default function ManageUsersPage() {
       const companyId = session.company_id;
       setCurrentCompanyId(companyId);
 
-      // Fetch company name from users or a default
-      setCompanyName(session.company_name || 'My Organization');
-      setFormData(prev => ({ ...prev, org: session.company_name || 'My Organization' }));
+      const { data: companyData, error: companyError } = await supabase
+        .from("companies")
+        .select("name")
+        .eq("id", companyId)
+        .single();
+
+      if (companyError) throw companyError;
+
+      setCompanyName(companyData.name);
+
+      setFormData(prev => ({
+        ...prev,
+        org: companyData.name
+      }));
 
       // 1. Fetch all users in the company
       const { data: usersData, error: usersError } = await supabase
@@ -86,13 +97,14 @@ export default function ManageUsersPage() {
           const userGroupIds = memberships
             .filter(m => m.user_id === user.id)
             .map(m => m.group_id);
-          
+
           const userGroups = (groupsData || [])
             .filter(g => userGroupIds.includes(g.id))
             .map(g => ({ id: g.id, name: g.name }));
 
           return {
             ...user,
+            company_name: companyData.name,
             groups: userGroups
           };
         });
@@ -215,9 +227,9 @@ export default function ManageUsersPage() {
       user.status === 'active' ? 'Active' : 'Inactive'
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8," 
+    const csvContent = "data:text/csv;charset=utf-8,"
       + [headers.join(','), ...rows.map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(','))].join('\n');
-    
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -279,14 +291,13 @@ export default function ManageUsersPage() {
           .from('users')
           .insert({
             company_id: currentCompanyId,
-            company_name: formData.org,
             name: formData.name,
             email: formData.email,
             phone_number: formData.mobile,
             role: formData.role,
-            status: 'active',
+            status: "active",
             // Default temp password hash
-            password_hash: '$2a$10$rB3Q92wZ4k1Qh.iP76gqKOpn8r9/xP8lA6uK.gL9D7/tB5Hq17Hee' 
+            password_hash: '$2a$10$rB3Q92wZ4k1Qh.iP76gqKOpn8r9/xP8lA6uK.gL9D7/tB5Hq17Hee'
           })
           .select()
           .single();
@@ -314,7 +325,6 @@ export default function ManageUsersPage() {
           .update({
             name: formData.name,
             phone_number: formData.mobile,
-            company_name: formData.org,
             role: formData.role
           })
           .eq('id', selectedUser.id);
@@ -326,7 +336,7 @@ export default function ManageUsersPage() {
           .from('user_groups')
           .delete()
           .eq('user_id', selectedUser.id);
-        
+
         if (deleteError) throw deleteError;
 
         if (formData.selectedGroups.length > 0) {
@@ -445,7 +455,7 @@ export default function ManageUsersPage() {
           }}
           className="px-5 py-2 rounded-full bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] hover:shadow-md hover:shadow-[var(--brand)]/10 text-white font-bold text-xs tracking-wide transition-all active:scale-95 flex items-center gap-1.5"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
           Invite
         </button>
 
@@ -454,7 +464,7 @@ export default function ManageUsersPage() {
           onClick={handleExportCSV}
           className="px-5 py-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-bold text-xs tracking-wide transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
           Export
         </button>
 
@@ -462,13 +472,12 @@ export default function ManageUsersPage() {
         <button
           onClick={handleResendInvite}
           disabled={selectedUserIds.length === 0}
-          className={`px-5 py-2 rounded-full border text-xs font-bold tracking-wide transition-all active:scale-95 flex items-center gap-1.5 shadow-sm ${
-            selectedUserIds.length > 0
-              ? 'border-teal-200 bg-teal-50/50 text-teal-700 hover:bg-teal-50 hover:border-teal-300'
-              : 'border-slate-100 bg-slate-50/40 text-slate-400 cursor-not-allowed opacity-60'
-          }`}
+          className={`px-5 py-2 rounded-full border text-xs font-bold tracking-wide transition-all active:scale-95 flex items-center gap-1.5 shadow-sm ${selectedUserIds.length > 0
+            ? 'border-teal-200 bg-teal-50/50 text-teal-700 hover:bg-teal-50 hover:border-teal-300'
+            : 'border-slate-100 bg-slate-50/40 text-slate-400 cursor-not-allowed opacity-60'
+            }`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
           Resend Invite
         </button>
 
@@ -491,7 +500,7 @@ export default function ManageUsersPage() {
             {filteredUsers.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
                 </div>
                 <p className="text-sm text-slate-400 font-semibold">No users found</p>
               </div>
@@ -509,7 +518,7 @@ export default function ManageUsersPage() {
                       />
                     </th>
                     <th className="py-4 px-4">NAME</th>
-                    <th className="py-4 px-6">ORG</th>
+                    <th className="py-4 px-6">ORGANIZATION</th>
                     <th className="py-4 px-6">EMAIL</th>
                     <th className="py-4 px-6">MOBILE</th>
                     <th className="py-4 px-6">EXPIRY DATE</th>
@@ -529,9 +538,8 @@ export default function ManageUsersPage() {
                       <tr
                         key={user.id}
                         onContextMenu={(e) => handleContextMenu(e, user)}
-                        className={`hover:bg-slate-50/60 transition-colors duration-200 cursor-context-menu ${
-                          isSelected ? 'bg-slate-50/80' : ''
-                        } ${!isUserActive ? 'opacity-70' : ''}`}
+                        className={`hover:bg-slate-50/60 transition-colors duration-200 cursor-context-menu ${isSelected ? 'bg-slate-50/80' : ''
+                          } ${!isUserActive ? 'opacity-70' : ''}`}
                       >
                         {/* Checkbox */}
                         <td className="py-4.5 px-6">
@@ -550,7 +558,7 @@ export default function ManageUsersPage() {
 
                         {/* Org */}
                         <td className="py-4.5 px-6 text-[13px] text-slate-600 font-bold">
-                          {user.company_name || companyName}
+                          {companyName}
                         </td>
 
                         {/* Email */}
@@ -570,11 +578,10 @@ export default function ManageUsersPage() {
 
                         {/* Status */}
                         <td className="py-4.5 px-6">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${
-                            isUserActive
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-100/60'
-                              : 'bg-slate-100 text-slate-600 border-slate-200'
-                          }`}>
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${isUserActive
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100/60'
+                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${isUserActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                             {isUserActive ? 'Active' : 'Inactive'}
                           </span>
@@ -592,7 +599,7 @@ export default function ManageUsersPage() {
       {/* Instructions Overlay */}
       <div className="mt-6 text-center">
         <p className="text-[11px] text-slate-400 font-semibold tracking-wide flex items-center justify-center gap-1.5">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
           Pro Tip: Right-click on any user row to open the quick action menu (Edit, Inactive, Remove).
         </p>
       </div>
@@ -608,7 +615,7 @@ export default function ManageUsersPage() {
             onClick={() => openEditModal(contextMenu.user)}
             className="w-full px-4 py-2.5 text-xs font-extrabold text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2.5 transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
             Edit
           </button>
 
@@ -617,7 +624,7 @@ export default function ManageUsersPage() {
             onClick={() => handleToggleStatus(contextMenu.user)}
             className="w-full px-4 py-2.5 text-xs font-extrabold text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2.5 transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
             {contextMenu.user.status === 'active' ? 'Inactive' : 'Active'}
           </button>
 
@@ -628,7 +635,7 @@ export default function ManageUsersPage() {
             onClick={() => handleDeleteUser(contextMenu.user.id)}
             className="w-full px-4 py-2.5 text-xs font-extrabold text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /></svg>
             Remove
           </button>
         </div>

@@ -524,7 +524,7 @@ export default function ManageAdminPage() {
                       />
                     </th>
                     <th className="py-4 px-4">NAME</th>
-                    <th className="py-4 px-6">ORG</th>
+                    <th className="py-4 px-6">ORGANIZATION</th>
                     <th className="py-4 px-6">EMAIL</th>
                     <th className="py-4 px-6">MOBILE</th>
                     <th className="py-4 px-6">EXPIRY DATE</th>
