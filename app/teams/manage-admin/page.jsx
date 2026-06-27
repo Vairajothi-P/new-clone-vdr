@@ -389,20 +389,9 @@ export default function ManageAdminPage() {
   };
 
   // Expiry Date generator (created_at + 1 year, matching MM/DD/YY in drawing)
-  const formatExpiryDate = (createdAtStr) => {
-    if (!createdAtStr) return '07/08/26'; // fallback to drawing's exact date
-    try {
-      const d = new Date(createdAtStr);
-      d.setFullYear(d.getFullYear() + 1); // default to 1 year access
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const year = String(d.getFullYear()).slice(-2);
-      return `${month}/${day}/${year}`;
-    } catch (e) {
-      return '07/08/26';
-    }
+  const formatExpiryDate = () => {
+    return "--";
   };
-
   return (
     <div className="p-8 max-w-7xl mx-auto relative min-h-screen">
       {/* Dynamic Toasts */}

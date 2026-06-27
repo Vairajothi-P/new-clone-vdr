@@ -383,18 +383,8 @@ export default function ManageUsersPage() {
   };
 
   // Expiry Date generator (created_at + 1 year)
-  const formatExpiryDate = (createdAtStr) => {
-    if (!createdAtStr) return '07/08/26';
-    try {
-      const d = new Date(createdAtStr);
-      d.setFullYear(d.getFullYear() + 1);
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const year = String(d.getFullYear()).slice(-2);
-      return `${month}/${day}/${year}`;
-    } catch (e) {
-      return '07/08/26';
-    }
+  const formatExpiryDate = () => {
+    return "--";
   };
 
   return (
