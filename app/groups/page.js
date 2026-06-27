@@ -1,36 +1,16 @@
-// import Sidebar from "./components/Sidebar";
-// import ActivatePage from "./activate/page";
-
-// export default function groupsPage() {
-//   return (
-//     <main className="flex min-h-screen bg-gray-100">
-//       <Sidebar />
-
-//       <div className="flex-1 p-10">
-//         <h1 className="text-black text-3xl font-bold">
-//           Dashboard Content
-//         </h1>
-//       </div>
-//     <ActivatePage />
-//     </main>
-    
-        
-//   );
-// }
-
 "use client";
 
 import { useState } from "react";
 
 import Sidebar from "../../components/groups/GroupSidebar";
-import ActivatePage from "../groups/subadmin/page";
+// import ActivatePage from "../groups/subadmin/page";
 
 export default function GroupsPage() {
 
-  const [activePage, setActivePage] = useState("subadmin");
+  // const [activePage, setActivePage] = useState("subadmin");
 
-  const [openGroupMenu, setOpenGroupMenu] =
-    useState(false);
+  // const [openGroupMenu, setOpenGroupMenu] =
+  // useState(false);
 
   return (
     <main className="min-h-screen bg-gray-100">

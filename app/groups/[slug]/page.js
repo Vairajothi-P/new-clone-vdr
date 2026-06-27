@@ -56,12 +56,8 @@ export default function DynamicGroupPage() {
     const [loading, setLoading] = useState(true);
 
     const [showPermissionPage, setShowPermissionPage] = useState(searchParams.get('view') === 'permissions');
-    const [showInviteModal, setShowInviteModal] = useState(false);
-    const [inviteEmail, setInviteEmail] = useState("");
-    const [inviteDescription, setInviteDescription] = useState("");
     const [showToast, setShowToast] = useState(false);
     const [toastMsg, setToastMsg] = useState("");
-    const [inviting, setInviting] = useState(false);
 
     const [canAddMembers, setCanAddMembers] = useState(false);
     const [canRemoveMembers, setCanRemoveMembers] = useState(false);
@@ -326,33 +322,9 @@ export default function DynamicGroupPage() {
         }
     };
 
-    const handleInviteSubmit = async () => {
-        if (!inviteEmail.trim()) { alert("Please enter a candidate email."); return; }
-        setInviting(true);
-        try {
-            const rawSession = localStorage.getItem("vdr_session");
-            if (!rawSession) { alert("Session not found. Please log in again."); return; }
-            const session = JSON.parse(rawSession);
-            const response = await fetch("/api/invite", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: inviteEmail, description: inviteDescription,
-                    group_id: groupData.id, invited_by: session.id
-                }),
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || "Failed to dispatch invitation.");
-            setShowInviteModal(false);
-            setInviteEmail("");
-            setInviteDescription("");
-            triggerToast("Invitation dispatched successfully");
-        } catch (err) {
-            console.error(err);
-            alert("Error sending invitation: " + err.message);
-        } finally {
-            setInviting(false);
-        }
+    const handleInviteMember = () => {
+        // Navigate to dedicated invite member page
+        router.push(`/groups/${groupSlug}/invite-member`);
     };
 
     const handleRemoveMember = async (userId) => {
@@ -415,7 +387,7 @@ export default function DynamicGroupPage() {
                     {!showPermissionPage && (
                         <div className="flex items-center gap-3">
                             {canAddMembers && (
-                                <button onClick={() => setShowInviteModal(true)}
+                                <button onClick={handleInviteMember}
                                     className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 hover:border-gray-300 transition-all duration-500 shadow-sm active:scale-95 cursor-pointer">
                                     <FaUserPlus size={14} className="text-slate-500" />
                                     <span>Invite Member</span>
@@ -428,7 +400,7 @@ export default function DynamicGroupPage() {
                             </button> */}
 
                             {canEditPermissions && (
-                                <button onClick={() => setShowPermissionPage(true)}
+                                <button onClick={() => router.push(`/groups/${groupSlug}/permissions`)}
                                     className="flex items-center gap-2 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-500 shadow-[0_8px_30px_rgba(var(--brand-rgb),0.14)] active:scale-95 cursor-pointer">
                                     <FaCog size={14} className="text-white/80" />
                                     <span>Edit Permissions</span>
@@ -740,43 +712,7 @@ export default function DynamicGroupPage() {
                 )}
             </div>
 
-            {/* INVITE MODAL - Premium Glassmorphic */}
-            {showInviteModal && (
-                <div className="fixed inset-0 bg-[var(--brand)]/20 backdrop-blur-sm flex items-center justify-center z-[200] p-6 animate-in fade-in duration-200">
-                    <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-8 relative animate-in zoom-in-95 duration-200">
-                        <button onClick={() => setShowInviteModal(false)}
-                            className="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors">✕</button>
-
-                        <div className="w-10 h-10 rounded-xl bg-[var(--brand-50)] text-[var(--brand)] flex items-center justify-center mb-5">
-                            <FaUserPlus size={16} />
-                        </div>
-
-                        <h2 className="text-xl font-semibold text-slate-800 mb-1">Invite Member</h2>
-                        <p className="text-sm text-slate-500 mb-6">
-                            Add a new member to <span className="font-semibold text-slate-700">{groupData?.name}</span>
-                        </p>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Candidate Email</label>
-                                <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} type="email" placeholder="colleague@company.com"
-                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-slate-800 transition-colors placeholder:text-slate-400 placeholder:font-normal" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Message (Optional)</label>
-                                <textarea value={inviteDescription} onChange={e => setInviteDescription(e.target.value)} rows="3" placeholder="Brief invitation message..."
-                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-slate-800 resize-none transition-colors placeholder:text-slate-400 placeholder:font-normal" />
-                            </div>
-                            <button onClick={handleInviteSubmit} disabled={inviting || !inviteEmail.trim()}
-                                className="w-full bg-[var(--brand)] text-white py-3 rounded-xl font-medium text-sm shadow-md shadow-[0_8px_30px_rgba(var(--brand-rgb),0.14)] hover:bg-[var(--brand-dark)] transition-all active:scale-95 mt-2 disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center gap-2">
-                                {inviting ? (
-                                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Sending...</>
-                                ) : "Send Invitation"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Invite Member navigates to /groups/[slug]/invite-member page */}
         </div>
     );
 }
