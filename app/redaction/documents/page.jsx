@@ -29,6 +29,7 @@ export default function RedactionDocumentsPage() {
           .from("documents")
           .select("*")
           .eq("company_id", session.company_id)
+          .eq("uploaded_by", session.id)
           .eq("is_deleted", false);
 
         if (error) throw error;
