@@ -11,7 +11,13 @@ export default function QAPage() {
   
   const [qaData, setQaData] = useState([]);
   const [sidebarItems, setSidebarItems] = useState([]);
+  const [expandedFolders, setExpandedFolders] = useState({});
   const [loading, setLoading] = useState(true);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [questionText, setQuestionText] = useState("");
+  const [answerText, setAnswerText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch the sidebar documents and folders
   const fetchSidebarData = async () => {
@@ -35,10 +41,9 @@ export default function QAPage() {
         items.push({ id: d.id, name: d.name, type: 'file', parentId: d.folder_id });
       });
 
-      // Simple flat list for now, or can be filtered by parentId
-      // Let's just show top level documents and folders for demonstration
-      const rootItems = items.filter(i => !i.parentId);
-      setSidebarItems(rootItems.length > 0 ? rootItems : items);
+      // Store all items, flat structure
+      // We will render them recursively using parentId
+      setSidebarItems(items);
     } catch (err) {
       console.error("Error fetching sidebar items:", err);
     }
@@ -110,6 +115,52 @@ export default function QAPage() {
     }
   };
 
+  const handleAskQuery = async () => {
+    if (!questionText.trim()) return;
+    setIsSubmitting(true);
+    try {
+      const sessionStr = localStorage.getItem('vdr_session');
+      const session = sessionStr ? JSON.parse(sessionStr) : { name: "User" };
+      const senderName = session.name || session.email || "User";
+
+      // 1. Insert Thread
+      const { data: threadData, error: threadErr } = await supabase
+        .from('qna_threads')
+        .insert({
+          file_id: activeDocId,
+          subject: questionText,
+          status: answerText.trim() ? 'Answered' : 'Open'
+        })
+        .select()
+        .single();
+        
+      if (threadErr) throw threadErr;
+
+      // 2. Insert Messages
+      const msgs = [
+        { thread_id: threadData.id, sender: senderName, text: questionText, is_user: true }
+      ];
+      if (answerText.trim()) {
+        msgs.push({ thread_id: threadData.id, sender: senderName, text: answerText, is_user: false });
+      }
+
+      const { error: msgErr } = await supabase.from('qna_messages').insert(msgs);
+      if (msgErr) throw msgErr;
+
+      // Reset and refresh
+      setQuestionText("");
+      setAnswerText("");
+      setIsModalOpen(false);
+      fetchQAData();
+
+    } catch (err) {
+      console.error("Error saving Q&A:", err);
+      alert("Failed to save query.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="flex w-full h-full bg-[#F8F9FB] font-sans">
       
@@ -137,7 +188,7 @@ export default function QAPage() {
           {/* Show all button */}
           <button
             onClick={() => { setActiveDocId(null); setActiveFolderId(null); }}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 ${
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 mb-2 ${
               !activeDocId && !activeFolderId
                 ? "bg-[var(--brand)]/10 text-[var(--brand)] font-semibold shadow-sm border border-[var(--brand)]/20" 
                 : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
@@ -147,26 +198,60 @@ export default function QAPage() {
             <span className="truncate flex-1 text-left">All Documents</span>
           </button>
 
-          {sidebarItems.map((item, idx) => {
-            const isActive = activeDocId === item.id || activeFolderId === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleSidebarClick(item)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 ${
-                  isActive
-                    ? "bg-[var(--brand)]/10 text-[var(--brand)] font-semibold shadow-sm border border-[var(--brand)]/20" 
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
-                }`}
-              >
-                {item.type === 'folder' 
-                  ? <FaRegFolder className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[var(--brand)]' : 'text-slate-400'}`} /> 
-                  : <FaRegFileAlt className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[var(--brand)]' : 'text-slate-400'}`} />
-                }
-                <span className="truncate flex-1 text-left" title={item.name}>{item.name}</span>
-              </button>
-            );
-          })}
+          {sidebarItems
+            .filter((item) => !item.parentId)
+            .map((item) => {
+              const renderSidebarItem = (node, depth = 0) => {
+                const isFolder = node.type === 'folder';
+                const isExpanded = !!expandedFolders[node.id];
+                const isActive = activeDocId === node.id || activeFolderId === node.id;
+                const hasChildren = sidebarItems.some((child) => child.parentId === node.id);
+
+                return (
+                  <div key={node.id} className="flex flex-col gap-0.5 w-full">
+                    <button
+                      onClick={() => {
+                        if (isFolder) {
+                          setExpandedFolders(prev => ({ ...prev, [node.id]: !prev[node.id] }));
+                          handleSidebarClick(node);
+                        } else {
+                          handleSidebarClick(node);
+                        }
+                      }}
+                      style={{ paddingLeft: `${0.75 + depth * 1.25}rem` }}
+                      className={`flex items-center gap-2 py-2 pr-3 rounded-lg text-sm transition-all duration-200 group ${
+                        isActive
+                          ? "bg-[var(--brand)]/10 text-[var(--brand)] font-semibold shadow-sm border border-[var(--brand)]/20" 
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
+                      }`}
+                    >
+                      {isFolder ? (
+                        <FaChevronRight className={`w-2.5 h-2.5 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''} ${isActive ? 'text-[var(--brand)]' : 'text-slate-400 group-hover:text-slate-500'}`} />
+                      ) : (
+                        <div className="w-2.5 h-2.5 flex-shrink-0" />
+                      )}
+                      
+                      {isFolder 
+                        ? <FaRegFolder className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[var(--brand)]' : 'text-slate-400'}`} /> 
+                        : <FaRegFileAlt className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[var(--brand)]' : 'text-slate-400'}`} />
+                      }
+                      <span className="truncate flex-1 text-left" title={node.name}>{node.name}</span>
+                    </button>
+
+                    {/* Render children if expanded */}
+                    {isFolder && isExpanded && hasChildren && (
+                      <div className="flex flex-col gap-0.5 mt-0.5 relative before:absolute before:left-[1.35rem] before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200/60">
+                        {sidebarItems
+                          .filter((child) => child.parentId === node.id)
+                          .map((child) => renderSidebarItem(child, depth + 1))}
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+
+              return renderSidebarItem(item);
+            })}
         </div>
       </div>
 
@@ -186,9 +271,18 @@ export default function QAPage() {
               <p className="text-xs text-slate-500 font-medium mt-0.5">Manage and track document inquiries</p>
             </div>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] rounded-xl shadow-lg shadow-[var(--brand)]/20 hover:shadow-[var(--brand)]/40 hover:scale-[1.02] transition-all">
-            EXPORT DATA <FaDownload className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {activeDocId && (
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-[var(--brand)] hover:bg-[var(--brand-secondary)] rounded-xl shadow-lg shadow-[var(--brand)]/20 hover:shadow-[var(--brand)]/40 hover:scale-[1.02] transition-all">
+                ASK QUERY
+              </button>
+            )}
+            <button className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-[var(--brand)] bg-white border border-[var(--brand)]/30 rounded-xl shadow-sm hover:bg-[var(--brand)]/5 hover:scale-[1.02] transition-all">
+              EXPORT DATA <FaDownload className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Filters & Tabs Bar */}
@@ -242,7 +336,7 @@ export default function QAPage() {
 
         {/* Table Content Area */}
         <div className="flex-1 overflow-auto p-8">
-          <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-slate-200/80 overflow-hidden min-h-[300px] relative">
+          <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-slate-200/80 overflow-auto min-h-[300px] relative">
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-50">
                 <div className="w-8 h-8 border-4 border-slate-200 border-t-[var(--brand)] rounded-full animate-spin"></div>
@@ -314,6 +408,52 @@ export default function QAPage() {
         </div>
 
       </div>
+
+      {/* Ask Query Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-[500px] max-w-full mx-4 p-6 flex flex-col gap-5">
+            <h3 className="text-lg font-bold text-slate-800">Ask New Query</h3>
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-semibold text-slate-600">Question <span className="text-red-500">*</span></label>
+              <textarea 
+                value={questionText}
+                onChange={(e) => setQuestionText(e.target.value)}
+                placeholder="Type your question here..."
+                className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] min-h-[80px]"
+              />
+            </div>
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-semibold text-slate-600">Answer (Optional)</label>
+              <textarea 
+                value={answerText}
+                onChange={(e) => setAnswerText(e.target.value)}
+                placeholder="Provide an answer if already known..."
+                className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] min-h-[80px]"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 mt-2">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="px-5 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleAskQuery}
+                disabled={isSubmitting || !questionText.trim()}
+                className="px-5 py-2 text-sm font-bold text-white bg-[var(--brand)] hover:bg-[var(--brand-secondary)] rounded-xl transition-colors disabled:opacity-50"
+              >
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
