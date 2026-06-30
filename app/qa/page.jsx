@@ -19,6 +19,11 @@ export default function QAPage() {
   const [answerText, setAnswerText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // For viewing/answering a specific thread
+  const [selectedThread, setSelectedThread] = useState(null);
+  const [replyText, setReplyText] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
+
   // Fetch the sidebar documents and folders
   const fetchSidebarData = async () => {
     try {
@@ -60,7 +65,7 @@ export default function QAPage() {
           status,
           created_at,
           documents!inner(id, name),
-          qna_messages(sender, text)
+          qna_messages(id, sender, text, created_at, is_user)
         `)
         .order('created_at', { ascending: false });
 
@@ -85,7 +90,8 @@ export default function QAPage() {
           assignee: "N/A",
           askedOn: new Date(t.created_at).toLocaleString(),
           status: t.status === "Answered" ? "Answered" : "Submitted",
-          action: t.status === "Answered" ? "View" : "Answer/Assign Question"
+          action: t.status === "Answered" ? "View" : "Answer/Assign Question",
+          messages: msgs
         };
       });
 
@@ -158,6 +164,45 @@ export default function QAPage() {
       alert("Failed to save query.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleReply = async () => {
+    if (!replyText.trim() || !selectedThread) return;
+    setIsReplying(true);
+    try {
+      const sessionStr = localStorage.getItem('vdr_session');
+      const session = sessionStr ? JSON.parse(sessionStr) : { name: "User" };
+      const senderName = session.name || session.email || "User";
+
+      // 1. Insert Reply
+      const { error: msgErr } = await supabase.from('qna_messages').insert([{
+        thread_id: selectedThread.id,
+        sender: senderName,
+        text: replyText,
+        is_user: false // Assuming reply from admin/assignee
+      }]);
+
+      if (msgErr) throw msgErr;
+
+      // 2. Update status if it was not Answered
+      if (selectedThread.status !== 'Answered') {
+        await supabase.from('qna_threads').update({ status: 'Answered' }).eq('id', selectedThread.id);
+      }
+
+      setReplyText("");
+      // Refetch and update selectedThread messages
+      await fetchQAData();
+      
+      // Need to update selectedThread with new messages (temporary local update or let fetchQAData handle and we close/reopen, but let's just close or refresh)
+      // We will just close the modal for simplicity, or we can fetch the updated thread.
+      setSelectedThread(null);
+
+    } catch (err) {
+      console.error("Error sending reply:", err);
+      alert("Failed to send reply.");
+    } finally {
+      setIsReplying(false);
     }
   };
 
@@ -387,7 +432,10 @@ export default function QAPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-sm whitespace-nowrap">
-                      <button className="text-slate-600 font-bold hover:text-[var(--brand)] transition-colors flex items-center gap-1">
+                      <button 
+                        onClick={() => setSelectedThread(item)}
+                        className="text-slate-600 font-bold hover:text-[var(--brand)] transition-colors flex items-center gap-1"
+                      >
                         {item.action}
                         <FaChevronRight className="w-2.5 h-2.5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                       </button>
@@ -450,6 +498,70 @@ export default function QAPage() {
               >
                 {isSubmitting ? "Submitting..." : "Submit"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Thread / Answer Modal */}
+      {selectedThread && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-[600px] max-w-full max-h-full flex flex-col overflow-hidden">
+            <div className="p-6 border-b border-slate-200/80 bg-slate-50/50 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800 line-clamp-1">{selectedThread.question}</h3>
+                <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500 font-medium">
+                  <span className="flex items-center gap-1.5"><FaRegFileAlt className="w-3 h-3"/> {selectedThread.fileName}</span>
+                  <span>•</span>
+                  <span>Asked by {selectedThread.askedBy}</span>
+                </div>
+              </div>
+              <button onClick={() => setSelectedThread(null)} className="text-slate-400 hover:text-slate-600 p-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-4 bg-[#F8F9FB]">
+              {selectedThread.messages?.map((msg, i) => (
+                <div key={msg.id || i} className={`flex flex-col max-w-[85%] ${msg.is_user ? 'self-end items-end' : 'self-start items-start'}`}>
+                  <div className="flex items-center gap-2 mb-1 px-1">
+                    <span className="text-[11px] font-bold text-slate-500">{msg.sender}</span>
+                    <span className="text-[10px] text-slate-400">{new Date(msg.created_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                  </div>
+                  <div className={`px-4 py-3 rounded-2xl text-sm ${msg.is_user ? 'bg-[var(--brand)] text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm shadow-sm'}`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {(!selectedThread.messages || selectedThread.messages.length === 0) && (
+                <div className="text-center text-slate-500 text-sm py-4">No messages yet.</div>
+              )}
+            </div>
+            
+            <div className="p-4 border-t border-slate-200/80 bg-white">
+              <div className="flex flex-col gap-2">
+                <textarea 
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Type your reply or answer..."
+                  className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] min-h-[80px]"
+                />
+                <div className="flex justify-end gap-2">
+                  <button 
+                    onClick={() => setSelectedThread(null)}
+                    className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button 
+                    onClick={handleReply}
+                    disabled={isReplying || !replyText.trim()}
+                    className="px-4 py-2 text-sm font-bold text-white bg-[var(--brand)] hover:bg-[var(--brand-secondary)] rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {isReplying ? "Sending..." : "Send Reply"}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
