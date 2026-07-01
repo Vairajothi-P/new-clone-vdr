@@ -49,9 +49,9 @@ export default function RedactionUploadPage() {
       // Unique filename
       const filePath = `${session.company_id}/${Date.now()}_${file.name}`;
       
-      // Upload to vdr-logos bucket
+      // Upload to original-files bucket
       const { data, error } = await supabase.storage
-        .from("vdr-logos")
+        .from("original-files")
         .upload(filePath, file);
 
       if (error) {
