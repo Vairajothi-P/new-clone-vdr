@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import MainSidebar from '@/components/MainSidebar';
 import { supabase } from '@/utils/supabase/client';
 import { hasPermission } from '@/lib/access/permissions';
@@ -10,6 +10,7 @@ import { hasPermission } from '@/lib/access/permissions';
 function LayoutContent({ children }) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const router = useRouter();
     const [session, setSession] = useState(null);
     const [hasDeleteAccess, setHasDeleteAccess] = useState(false); // 🔥 Dynamic Trash Flag
 
@@ -67,6 +68,11 @@ function LayoutContent({ children }) {
             icon: <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
         }] : []),
         {
+            id: 'qa',
+            href: '/qa', label: 'Q&A',
+            icon: <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        },
+        {
             href: '/documents?view=downloads', label: 'My Downloads',
             icon: <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
         },
@@ -95,6 +101,20 @@ function LayoutContent({ children }) {
                         const active = isActive(item.href);
                         return (
                             <Link key={item.label} href={item.href} 
+                                onClick={(e) => {
+                                    if (item.id === 'qa') {
+                                        const stored = localStorage.getItem('vdr_selected_qa_item');
+                                        if (stored) {
+                                            e.preventDefault();
+                                            const qaItem = JSON.parse(stored);
+                                            if (qaItem.type === 'folder') {
+                                                router.push(`/qa?folderId=${qaItem.id}`);
+                                            } else {
+                                                router.push(`/qa?fileId=${qaItem.id}`);
+                                            }
+                                        }
+                                    }
+                                }}
                                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold transition-all 
                                 ${active ? 'bg-brand text-white shadow-md' : 'text-slate-500 hover:bg-brand-soft hover:text-brand'}`}>
                                 <span className={active ? 'text-white' : 'text-slate-400'}>{item.icon}</span>

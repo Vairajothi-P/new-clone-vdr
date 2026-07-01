@@ -1,13 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from 'next/navigation';
 import { supabase } from "@/utils/supabase/client";
 import { FaFilter, FaDownload, FaSyncAlt, FaSearch, FaChevronRight, FaRegFolder, FaRegFileAlt, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
 
-export default function QAPage() {
+function QAPageContent() {
+  const searchParams = useSearchParams();
+  const fileIdParam = searchParams.get('fileId');
+  const folderIdParam = searchParams.get('folderId');
+
   const [activeTab, setActiveTab] = useState("Questions");
-  const [activeFolderId, setActiveFolderId] = useState(null);
-  const [activeDocId, setActiveDocId] = useState(null);
+  const [activeFolderId, setActiveFolderId] = useState(folderIdParam || null);
+  const [activeDocId, setActiveDocId] = useState(fileIdParam || null);
   
   const [qaData, setQaData] = useState([]);
   const [sidebarItems, setSidebarItems] = useState([]);
@@ -18,6 +23,8 @@ export default function QAPage() {
   const [questionText, setQuestionText] = useState("");
   const [answerText, setAnswerText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [admins, setAdmins] = useState([]);
+  const [selectedAssignee, setSelectedAssignee] = useState("");
 
   // For viewing/answering a specific thread
   const [selectedThread, setSelectedThread] = useState(null);
@@ -64,13 +71,17 @@ export default function QAPage() {
           subject,
           status,
           created_at,
-          documents!inner(id, name),
+          documents(id, name),
           qna_messages(id, sender, text, created_at, is_user)
         `)
         .order('created_at', { ascending: false });
 
       if (activeDocId) {
         query = query.eq('file_id', activeDocId);
+      } else if (activeFolderId) {
+        // If clicking a folder, maybe we only want to show questions that are not linked to a specific file, or we just don't filter to allow seeing them.
+        // Let's filter by file_id IS NULL if we want folder-level questions.
+        query = query.is('file_id', null);
       }
 
       const { data: threads, error } = await query;
@@ -81,16 +92,40 @@ export default function QAPage() {
         const msgs = t.qna_messages || [];
         const firstMsg = msgs.length > 0 ? msgs[0] : null;
 
+        let assigneeStr = "N/A";
+        let displayQuestion = t.subject || (firstMsg ? firstMsg.text : "No Question");
+        const match = displayQuestion.match(/^\[Assigned to: (.*?)\] (.*)$/s);
+        if (match) {
+          assigneeStr = match[1];
+          displayQuestion = match[2];
+        }
+        
+        const answerMsg = msgs.find(m => m.is_user === false);
+        const answeredByStr = answerMsg ? answerMsg.sender : "-";
+
+        const sessionStr = localStorage.getItem('vdr_session');
+        const session = sessionStr ? JSON.parse(sessionStr) : {};
+        const currentUser = session.name || session.email || "User";
+        const askedByStr = firstMsg?.sender || "Unknown";
+        const isMyQuestion = (askedByStr === currentUser);
+        const isAssignedToMe = assigneeStr !== "N/A" ? (assigneeStr === currentUser) : true;
+        
+        let actionStr = "Answer / Assign";
+        if (t.status === "Answered") actionStr = "View";
+        else if (isMyQuestion) actionStr = "View (Awaiting Answer)";
+        else if (!isAssignedToMe) actionStr = "View (Assigned)";
+
         return {
           id: t.id,
           displayId: idx + 1,
-          question: t.subject || (firstMsg ? firstMsg.text : "No Question"),
-          fileName: t.documents?.name || "Unknown File",
-          askedBy: firstMsg?.sender || "Unknown",
-          assignee: "N/A",
+          question: displayQuestion,
+          fileName: t.documents?.name || "Folder / General",
+          askedBy: askedByStr,
+          assignee: assigneeStr,
+          answeredBy: answeredByStr,
           askedOn: new Date(t.created_at).toLocaleString(),
           status: t.status === "Answered" ? "Answered" : "Submitted",
-          action: t.status === "Answered" ? "View" : "Answer/Assign Question",
+          action: actionStr,
           messages: msgs
         };
       });
@@ -105,7 +140,20 @@ export default function QAPage() {
 
   useEffect(() => {
     fetchSidebarData();
+    fetchAdmins();
   }, []);
+
+  const fetchAdmins = async () => {
+    try {
+      const sessionStr = localStorage.getItem('vdr_session');
+      if (!sessionStr) return;
+      const session = JSON.parse(sessionStr);
+      const { data } = await supabase.from('users').select('id, name, role').eq('company_id', session.company_id).in('role', ['admin', 'super_admin']);
+      if (data) setAdmins(data);
+    } catch (err) {
+      console.error("Error fetching admins:", err);
+    }
+  };
 
   useEffect(() => {
     fetchQAData();
@@ -129,12 +177,14 @@ export default function QAPage() {
       const session = sessionStr ? JSON.parse(sessionStr) : { name: "User" };
       const senderName = session.name || session.email || "User";
 
+      const finalQuestionText = selectedAssignee ? `[Assigned to: ${selectedAssignee}] ${questionText}` : questionText;
+
       // 1. Insert Thread
       const { data: threadData, error: threadErr } = await supabase
         .from('qna_threads')
         .insert({
-          file_id: activeDocId,
-          subject: questionText,
+          file_id: activeDocId || null,
+          subject: finalQuestionText,
           status: answerText.trim() ? 'Answered' : 'Open'
         })
         .select()
@@ -144,7 +194,7 @@ export default function QAPage() {
 
       // 2. Insert Messages
       const msgs = [
-        { thread_id: threadData.id, sender: senderName, text: questionText, is_user: true }
+        { thread_id: threadData.id, sender: senderName, text: finalQuestionText, is_user: true }
       ];
       if (answerText.trim()) {
         msgs.push({ thread_id: threadData.id, sender: senderName, text: answerText, is_user: false });
@@ -317,7 +367,7 @@ export default function QAPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {activeDocId && (
+            {(activeDocId || activeFolderId) && (
               <button 
                 onClick={() => setIsModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-[var(--brand)] hover:bg-[var(--brand-secondary)] rounded-xl shadow-lg shadow-[var(--brand)]/20 hover:shadow-[var(--brand)]/40 hover:scale-[1.02] transition-all">
@@ -344,17 +394,6 @@ export default function QAPage() {
             >
               All Questions
               {activeTab === "Questions" && <div className="absolute inset-0 bg-[var(--brand)]/5 rounded-t-lg -z-10"></div>}
-            </button>
-            <button 
-              onClick={() => setActiveTab("Answers")}
-              className={`px-5 py-3 text-sm font-bold border-b-2 transition-all relative ${
-                activeTab === "Answers" 
-                  ? "border-[var(--brand)] text-[var(--brand)]" 
-                  : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-t-lg"
-              }`}
-            >
-              Answers
-              {activeTab === "Answers" && <div className="absolute inset-0 bg-[var(--brand)]/5 rounded-t-lg -z-10"></div>}
             </button>
           </div>
 
@@ -395,6 +434,7 @@ export default function QAPage() {
                   <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">File Name</th>
                   <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Asked By</th>
                   <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Assignee</th>
+                  <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Answered By</th>
                   <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Asked On</th>
                   <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status</th>
                   <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Action</th>
@@ -420,6 +460,18 @@ export default function QAPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-sm text-slate-400 italic whitespace-nowrap">{item.assignee}</td>
+                    <td className="px-4 py-4 text-sm text-slate-600 font-semibold whitespace-nowrap">
+                      {item.answeredBy !== "-" ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-[var(--brand)]/10 flex items-center justify-center text-[9px] font-bold text-[var(--brand)]">
+                            {item.answeredBy.charAt(0)}
+                          </div>
+                          {item.answeredBy}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 italic">-</span>
+                      )}
+                    </td>
                     <td className="px-4 py-4 text-sm text-slate-500 whitespace-nowrap">{item.askedOn}</td>
                     <td className="px-4 py-4 text-sm whitespace-nowrap">
                       <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
@@ -463,6 +515,20 @@ export default function QAPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-[500px] max-w-full mx-4 p-6 flex flex-col gap-5">
             <h3 className="text-lg font-bold text-slate-800">Ask New Query</h3>
             
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-semibold text-slate-600">Assign To (Optional)</label>
+              <select
+                value={selectedAssignee}
+                onChange={(e) => setSelectedAssignee(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] bg-white"
+              >
+                <option value="">Select Assignee</option>
+                {admins.map(admin => (
+                  <option key={admin.id} value={admin.name}>{admin.name} ({admin.role})</option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold text-slate-600">Question <span className="text-red-500">*</span></label>
               <textarea 
@@ -540,32 +606,84 @@ export default function QAPage() {
             
             <div className="p-4 border-t border-slate-200/80 bg-white">
               <div className="flex flex-col gap-2">
-                <textarea 
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Type your reply or answer..."
-                  className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] min-h-[80px]"
-                />
-                <div className="flex justify-end gap-2">
-                  <button 
-                    onClick={() => setSelectedThread(null)}
-                    className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
-                  >
-                    Close
-                  </button>
-                  <button 
-                    onClick={handleReply}
-                    disabled={isReplying || !replyText.trim()}
-                    className="px-4 py-2 text-sm font-bold text-white bg-[var(--brand)] hover:bg-[var(--brand-secondary)] rounded-xl transition-colors disabled:opacity-50"
-                  >
-                    {isReplying ? "Sending..." : "Send Reply"}
-                  </button>
-                </div>
+                {(() => {
+                  const sessionStr = localStorage.getItem('vdr_session');
+                  const session = sessionStr ? JSON.parse(sessionStr) : {};
+                  const senderName = session.name || session.email || "User";
+                  const isMyQuestion = selectedThread.askedBy === senderName;
+                  const isAssignedToMe = selectedThread.assignee !== "N/A" ? selectedThread.assignee === senderName : true;
+
+                  if (isMyQuestion) {
+                    return (
+                      <div className="text-center text-sm text-amber-600 font-medium py-3 flex flex-col items-center">
+                        You cannot answer your own question.
+                        <div className="mt-3 w-full flex justify-end">
+                          <button 
+                            onClick={() => setSelectedThread(null)}
+                            className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (!isAssignedToMe) {
+                    return (
+                      <div className="text-center text-sm text-slate-500 font-medium py-3 flex flex-col items-center">
+                        This question is assigned to {selectedThread.assignee}.
+                        <div className="mt-3 w-full flex justify-end">
+                          <button 
+                            onClick={() => setSelectedThread(null)}
+                            className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <textarea 
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="Type your reply or answer..."
+                        className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] min-h-[80px]"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => setSelectedThread(null)}
+                          className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                        >
+                          Close
+                        </button>
+                        <button 
+                          onClick={handleReply}
+                          disabled={isReplying || !replyText.trim()}
+                          className="px-4 py-2 text-sm font-bold text-white bg-[var(--brand)] hover:bg-[var(--brand-secondary)] rounded-xl transition-colors disabled:opacity-50"
+                        >
+                          {isReplying ? "Sending..." : "Send Reply"}
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function QAPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-[var(--brand)] rounded-full animate-spin" /></div>}>
+      <QAPageContent />
+    </Suspense>
   );
 }

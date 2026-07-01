@@ -68,6 +68,19 @@ function UnifiedWorkspace() {
     const fileInputRef = useRef(null);
     const folderInputRef = useRef(null);
 
+    // Save selected item for QA page redirect
+    useEffect(() => {
+        if (selectedIds.size === 1) {
+            const id = [...selectedIds][0];
+            const item = files.find(f => f.id === id);
+            if (item) {
+                localStorage.setItem('vdr_selected_qa_item', JSON.stringify({ id: item.id, type: item.type }));
+            }
+        } else {
+            localStorage.removeItem('vdr_selected_qa_item');
+        }
+    }, [selectedIds, files]);
+
     // ── SESSION ──────────────────────────────────────────────────────────────
     useEffect(() => {
         const raw = localStorage.getItem('vdr_session');
