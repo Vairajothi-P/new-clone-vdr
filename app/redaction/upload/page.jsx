@@ -49,13 +49,30 @@ export default function RedactionUploadPage() {
       // Unique filename
       const filePath = `${session.company_id}/${Date.now()}_${file.name}`;
       
-      // Upload to vdr-logos bucket as requested by user
+      // Upload to vdr-logos bucket
       const { data, error } = await supabase.storage
         .from("vdr-logos")
         .upload(filePath, file);
 
       if (error) {
         throw error;
+      }
+
+      // Insert record into documents table
+      const { error: dbError } = await supabase
+        .from("documents")
+        .insert({
+          company_id: session.company_id,
+          uploaded_by: session.id,
+          name: file.name,
+          file_path: filePath,
+          mime_type: file.type,
+          file_size_bytes: file.size,
+          is_deleted: false,
+        });
+
+      if (dbError) {
+        throw dbError;
       }
 
       setUploadStatus('success');

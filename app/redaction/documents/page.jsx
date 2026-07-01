@@ -30,7 +30,8 @@ export default function RedactionDocumentsPage() {
           .select("*")
           .eq("company_id", session.company_id)
           .eq("uploaded_by", session.id)
-          .eq("is_deleted", false);
+          .eq("is_deleted", false)
+          .order("created_at", { ascending: false });
 
         if (error) throw error;
         setDocuments(docsData || []);
