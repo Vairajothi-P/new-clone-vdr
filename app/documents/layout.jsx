@@ -87,7 +87,7 @@ function LayoutContent({ children }) {
             <nav className="w-[240px] shrink-0 bg-white border-r border-slate-200 flex flex-col h-full z-10 shadow-[2px_0_8px_-4px_rgba(0,0,0,0.05)]">
                 
                 <div className="px-6 py-6 border-b border-slate-100 flex items-center hover:opacity-80 transition-opacity">
-                    <span className="text-[15px] font-black text-slate-800 tracking-tight">VDR Vault</span>
+                    <span className="text-[15px] font-black text-brand tracking-tight">VDR Vault</span>
                 </div>
 
                 <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
@@ -96,7 +96,7 @@ function LayoutContent({ children }) {
                         return (
                             <Link key={item.label} href={item.href} 
                                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold transition-all 
-                                ${active ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
+                                ${active ? 'bg-brand text-white shadow-md' : 'text-slate-500 hover:bg-brand-soft hover:text-brand'}`}>
                                 <span className={active ? 'text-white' : 'text-slate-400'}>{item.icon}</span>
                                 {item.label}
                             </Link>
@@ -105,7 +105,7 @@ function LayoutContent({ children }) {
                 </div>
 
                 {session && (
-                    <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+                    <div className="p-4 border-t border-slate-100 bg-brand-soft/50">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3 min-w-0">
                                 <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-[12px] font-black text-white shrink-0 shadow-sm">
@@ -203,7 +203,7 @@ export default function DocumentsLayout({ children }) {
 //             <nav className="w-[240px] shrink-0 bg-white border-r border-slate-200 flex flex-col h-full z-10 shadow-[2px_0_8px_-4px_rgba(0,0,0,0.05)]">
 
 //                 <div className="px-6 py-6 border-b border-slate-100 flex items-center hover:opacity-80 transition-opacity">
-//                     <span className="text-[15px] font-black text-slate-800 tracking-tight">VDR Vault</span>
+//                     <span className="text-[15px] font-black text-brand tracking-tight">VDR Vault</span>
 //                 </div>
 
 //                 <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
@@ -212,7 +212,7 @@ export default function DocumentsLayout({ children }) {
 //                         return (
 //                             <Link key={item.label} href={item.href}
 //                                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold transition-all 
-//                                 ${active ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
+//                                 ${active ? 'bg-brand text-white shadow-md' : 'text-slate-500 hover:bg-brand-soft hover:text-brand'}`}>
 //                                 <span className={active ? 'text-white' : 'text-slate-400'}>{item.icon}</span>
 //                                 {item.label}
 //                             </Link>
@@ -221,7 +221,7 @@ export default function DocumentsLayout({ children }) {
 //                 </div>
 
 //                 {session && (
-//                     <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+//                     <div className="p-4 border-t border-slate-100 bg-brand-soft/50">
 //                         <div className="flex items-center justify-between">
 //                             <div className="flex items-center gap-3 min-w-0">
 //                                 <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-[12px] font-black text-white shrink-0 shadow-sm">
@@ -368,7 +368,7 @@ export default function DocumentsLayout({ children }) {
 
 //                 {/* Logo — clicking goes to /dashboard */}
 //                 <Link href="/dashboard" className="px-5 pt-6 pb-5 border-b border-slate-100 flex items-center hover:opacity-80 transition-opacity">
-//                     <span className="text-[14px] font-black text-slate-800 tracking-tight">VDR Portal</span>
+//                     <span className="text-[14px] font-black text-brand tracking-tight">VDR Portal</span>
 //                 </Link>
 
 //                 {/* Nav items */}
@@ -381,8 +381,8 @@ export default function DocumentsLayout({ children }) {
 //                                 href={item.href}
 //                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
 //                                     ${active
-//                                         ? 'bg-slate-900 text-white'
-//                                         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+//                                         ? 'bg-brand text-white'
+//                                         : 'text-slate-600 hover:bg-brand-soft hover:text-brand'
 //                                     }`}
 //                             >
 //                                 <span className={`shrink-0 ${active ? 'text-white' : 'text-slate-400'}`}>
@@ -399,7 +399,7 @@ export default function DocumentsLayout({ children }) {
 //                     <div className="p-4 border-t border-slate-100">
 //                         <div className="flex items-center justify-between">
 //                             <div className="flex items-center gap-2.5 min-w-0">
-//                                 <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center text-[11px] font-black text-white shrink-0">
+//                                 <div className="w-8 h-8 rounded-xl bg-brand flex items-center justify-center text-[11px] font-black text-white shrink-0">
 //                                     {session.name?.charAt(0).toUpperCase() || 'U'}
 //                                 </div>
 //                                 <div className="min-w-0">
@@ -556,13 +556,13 @@ export default function DocumentsLayout({ children }) {
 
 //                 {/* Logo — clicking goes to /dashboard */}
 //                 <Link href="/dashboard" className="px-5 pt-6 pb-5 border-b border-slate-100 flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-//                     <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center shrink-0">
+//                     <div className="w-8 h-8 rounded-xl bg-brand flex items-center justify-center shrink-0">
 //                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
 //                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
 //                             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
 //                         </svg>
 //                     </div>
-//                     <span className="text-[14px] font-black text-slate-800 tracking-tight">VDR Portal</span>
+//                     <span className="text-[14px] font-black text-brand tracking-tight">VDR Portal</span>
 //                 </Link>
 
 //                 {/* Nav items */}
@@ -575,8 +575,8 @@ export default function DocumentsLayout({ children }) {
 //                                 href={item.href}
 //                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all
 //                                     ${active
-//                                         ? 'bg-slate-900 text-white'
-//                                         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+//                                         ? 'bg-brand text-white'
+//                                         : 'text-slate-600 hover:bg-brand-soft hover:text-brand'
 //                                     }`}
 //                             >
 //                                 <span className={`shrink-0 ${active ? 'text-white' : 'text-slate-400'}`}>
@@ -592,7 +592,7 @@ export default function DocumentsLayout({ children }) {
 //                 {session && (
 //                     <div className="p-4 border-t border-slate-100">
 //                         <div className="flex items-center gap-2.5">
-//                             <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center text-[11px] font-black text-white shrink-0">
+//                             <div className="w-8 h-8 rounded-xl bg-brand flex items-center justify-center text-[11px] font-black text-white shrink-0">
 //                                 {session.name?.charAt(0).toUpperCase() || 'U'}
 //                             </div>
 //                             <div className="min-w-0">

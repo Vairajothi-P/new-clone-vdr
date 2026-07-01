@@ -8,7 +8,7 @@ import { FaEye, FaEdit, FaUpload, FaShieldAlt, FaDownload, FaTrash } from 'react
 
 export default function DocumentsPage() {
     return (
-        <Suspense fallback={<div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>}>
+        <Suspense fallback={<div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" /></div>}>
             <UnifiedWorkspace />
         </Suspense>
     );
@@ -649,7 +649,7 @@ function UnifiedWorkspace() {
     const hasAnyDeleteAccess = isGod || globalFolderPerms.can_delete || canUser('can_delete', { type: 'folder', id: currentFolderId }) || filteredItems.some(f => canUser('can_delete', f));
     const hasAnyExportAccess = isGod || canUser('can_export');
 
-    if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>;
+    if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" /></div>;
 
     return (
         <div className="flex w-full h-full bg-[#F8F9FB] font-sans">
@@ -665,7 +665,7 @@ function UnifiedWorkspace() {
                     <div className="flex items-center gap-3">
                         {/* 1. UPLOAD BUTTON */}
                         {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canUploadHere && (
-                            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
+                            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-brand-soft hover:text-brand rounded-lg transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                                 Upload
                             </button>
@@ -673,7 +673,7 @@ function UnifiedWorkspace() {
 
                         {/* 2. ADD FOLDER BUTTON (Now independent!) */}
                         {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canCreateFolder && (
-                            <button onClick={() => setIsNewFolderOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
+                            <button onClick={() => setIsNewFolderOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-brand-soft hover:text-brand rounded-lg transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
                                 Add Folder
                             </button>
@@ -686,20 +686,20 @@ function UnifiedWorkspace() {
                                     setRenameValue(item.name);
                                     setIsRenameModalOpen(true);
                                 }
-                            }} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size !== 1 ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                            }} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size !== 1 ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-brand-soft hover:text-brand'}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
                                 Rename
                             </button>
                         )}
                         {/* {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canUploadHere && (
                             <>
-                                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
+                                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-brand-soft hover:text-brand rounded-lg transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                                     Upload
                                 </button>
 
                                
-                                <button onClick={() => setIsNewFolderOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
+                                <button onClick={() => setIsNewFolderOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-brand-soft hover:text-brand rounded-lg transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
                                     Add Folder
                                 </button>
@@ -709,7 +709,7 @@ function UnifiedWorkspace() {
                         {/* Download Dropdown Logic */}
                         {!['trash', 'bookmarks', 'downloads'].includes(currentView) && hasAnyDownloadAccess && (
                             <div className="relative">
-                                <button disabled={selectedIds.size === 0} onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                <button disabled={selectedIds.size === 0} onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-brand-soft hover:text-brand'}`}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                                     Download
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform ${isDownloadMenuOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9" /></svg>
@@ -718,10 +718,10 @@ function UnifiedWorkspace() {
                                 {isDownloadMenuOpen && selectedIds.size > 0 && (
                                     <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-50">
                                         {canDownloadSecureSelected ? (
-                                            <button onClick={() => executeDownload('secure')} className="w-full text-left px-4 py-2 text-[12px] font-bold text-slate-700 hover:bg-slate-50">Download Secure (.vdr)</button>
+                                            <button onClick={() => executeDownload('secure')} className="w-full text-left px-4 py-2 text-[12px] font-bold text-slate-700 hover:bg-brand-soft">Download Secure (.vdr)</button>
                                         ) : null}
                                         {canDownloadOriginalSelected ? (
-                                            <button onClick={() => executeDownload('original')} className="w-full text-left px-4 py-2 text-[12px] font-bold text-slate-700 hover:bg-slate-50">Download Original</button>
+                                            <button onClick={() => executeDownload('original')} className="w-full text-left px-4 py-2 text-[12px] font-bold text-slate-700 hover:bg-brand-soft">Download Original</button>
                                         ) : null}
                                         {!canDownloadSecureSelected && !canDownloadOriginalSelected && (
                                             <div className="px-4 py-2 text-[12px] font-medium text-slate-400">No permission</div>
@@ -732,7 +732,7 @@ function UnifiedWorkspace() {
                         )}
 
                         {!['trash', 'bookmarks', 'downloads'].includes(currentView) && hasAnyExportAccess && (
-                            <button disabled={selectedIds.size === 0} onClick={handleExport} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                            <button disabled={selectedIds.size === 0} onClick={handleExport} className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-lg transition-colors ${selectedIds.size === 0 ? 'text-slate-900 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-brand-soft hover:text-brand'}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                                 Export
                             </button>
@@ -819,7 +819,7 @@ function UnifiedWorkspace() {
                                     const isDL = downloading[item.id];
 
                                     return (
-                                        <tr key={item.id} className={`group transition-colors ${selectionEnabled ? 'cursor-pointer' : ''} ${isChecked ? 'bg-slate-50' : 'hover:bg-slate-50/50'}`} onClick={selectionEnabled ? () => handleItemClick(item) : undefined}>
+                                        <tr key={item.id} className={`group transition-colors ${selectionEnabled ? 'cursor-pointer' : ''} ${isChecked ? 'bg-brand-soft' : 'hover:bg-brand-soft/50'}`} onClick={selectionEnabled ? () => handleItemClick(item) : undefined}>
                                             {selectionEnabled ? (
                                                 <td className="py-4 px-5" onClick={e => e.stopPropagation()}>
                                                     <input type="checkbox" checked={isChecked} onChange={e => handleToggleSelect(item.id, e)} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
@@ -880,13 +880,13 @@ function UnifiedWorkspace() {
                 <Modal onClose={() => setIsMoveModalOpen(false)}>
                     <h3 className="text-[15px] font-black mb-4">Move {selectedIds.size} items to...</h3>
                     <div className="space-y-1 max-h-64 overflow-y-auto mb-4">
-                        <button onClick={() => setMovingToFolderId(null)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === null ? 'bg-[var(--brand)] text-white' : 'hover:bg-slate-50 text-slate-700'}`}>
+                        <button onClick={() => setMovingToFolderId(null)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === null ? 'bg-[var(--brand)] text-white' : 'hover:bg-brand-soft text-slate-700'}`}>
                             Root Directory
                         </button>
 
                         {/* Only show folders we can move to (not deleted, not currently selected) */}
                         {files.filter(f => f.type === 'folder' && !deletedIds.has(f.id) && !selectedIds.has(f.id)).map(folder => (
-                            <button key={folder.id} onClick={() => setMovingToFolderId(folder.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === folder.id ? 'bg-[var(--brand)] text-white' : 'hover:bg-slate-50 text-slate-700'}`}>
+                            <button key={folder.id} onClick={() => setMovingToFolderId(folder.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === folder.id ? 'bg-[var(--brand)] text-white' : 'hover:bg-brand-soft text-slate-700'}`}>
                                 <span className="truncate">{folder.name}</span>
                             </button>
                         ))}
@@ -946,14 +946,14 @@ function UnifiedWorkspace() {
             {isUploadModalOpen && (
                 <Modal onClose={() => setIsUploadModalOpen(false)}>
                     <h3 className="text-[16px] font-black text-slate-800 mb-5">Secure Upload</h3>
-                    <div onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-3 p-10 border-2 border-dashed border-slate-200 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100">
+                    <div onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-3 p-10 border-2 border-dashed border-slate-200 bg-brand-soft rounded-2xl cursor-pointer hover:bg-slate-100">
                         <span className="text-[13px] font-bold text-slate-700">Click to Browse Files</span>
                         <span className="text-[11px] text-slate-400">Files are AES-256 Encrypted on upload</span>
                     </div>
                     {uploadQueue.length > 0 && (
                         <div className="mt-4 space-y-2 max-h-48 overflow-auto">
                             {uploadQueue.map(item => (
-                                <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <div key={item.id} className="flex items-center gap-3 p-3 bg-brand-soft rounded-xl border border-slate-100">
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[12px] font-semibold text-slate-700 truncate">{item.name}</p>
                                     </div>
@@ -972,7 +972,7 @@ function UnifiedWorkspace() {
 function Modal({ children, onClose, maxWidth = 'max-w-lg' }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div onClick={onClose} className="absolute inset-0 bg-slate-900/40 backdrop-blur-[3px]" />
+            <div onClick={onClose} className="absolute inset-0 bg-brand/40 backdrop-blur-[3px]" />
             <div className={`relative bg-white rounded-2xl shadow-2xl w-full ${maxWidth} p-6 z-10`}>
                 {children}
             </div>
@@ -1004,7 +1004,7 @@ function PermRow({ label, hasAccess }) {
 
 // export default function DocumentsPage() {
 //     return (
-//         <Suspense fallback={<div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>}>
+//         <Suspense fallback={<div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" /></div>}>
 //             <UnifiedWorkspace />
 //         </Suspense>
 //     );
@@ -1329,7 +1329,7 @@ function PermRow({ label, hasAccess }) {
 //     };
 
 //     // ── RENDER ───────────────────────────────────────────────────────────────
-//     if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>;
+//     if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" /></div>;
 
 //     // Check Contextual Nav Rights
 //     const canUploadHere = currentFolderId === null ? (session.role === 'super_admin' || session.role === 'admin') : canUser('can_upload', { type: 'folder', id: currentFolderId });
@@ -1355,7 +1355,7 @@ function PermRow({ label, hasAccess }) {
 //                     )}
 //                 </div>
 //                 <div className="relative w-64">
-//                     <input type="text" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-4 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none" />
+//                     <input type="text" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-4 pr-3 py-2 bg-brand-soft border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none" />
 //                 </div>
 //             </div>
 
@@ -1364,12 +1364,12 @@ function PermRow({ label, hasAccess }) {
 //                 <div className="flex gap-2">
 //                     {canUploadHere && (
 //                         <>
-//                             <button onClick={() => setIsUploadModalOpen(true)} className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-colors">Upload Files</button>
-//                             <button onClick={() => setIsNewFolderOpen(true)} className="px-4 py-2 bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl hover:bg-slate-100 transition-colors">New Folder</button>
+//                             <button onClick={() => setIsUploadModalOpen(true)} className="px-4 py-2 bg-brand text-white text-xs font-bold rounded-xl hover:bg-brand-dark transition-colors">Upload Files</button>
+//                             <button onClick={() => setIsNewFolderOpen(true)} className="px-4 py-2 bg-brand-soft text-slate-700 border border-slate-200 text-xs font-bold rounded-xl hover:bg-slate-100 transition-colors">New Folder</button>
 //                         </>
 //                     )}
 //                     {(session.role === 'super_admin' || session.role === 'admin' || session.role === 'subadmin') && (
-//                         <button onClick={handleExport} className="ml-2 px-4 py-2 text-blue-700 bg-blue-50 border border-blue-100 text-xs font-bold rounded-xl hover:bg-blue-100 transition-colors">Export Index (CSV)</button>
+//                         <button onClick={handleExport} className="ml-2 px-4 py-2 text-brand-dark bg-brand-soft border border-brand-100 text-xs font-bold rounded-xl hover:bg-brand-100 transition-colors">Export Index (CSV)</button>
 //                     )}
 //                 </div>
 //             </div>
@@ -1398,7 +1398,7 @@ function PermRow({ label, hasAccess }) {
 //                 ) : (
 //                     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden pb-10">
 //                         <table className="w-full text-left border-collapse">
-//                             <thead className="bg-slate-50 border-b border-slate-100">
+//                             <thead className="bg-brand-soft border-b border-slate-100">
 //                                 <tr>
 //                                     <th className="p-4 w-12"><input type="checkbox" checked={selectedIds.size === filteredItems.length && filteredItems.length > 0} onChange={handleSelectAll} className="w-4 h-4 rounded border-slate-300 accent-slate-900" /></th>
 //                                     <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Index</th>
@@ -1412,11 +1412,11 @@ function PermRow({ label, hasAccess }) {
 //                                 {filteredItems.map(item => {
 //                                     const isChecked = selectedIds.has(item.id);
 //                                     const isFolder = item.type === 'folder';
-//                                     const iconMap = { pdf: 'bg-rose-50 text-rose-600', xlsx: 'bg-emerald-50 text-emerald-600', docx: 'bg-indigo-50 text-indigo-600' };
-//                                     const iconClass = isFolder ? 'bg-amber-50 text-amber-500 border-amber-100' : (iconMap[item.type] || 'bg-slate-50 text-slate-400 border-slate-200');
+//                                     const iconMap = { pdf: 'bg-rose-50 text-rose-600', xlsx: 'bg-emerald-50 text-emerald-600', docx: 'bg-brand-soft text-brand' };
+//                                     const iconClass = isFolder ? 'bg-amber-50 text-amber-500 border-amber-100' : (iconMap[item.type] || 'bg-brand-soft text-slate-400 border-slate-200');
 
 //                                     return (
-//                                         <tr key={item.id} onClick={() => handleItemClick(item)} className={`group cursor-pointer transition-colors ${isChecked ? 'bg-slate-50' : 'hover:bg-slate-50/60'}`}>
+//                                         <tr key={item.id} onClick={() => handleItemClick(item)} className={`group cursor-pointer transition-colors ${isChecked ? 'bg-brand-soft' : 'hover:bg-brand-soft/60'}`}>
 //                                             <td className="p-4" onClick={e => e.stopPropagation()}><input type="checkbox" checked={isChecked} onChange={e => handleToggleSelect(item.id, e)} className="w-4 h-4 rounded accent-slate-900" /></td>
 //                                             <td className="p-4 text-[12px] font-mono font-semibold text-slate-400">{item.index}</td>
 //                                             <td className="p-4">
@@ -1433,7 +1433,7 @@ function PermRow({ label, hasAccess }) {
 //                                             <td className="p-4" onClick={e => e.stopPropagation()}>
 //                                                 <div className="flex items-center justify-center gap-2">
 //                                                     {!isFolder && canUser('can_download_secure', item) && (
-//                                                         <button onClick={() => handleDownload(item, 'secure')} disabled={downloading[item.id]} className="px-3 py-1.5 bg-slate-900 text-white text-[10px] font-bold rounded-lg shadow-sm hover:bg-slate-700 disabled:opacity-50">
+//                                                         <button onClick={() => handleDownload(item, 'secure')} disabled={downloading[item.id]} className="px-3 py-1.5 bg-brand text-white text-[10px] font-bold rounded-lg shadow-sm hover:bg-slate-700 disabled:opacity-50">
 //                                                             Secure (.vdr)
 //                                                         </button>
 //                                                     )}
@@ -1461,7 +1461,7 @@ function PermRow({ label, hasAccess }) {
 //                 <Modal onClose={() => setIsNewFolderOpen(false)}>
 //                     <h3 className="text-[16px] font-black mb-4">Create New Folder</h3>
 //                     <input type="text" placeholder="Folder name..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl mb-4 focus:border-slate-400 focus:outline-none" />
-//                     <button onClick={handleCreateFolder} className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl">Create</button>
+//                     <button onClick={handleCreateFolder} className="w-full py-3 bg-brand text-white font-bold rounded-xl">Create</button>
 //                 </Modal>
 //             )}
 
@@ -1479,14 +1479,14 @@ function PermRow({ label, hasAccess }) {
 //             {isUploadModalOpen && (
 //                 <Modal onClose={() => setIsUploadModalOpen(false)}>
 //                     <h3 className="text-[16px] font-black text-slate-800 mb-5">Secure Upload</h3>
-//                     <div onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-3 p-10 border-2 border-dashed border-slate-200 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100">
+//                     <div onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-3 p-10 border-2 border-dashed border-slate-200 bg-brand-soft rounded-2xl cursor-pointer hover:bg-slate-100">
 //                         <span className="text-[13px] font-bold text-slate-700">Click to Browse Files</span>
 //                         <span className="text-[11px] text-slate-400">Files are AES-256 Encrypted on upload</span>
 //                     </div>
 //                     {uploadQueue.length > 0 && (
 //                         <div className="mt-4 space-y-2 max-h-48 overflow-auto">
 //                             {uploadQueue.map(item => (
-//                                 <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+//                                 <div key={item.id} className="flex items-center gap-3 p-3 bg-brand-soft rounded-xl border border-slate-100">
 //                                     <div className="flex-1 min-w-0">
 //                                         <p className="text-[12px] font-semibold text-slate-700 truncate">{item.name}</p>
 //                                     </div>
@@ -1502,18 +1502,18 @@ function PermRow({ label, hasAccess }) {
 //                 <Modal onClose={() => setIsMoveModalOpen(false)}>
 //                     <h3 className="text-[15px] font-black mb-4">Move {selectedIds.size} items to...</h3>
 //                     <div className="space-y-1 max-h-64 overflow-y-auto mb-4">
-//                         <button onClick={() => setMovingToFolderId(null)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === null ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}>
+//                         <button onClick={() => setMovingToFolderId(null)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === null ? 'bg-brand text-white' : 'hover:bg-brand-soft text-slate-700'}`}>
 //                             Root Directory
 //                         </button>
 //                         {availableFoldersForMove.map(folder => (
-//                             <button key={folder.id} onClick={() => setMovingToFolderId(folder.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === folder.id ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}>
+//                             <button key={folder.id} onClick={() => setMovingToFolderId(folder.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[12.5px] font-semibold ${movingToFolderId === folder.id ? 'bg-brand text-white' : 'hover:bg-brand-soft text-slate-700'}`}>
 //                                 <span className="truncate">{folder.name}</span>
 //                             </button>
 //                         ))}
 //                     </div>
 //                     <div className="flex gap-2">
 //                         <button onClick={() => setIsMoveModalOpen(false)} className="flex-1 py-2.5 bg-slate-100 font-bold rounded-xl">Cancel</button>
-//                         <button onClick={executeMoveToFolder} className="flex-1 py-2.5 bg-slate-900 text-white font-bold rounded-xl">Move Here</button>
+//                         <button onClick={executeMoveToFolder} className="flex-1 py-2.5 bg-brand text-white font-bold rounded-xl">Move Here</button>
 //                     </div>
 //                 </Modal>
 //             )}
@@ -1525,7 +1525,7 @@ function PermRow({ label, hasAccess }) {
 // function Modal({ children, onClose, maxWidth = 'max-w-lg' }) {
 //     return (
 //         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-//             <div onClick={onClose} className="absolute inset-0 bg-slate-900/40 backdrop-blur-[3px]" />
+//             <div onClick={onClose} className="absolute inset-0 bg-brand/40 backdrop-blur-[3px]" />
 //             <div className={`relative bg-white rounded-2xl shadow-2xl w-full ${maxWidth} p-6 z-10`}>
 //                 {children}
 //             </div>

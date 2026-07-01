@@ -8,7 +8,7 @@ import { FaEye, FaEdit, FaUpload, FaShieldAlt, FaDownload } from 'react-icons/fa
 
 export default function AccessPage() {
     return (
-        <Suspense fallback={<div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>}>
+        <Suspense fallback={<div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" /></div>}>
             <AccessPageContent />
         </Suspense>
     );
@@ -261,7 +261,7 @@ function AccessPageContent() {
     const displayFolders = sortedFolders.map((f, idx) => ({ ...f, displayIndex: (idx + 1).toString() }));
     const displayDocs = sortedDocs.map((d, idx) => ({ ...d, displayIndex: (idx + displayFolders.length + 1).toString() }));
 
-    if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>;
+    if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" /></div>;
 
     return (
         <div className="relative flex w-full h-full bg-[#F8F9FB] overflow-hidden text-slate-800 font-sans">
@@ -281,7 +281,7 @@ function AccessPageContent() {
                             <div key={group.id} className="mb-0.5">
                                 <button
                                     onClick={() => setSelectedGroup(group.id)}
-                                    className={`w-full flex items-center gap-2 px-2 py-3 rounded-xl text-left transition-all ${isActive ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+                                    className={`w-full flex items-center gap-2 px-2 py-3 rounded-xl text-left transition-all ${isActive ? 'bg-brand text-white' : 'hover:bg-slate-50 text-slate-700'}`}
                                 >
                                     <div
                                         onClick={(e) => { e.stopPropagation(); setExpandedGroups(prev => { const n = new Set(prev); n.has(group.id) ? n.delete(group.id) : n.add(group.id); return n; }); }}
@@ -329,7 +329,7 @@ function AccessPageContent() {
                         </button>
                         {activeGroup && (
                             <>
-                                <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-[12px] font-black text-white shrink-0">
+                                <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center text-[12px] font-black text-white shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                                 </div>
                                 <div>
@@ -459,7 +459,7 @@ function AccessPageContent() {
 
                                     {displayFolders.map(folder => {
                                         const toggles = [
-                                            { field: 'can_view', color: 'bg-slate-900' }, { field: 'can_edit', color: 'bg-blue-600' },
+                                            { field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand-dark' },
                                             { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' },
                                             { field: 'can_download_original', color: 'bg-orange-500' },
                                             { field: 'can_delete', color: 'bg-red-600' },
@@ -521,7 +521,7 @@ function AccessPageContent() {
                                                     </div>
                                                 </td>
 
-                                                {[{ field: 'can_view', color: 'bg-slate-900' }, { field: 'can_edit', color: 'bg-blue-600' }, { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' }, { field: 'can_download_original', color: 'bg-orange-500' }, { field: 'can_delete', color: 'bg-red-600' },].map(({ field, color }) => {
+                                                {[{ field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand-dark' }, { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' }, { field: 'can_download_original', color: 'bg-orange-500' }, { field: 'can_delete', color: 'bg-red-600' },].map(({ field, color }) => {
                                                     if (field === 'can_upload') {
                                                         return (
                                                             <td key={field} className="py-3.5 px-3 text-center">
@@ -562,7 +562,7 @@ function AccessPageContent() {
                         } else {
                             router.push('/groups');
                         }
-                    }} className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl hover:bg-slate-800 hover:-translate-y-0.5 transition-all active:scale-95">
+                    }} className="flex items-center gap-2 bg-brand text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl hover:bg-brand-dark hover:-translate-y-0.5 transition-all active:scale-95">
                         <span>Submit & Return</span>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                     </button>
@@ -807,7 +807,7 @@ function AccessPageContent() {
 //     const displayFolders = folders.filter(f => f.parent_folder_id === currentFolderId && f.name.toLowerCase().includes(searchQuery.toLowerCase()));
 //     const displayDocs = documents.filter(d => d.folder_id === currentFolderId && d.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-//     if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" /></div>;
+//     if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" /></div>;
 
 //     return (
 //         <div className="relative flex w-full h-full bg-[#F8F9FB] overflow-hidden text-slate-800 font-sans">
@@ -829,7 +829,7 @@ function AccessPageContent() {
 //                             <div key={group.id} className="mb-0.5">
 //                                 <button
 //                                     onClick={() => setSelectedGroup(group.id)}
-//                                     className={`w-full flex items-center gap-2 px-2 py-3 rounded-xl text-left transition-all ${isActive ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+//                                     className={`w-full flex items-center gap-2 px-2 py-3 rounded-xl text-left transition-all ${isActive ? 'bg-brand text-white' : 'hover:bg-slate-50 text-slate-700'}`}
 //                                 >
 //                                     <div
 //                                         onClick={(e) => { e.stopPropagation(); setExpandedGroups(prev => { const n = new Set(prev); n.has(group.id) ? n.delete(group.id) : n.add(group.id); return n; }); }}
@@ -872,7 +872,7 @@ function AccessPageContent() {
 //                     <div className="flex items-center gap-3">
 //                         {activeGroup && (
 //                             <>
-//                                 <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-[12px] font-black text-white shrink-0">
+//                                 <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center text-[12px] font-black text-white shrink-0">
 //                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
 //                                 </div>
 //                                 <div>
@@ -941,7 +941,7 @@ function AccessPageContent() {
 //                                     {/* ── RENDER FOLDERS FIRST ── */}
 //                                     {displayFolders.map(folder => {
 //                                         const toggles = [
-//                                             { field: 'can_view', color: 'bg-slate-900' }, { field: 'can_edit', color: 'bg-blue-600' },
+//                                             { field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand-dark' },
 //                                             { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' },
 //                                             { field: 'can_download_original', color: 'bg-orange-500' }
 //                                         ];
@@ -995,7 +995,7 @@ function AccessPageContent() {
 //                                         const iconClass = { pdf: 'bg-rose-50 border-rose-100 text-rose-600', xlsx: 'bg-emerald-50 border-emerald-100 text-emerald-600', docx: 'bg-indigo-50 border-indigo-100 text-indigo-600' }[ext] || 'bg-slate-50 border-slate-200 text-slate-400';
 
 //                                         const toggles = [
-//                                             { field: 'can_view', color: 'bg-slate-900' }, { field: 'can_edit', color: 'bg-blue-600' },
+//                                             { field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand-dark' },
 //                                             { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' },
 //                                             { field: 'can_download_original', color: 'bg-orange-500' }
 //                                         ];
@@ -1237,7 +1237,7 @@ function AccessPageContent() {
 //     if (loading) {
 //         return (
 //             <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]">
-//                 <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+//                 <div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" />
 //             </div>
 //         );
 //     }
@@ -1264,7 +1264,7 @@ function AccessPageContent() {
 //                                     key={user.id}
 //                                     onClick={() => setSelectedUser(user.id)}
 //                                     className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all mb-0.5
-//                                         ${isActive ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+//                                         ${isActive ? 'bg-brand text-white' : 'hover:bg-slate-50 text-slate-700'}`}
 //                                 >
 //                                     {/* Avatar */}
 //                                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-black shrink-0
@@ -1298,7 +1298,7 @@ function AccessPageContent() {
 //                     <div className="flex items-center gap-3">
 //                         {activeUser && (
 //                             <>
-//                                 <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-[12px] font-black text-white shrink-0">
+//                                 <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center text-[12px] font-black text-white shrink-0">
 //                                     {activeUser.name?.charAt(0).toUpperCase() || 'U'}
 //                                 </div>
 //                                 <div>
@@ -1386,7 +1386,7 @@ function AccessPageContent() {
 //                                             // Status badge
 //                                             let statusLabel = 'No Access';
 //                                             let statusClass = 'bg-slate-100 text-slate-400';
-//                                             if (perm.can_edit) { statusLabel = 'Can Edit'; statusClass = 'bg-blue-50 text-blue-600 border border-blue-100'; }
+//                                             if (perm.can_edit) { statusLabel = 'Can Edit'; statusClass = 'bg-brand-soft text-brand border border-brand-100'; }
 //                                             else if (perm.can_read) { statusLabel = 'Read Only'; statusClass = 'bg-emerald-50 text-emerald-600 border border-emerald-100'; }
 
 //                                             // File icon color
@@ -1422,7 +1422,7 @@ function AccessPageContent() {
 //                                                             onClick={() => togglePermission(selectedUser, doc.id, 'can_read')}
 //                                                             disabled={isSavingRead || isSavingEdit}
 //                                                             className={`relative w-11 h-6 rounded-full transition-all duration-200 focus:outline-none
-//                                                                 ${perm.can_read ? 'bg-slate-900' : 'bg-slate-200'}
+//                                                                 ${perm.can_read ? 'bg-brand' : 'bg-slate-200'}
 //                                                                 ${(isSavingRead || isSavingEdit) ? 'opacity-60' : ''}`}
 //                                                         >
 //                                                             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200
@@ -1436,7 +1436,7 @@ function AccessPageContent() {
 //                                                             onClick={() => togglePermission(selectedUser, doc.id, 'can_edit')}
 //                                                             disabled={isSavingRead || isSavingEdit}
 //                                                             className={`relative w-11 h-6 rounded-full transition-all duration-200 focus:outline-none
-//                                                                 ${perm.can_edit ? 'bg-blue-600' : 'bg-slate-200'}
+//                                                                 ${perm.can_edit ? 'bg-brand-dark' : 'bg-slate-200'}
 //                                                                 ${(isSavingRead || isSavingEdit) ? 'opacity-60' : ''}`}
 //                                                         >
 //                                                             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200

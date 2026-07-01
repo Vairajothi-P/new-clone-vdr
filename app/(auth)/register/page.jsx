@@ -40,7 +40,7 @@
 
 //   return (
 //     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
-//       <div className="absolute top-0 left-0 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
+//       <div className="absolute top-0 left-0 w-96 h-96 bg-brand-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
 //       <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
 
 //       <div className="relative w-full max-w-md">
@@ -64,13 +64,13 @@
 
 //         <div className="flex justify-center mb-6">
 //           <div className="flex items-center gap-4">
-//             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
+//             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-brand text-white" : "bg-gray-200 text-gray-500"}`}>
 //               1
 //             </div>
 //
 //             <div className="w-16 h-1 bg-gray-300 rounded"></div>
 //
-//             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
+//             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? "bg-brand text-white" : "bg-gray-200 text-gray-500"}`}>
 //               2
 //             </div>
 //           </div>
@@ -95,7 +95,7 @@
 //                     value={formData.name}
 //                     onChange={handleChange}
 //                     placeholder="Enter your full name"
-//                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+//                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
 //                   />
 //                 </div>
 //               </div>
@@ -114,7 +114,7 @@
 //                     value={formData.email}
 //                     onChange={handleChange}
 //                     placeholder="Enter your email address"
-//                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+//                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
 //                   />
 //                 </div>
 //               </div>
@@ -133,7 +133,7 @@
 //                     value={formData.mobile}
 //                     onChange={handleChange}
 //                     placeholder="Enter your mobile number"
-//                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+//                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
 //                   />
 //                 </div>
 //               </div>
@@ -152,7 +152,7 @@
 //                     value={formData.password}
 //                     onChange={handleChange}
 //                     placeholder="Create password"
-//                     className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+//                     className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
 //                   />
 
 //                   <button
@@ -179,7 +179,7 @@
 //                     value={formData.confirmPassword}
 //                     onChange={handleChange}
 //                     placeholder="Confirm password"
-//                     className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+//                     className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
 //                   />
 
 //                   <button
@@ -194,7 +194,7 @@
 
 //               <button
 //                 onClick={() => setStep(2)}
-//                 className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold transition"
+//                 className="w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold transition"
 //               >
 //                 Continue
 //               </button>
@@ -227,7 +227,7 @@
 
 //               <button
 //                 onClick={() => setStep(3)}
-//                 className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold"
+//                 className="w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold"
 //               >
 //                 Verify OTP
 //               </button>
@@ -248,7 +248,7 @@
 
 //               <Link
 //                 href="/login"
-//                 className="block mt-6 w-full py-3 bg-gray-800 text-white rounded-xl"
+//                 className="block mt-6 w-full py-3 bg-brand text-white rounded-xl"
 //               >
 //                 Go To Login
 //               </Link>
@@ -602,12 +602,12 @@ function RegisterContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
+      <div className="absolute top-0 left-0 w-96 h-96 bg-brand-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
 
       <div className="relative w-full max-w-md">
         <div className="flex flex-col items-center gap-3 mb-6 text-center">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-gray-900 to-slate-800 flex items-center justify-center shadow-md">
+          <div className="w-12 h-12 rounded-xl brand-gradient flex items-center justify-center shadow-md shadow-[var(--brand)]/20">
             <FiShield className="text-white text-2xl" />
           </div>
 
@@ -626,13 +626,13 @@ function RegisterContent() {
 
         <div className="flex justify-center mb-6">
           <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-brand text-white" : "bg-gray-200 text-gray-500"}`}>
               1
             </div>
 
             <div className="w-16 h-1 bg-gray-300 rounded"></div>
 
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${(token ? step >= 2 : step >= 3) ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${(token ? step >= 2 : step >= 3) ? "bg-brand text-white" : "bg-gray-200 text-gray-500"}`}>
               <FaCheckCircle className={(token ? step >= 2 : step >= 3) ? "text-white" : "text-gray-400"} />
             </div>
           </div>
@@ -659,7 +659,7 @@ function RegisterContent() {
                         value={formData.companyName}
                         onChange={handleChange}
                         placeholder="Enter company name"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
                         required
                       />
                     </div>
@@ -676,7 +676,7 @@ function RegisterContent() {
                         value={formData.name}
                         onChange={handleChange}
                         placeholder="Enter your full name"
-                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
                         required
                       />
                     </div>
@@ -695,7 +695,7 @@ function RegisterContent() {
                         onChange={handleChange}
                         disabled={!!invitationDetails} // Read-only if using invitation token
                         placeholder="Enter your email address"
-                        className={`w-full pl-12 pr-4 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-slate-500 ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
+                        className={`w-full pl-12 pr-4 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand disabled:bg-gray-100 disabled:text-slate-500 ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                         required
                       />
                     </div>
@@ -716,7 +716,7 @@ function RegisterContent() {
                         value={formData.mobile}
                         onChange={handleChange}
                         placeholder="Enter your mobile number"
-                        className={`w-full pl-12 pr-4 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${mobileError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
+                        className={`w-full pl-12 pr-4 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand ${mobileError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                         required
                       />
                     </div>
@@ -737,7 +737,7 @@ function RegisterContent() {
                         value={formData.password}
                         onChange={handleChange}
                         placeholder="Create password"
-                        className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
                         required
                       />
                       <button
@@ -762,7 +762,7 @@ function RegisterContent() {
                         value={formData.confirmPassword}
                         onChange={handleChange}
                         placeholder="Confirm password"
-                        className={`w-full pl-12 pr-12 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${passwordError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
+                        className={`w-full pl-12 pr-12 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand ${passwordError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                         required
                       />
                       <button
@@ -808,7 +808,7 @@ function RegisterContent() {
                       }
                     }}
                     disabled={isSendingOtp}
-                    className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold transition"
+                    className="w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold transition flex items-center justify-center shadow-lg shadow-[var(--brand)]/20 disabled:opacity-70"
                   >
                     {isSendingOtp ? "Sending OTP..." : token ? "Verify & Create Account" : "Continue"}
                   </button>
@@ -842,9 +842,9 @@ function RegisterContent() {
 
                   <button
                     onClick={handleFinalSubmit}
-                    className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold"
+                    className="w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold shadow-lg shadow-[var(--brand)]/20"
                   >
-                    Verify & Create Account
+                    Verify OTP & Create Account
                   </button>
                 </div>
               )}
@@ -860,7 +860,7 @@ function RegisterContent() {
                   </p>
                   <Link
                     href="/login"
-                    className="block mt-6 w-full py-3 bg-gray-800 text-white rounded-xl"
+                    className="block mt-6 w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-xl shadow-lg shadow-[var(--brand)]/20 font-semibold"
                   >
                     Go To Login
                   </Link>

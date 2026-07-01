@@ -176,7 +176,7 @@ const handleSaveConfig = async () => {
         
         {loading ? (
           <div className="flex items-center justify-center h-48">
-            <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" />
           </div>
         ) : documents.length === 0 ? (
           <div className="text-center text-slate-500 py-10">
@@ -188,10 +188,10 @@ const handleSaveConfig = async () => {
               <div 
                 key={doc.id} 
                 onClick={() => openConfigDrawer(doc)}
-                className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group"
+                className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col hover:border-brand hover:shadow-md transition-all cursor-pointer group"
               >
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-brand-soft text-brand flex items-center justify-center flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                   </div>
                   <div className="overflow-hidden flex-1">
@@ -202,7 +202,7 @@ const handleSaveConfig = async () => {
                   </div>
                 </div>
                 <div className="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="text-xs font-bold text-blue-600">Configure Redaction →</span>
+                  <span className="text-xs font-bold text-brand">Configure Redaction →</span>
                 </div>
               </div>
             ))}
@@ -248,7 +248,7 @@ const handleSaveConfig = async () => {
                   <button
                     onClick={() => setVisibilityMode('show')}
                     className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
-                      visibilityMode === 'show' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                      visibilityMode === 'show' ? 'bg-white text-brand shadow-sm' : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
                     Show Specific Pages
@@ -279,13 +279,13 @@ const handleSaveConfig = async () => {
                     <div 
                       key={range} 
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${
-                        visibilityMode === 'show' ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'
+                        visibilityMode === 'show' ? 'bg-brand-50 text-brand-dark' : 'bg-rose-100 text-rose-700'
                       }`}
                     >
                       Pages {range}
                       <button 
                         onClick={() => removeRange(range)}
-                        className={`hover:opacity-70 ${visibilityMode === 'show' ? 'text-blue-500' : 'text-rose-500'}`}
+                        className={`hover:opacity-70 ${visibilityMode === 'show' ? 'text-brand' : 'text-rose-500'}`}
                       >
                         <FaTimes className="w-3 h-3" />
                       </button>
@@ -304,7 +304,7 @@ const handleSaveConfig = async () => {
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleAddRange}
                     placeholder="e.g. 1-3 or 5 (Press Enter)"
-                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">
                     Press Enter ↵
@@ -320,7 +320,7 @@ const handleSaveConfig = async () => {
                 onClick={handleSaveConfig}
                 disabled={isSaving || saveSuccess}
                 className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white transition-all ${
-                  saveSuccess ? 'bg-green-500' : 'bg-slate-900 hover:bg-slate-800'
+                  saveSuccess ? 'bg-green-500' : 'bg-brand hover:bg-brand-dark shadow-lg shadow-[var(--brand)]/20'
                 }`}
               >
                 {isSaving ? (
@@ -341,7 +341,7 @@ const handleSaveConfig = async () => {
       {/* Drawer Overlay (mobile only or to click outside to close) */}
       {isDrawerOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/20 z-40 lg:hidden"
+          className="fixed inset-0 bg-brand/20 z-40 lg:hidden"
           onClick={closeConfigDrawer}
         />
       )}
@@ -621,7 +621,7 @@ const handleSaveConfig = async () => {
 
 //         {loading ? (
 //           <div className="flex items-center justify-center h-48">
-//             <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+//             <div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" />
 //           </div>
 //         ) : documents.length === 0 ? (
 //           <div className="text-center text-slate-500 py-10">
@@ -633,10 +633,10 @@ const handleSaveConfig = async () => {
 //               <div
 //                 key={doc.id}
 //                 onClick={() => openConfigDrawer(doc)}
-//                 className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group"
+//                 className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col hover:border-brand-400 hover:shadow-md transition-all cursor-pointer group"
 //               >
 //                 <div className="flex items-center gap-3 mb-3">
-//                   <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+//                   <div className="w-10 h-10 rounded-lg bg-brand-soft text-brand flex items-center justify-center flex-shrink-0">
 //                     <svg
 //                       xmlns="http://www.w3.org/2000/svg"
 //                       width="20"
@@ -666,7 +666,7 @@ const handleSaveConfig = async () => {
 //                   </div>
 //                 </div>
 //                 <div className="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
-//                   <span className="text-xs font-bold text-blue-600">
+//                   <span className="text-xs font-bold text-brand">
 //                     Configure Redaction →
 //                   </span>
 //                 </div>
@@ -712,7 +712,7 @@ const handleSaveConfig = async () => {
 //                 <div className="w-full relative rounded-xl border border-slate-300 overflow-hidden bg-slate-50">
 //                   {previewLoading ? (
 //                     <div className="w-full h-40 flex items-center justify-center">
-//                       <div className="w-6 h-6 border-3 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+//                       <div className="w-6 h-6 border-3 border-slate-200 border-t-brand rounded-full animate-spin" />
 //                     </div>
 //                   ) : previewImage ? (
 //                     <>
@@ -747,7 +747,7 @@ const handleSaveConfig = async () => {
 //                   </span>
 //                   <Link
 //                     href={`/redaction/documents/viewer?id=${selectedDoc.id}`}
-//                     className="mt-3 text-xs px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+//                     className="mt-3 text-xs px-3 py-1 bg-brand-soft0 text-white rounded hover:bg-brand-dark transition-colors"
 //                   >
 //                     View Document
 //                   </Link>
@@ -764,7 +764,7 @@ const handleSaveConfig = async () => {
 //                     onClick={() => setVisibilityMode("show")}
 //                     className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
 //                       visibilityMode === "show"
-//                         ? "bg-white text-blue-600 shadow-sm"
+//                         ? "bg-white text-brand shadow-sm"
 //                         : "text-slate-500 hover:text-slate-700"
 //                     }`}
 //                   >
@@ -801,7 +801,7 @@ const handleSaveConfig = async () => {
 //                       key={range}
 //                       className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${
 //                         visibilityMode === "show"
-//                           ? "bg-blue-100 text-blue-700"
+//                           ? "bg-brand-100 text-brand-dark"
 //                           : "bg-rose-100 text-rose-700"
 //                       }`}
 //                     >
@@ -810,7 +810,7 @@ const handleSaveConfig = async () => {
 //                         onClick={() => removeRange(range)}
 //                         className={`hover:opacity-70 ${
 //                           visibilityMode === "show"
-//                             ? "text-blue-500"
+//                             ? "text-brand"
 //                             : "text-rose-500"
 //                         }`}
 //                       >
@@ -833,7 +833,7 @@ const handleSaveConfig = async () => {
 //                     onChange={(e) => setInputValue(e.target.value)}
 //                     onKeyDown={handleAddRange}
 //                     placeholder="e.g. 1-3 or 5 (Press Enter)"
-//                     className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+//                     className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
 //                   />
 //                   <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">
 //                     Press Enter ↵
@@ -850,7 +850,7 @@ const handleSaveConfig = async () => {
 //                 className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white transition-all ${
 //                   saveSuccess
 //                     ? "bg-green-500"
-//                     : "bg-slate-900 hover:bg-slate-800"
+//                     : "bg-brand hover:bg-brand-dark"
 //                 }`}
 //               >
 //                 {isSaving ? (
@@ -871,7 +871,7 @@ const handleSaveConfig = async () => {
 //       {/* Drawer Overlay */}
 //       {isDrawerOpen && (
 //         <div
-//           className="fixed inset-0 bg-slate-900/20 z-40 lg:hidden"
+//           className="fixed inset-0 bg-brand/20 z-40 lg:hidden"
 //           onClick={closeConfigDrawer}
 //         />
 //       )}

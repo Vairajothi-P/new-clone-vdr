@@ -82,7 +82,7 @@ export default function LoginPage() {
 
         {/* Header */}
         <div className="flex flex-col items-center justify-center gap-3 mb-8 text-center">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-gray-900 to-slate-800 flex items-center justify-center shadow-md shadow-gray-950/10">
+          <div className="w-12 h-12 rounded-xl brand-gradient flex items-center justify-center shadow-md shadow-[var(--brand)]/20">
             <FiShield className="text-white text-2xl" strokeWidth={2.8} />
           </div>
           <div>
@@ -174,7 +174,7 @@ export default function LoginPage() {
                 />
                 <span className="text-gray-600">Remember me</span>
               </label>
-              {/* <Link href="/forgot-password" className="text-blue-600 hover:text-blue-700 font-medium transition">
+              {/* <Link href="/forgot-password" className="text-brand hover:text-brand-dark font-medium transition">
                 Forgot Password?
               </Link> */}
             </div>
@@ -183,7 +183,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 bg-brand hover:bg-brand-dark text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[var(--brand)]/20"
             >
               {isLoading ? (
                 <>
@@ -218,7 +218,7 @@ export default function LoginPage() {
               disabled={isLoading}
               className="w-full py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 transition flex items-center justify-center gap-3 disabled:opacity-50"
             >
-              <FaFacebook className="text-blue-600 text-lg" />
+              <FaFacebook className="text-brand text-lg" />
               <span className="text-gray-700 font-medium text-sm">Sign in with Facebook</span>
             </button>
           </div> */}

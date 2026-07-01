@@ -318,14 +318,14 @@ export default function TokenRegisterPage() {
         return (
             <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
                 <h1 className="text-3xl font-bold text-slate-800">{errorState}</h1>
-                <Link href="/login" className="text-blue-600 hover:underline">Go to Login</Link>
+                <Link href="/login" className="text-brand hover:underline">Go to Login</Link>
             </div>
         );
     }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
-            <div className="absolute top-0 left-0 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
+            <div className="absolute top-0 left-0 w-96 h-96 bg-brand-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
             <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
 
             <div className="relative w-full max-w-md">
@@ -349,13 +349,13 @@ export default function TokenRegisterPage() {
 
                 <div className="flex justify-center mb-6">
                     <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-brand text-white" : "bg-gray-200 text-gray-500"}`}>
                             1
                         </div>
 
                         <div className="w-16 h-1 bg-gray-300 rounded"></div>
 
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-500"}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? "bg-brand text-white" : "bg-gray-200 text-gray-500"}`}>
                             2
                         </div>
                     </div>
@@ -376,7 +376,7 @@ export default function TokenRegisterPage() {
                                         value={formData.name}
                                         onChange={handleChange}
                                         placeholder="Enter your full name"
-                                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
                                         required
                                     />
                                 </div>
@@ -394,7 +394,7 @@ export default function TokenRegisterPage() {
                                         value={formData.email}
                                         onChange={handleChange}
                                         disabled={true}
-                                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-slate-500"
+                                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand disabled:bg-gray-100 disabled:text-slate-500"
                                         required
                                     />
                                 </div>
@@ -412,7 +412,7 @@ export default function TokenRegisterPage() {
                                         value={formData.mobile}
                                         onChange={handleChange}
                                         placeholder="Enter your mobile number"
-                                        className={`w-full pl-12 pr-4 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${mobileError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
+                                        className={`w-full pl-12 pr-4 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand ${mobileError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                                         required
                                     />
                                 </div>
@@ -433,7 +433,7 @@ export default function TokenRegisterPage() {
                                         value={formData.password}
                                         onChange={handleChange}
                                         placeholder="Create password"
-                                        className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
                                         required
                                     />
                                     <button
@@ -458,7 +458,7 @@ export default function TokenRegisterPage() {
                                         value={formData.confirmPassword}
                                         onChange={handleChange}
                                         placeholder="Confirm password"
-                                        className={`w-full pl-12 pr-12 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${passwordError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
+                                        className={`w-full pl-12 pr-12 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand ${passwordError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                                         required
                                     />
                                     <button
@@ -490,7 +490,7 @@ export default function TokenRegisterPage() {
                                     }
                                     handleFinalSubmit();
                                 }}
-                                className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold transition"
+                                className="w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold transition"
                             >
                                 Verify & Create Account
                             </button>
@@ -508,7 +508,7 @@ export default function TokenRegisterPage() {
                             </p>
                             <Link
                                 href="/login"
-                                className="block mt-6 w-full py-3 bg-gray-800 text-white rounded-xl"
+                                className="block mt-6 w-full py-3 bg-brand text-white rounded-xl"
                             >
                                 Go To Login
                             </Link>

@@ -200,7 +200,7 @@ export default function Home() {
       {/* Dashboard Mock */}
       <section className="py-20 px-4 md:px-16 bg-white" data-aos="fade-up" data-aos-offset="100">
         <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center text-gray-800 mb-12">Real-Time Analytics Dashboard</h2>
-        <div className="dashboard-mock max-w-4xl mx-auto bg-gray-800 rounded-2xl p-6 shadow-xl transition-transform duration-300">
+        <div className="dashboard-mock max-w-4xl mx-auto bg-brand rounded-2xl p-6 shadow-xl transition-transform duration-300">
           <div className="flex flex-col sm:flex-row justify-between text-white mb-6 gap-2 text-sm sm:text-base">
             <span><i className="fas fa-chart-simple mr-2"></i> Data Room Insights</span>
             <span className="opacity-80"><i className="fas fa-download mr-2"></i> Export logs</span>
