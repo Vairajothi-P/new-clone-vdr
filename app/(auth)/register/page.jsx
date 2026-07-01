@@ -601,7 +601,7 @@ function RegisterContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
 
@@ -638,7 +638,7 @@ function RegisterContent() {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-2xl p-8">
+        <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8">
           {loadingInvite ? (
             <div className="text-center py-12 text-slate-500 font-semibold animate-pulse">
               Verifying invitation token...
@@ -826,7 +826,7 @@ function RegisterContent() {
                     </p>
                   </div>
 
-                  <div className="flex justify-center gap-3">
+                  <div className="flex justify-center gap-2 sm:gap-3">
                     {otp.map((digit, index) => (
                       <input
                         id={`otp-${index}`}
@@ -835,7 +835,7 @@ function RegisterContent() {
                         value={digit}
                         onChange={(e) => handleOtpChange(e.target.value, index)}
                         onKeyDown={(e) => handleOtpKeyDown(e, index)}
-                        className="w-12 h-12 border border-gray-300 rounded-xl text-center text-xl font-bold text-slate-900"
+                        className="w-10 h-10 sm:w-12 sm:h-12 border border-gray-300 rounded-xl text-center text-lg sm:text-xl font-bold text-slate-900"
                       />
                     ))}
                   </div>

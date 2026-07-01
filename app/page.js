@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import Link from "next/link";
-import { FaFolderOpen } from "react-icons/fa";
+import { FaFolderOpen, FaBars, FaTimes } from "react-icons/fa";
 
 export default function Home() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   useEffect(() => {
     AOS.init({
       duration: 700,
@@ -62,33 +64,54 @@ export default function Home() {
   }, []);
 
   return (
-    <>
+    <main className="overflow-x-hidden relative w-full">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 w-full bg-white/90 backdrop-blur-md shadow-md z-50 py-4 px-8 flex justify-between items-center">
-        <div className="text-2xl font-bold text-gray-800">
+      <nav className="fixed top-0 left-0 w-full bg-white/90 backdrop-blur-md shadow-md z-50 py-4 px-4 md:px-12 flex justify-between items-center">
+        <div className="text-xl md:text-2xl font-bold text-gray-800">
           <i className="fas fa-shield-alt text-[var(--brand)] mr-2"></i> SecureVDR
         </div>
-        <div className="flex gap-4 items-center">
+        
+        {/* Desktop Menu */}
+        <div className="hidden md:flex gap-4 items-center">
           <Link href="/documents" className="px-5 py-2 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full font-semibold shadow-md shadow-[var(--brand)]/25 hover:from-[var(--brand-dark)] hover:to-[var(--brand-secondary)] hover:shadow-lg hover:shadow-[var(--brand)]/35 hover:scale-102 transition-all duration-300 flex items-center gap-2">
             <i className="fas fa-chart-line"></i> Dashboard
           </Link>
           <a href="/login" className="px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300">Login</a>
           <Link href="/register" className="px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300">Register</Link>
         </div>
+
+        {/* Mobile Menu Button */}
+        <button 
+          className="md:hidden text-2xl text-[var(--brand)] focus:outline-none"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
+        </button>
       </nav>
 
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="fixed top-[68px] left-0 w-full bg-white shadow-md z-40 flex flex-col p-6 md:hidden gap-4 border-t border-gray-100 animate-fade-in">
+          <Link href="/documents" className="w-full text-center px-5 py-3 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full font-semibold shadow-md flex justify-center items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
+            <i className="fas fa-chart-line"></i> Dashboard
+          </Link>
+          <a href="/login" className="w-full text-center px-5 py-3 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold" onClick={() => setIsMobileMenuOpen(false)}>Login</a>
+          <Link href="/register" className="w-full text-center px-5 py-3 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold" onClick={() => setIsMobileMenuOpen(false)}>Register</Link>
+        </div>
+      )}
+
       {/* Hero Section */}
-      <section className="min-h-screen flex flex-col md:flex-row items-center justify-between px-8 md:px-16 pt-32 pb-16 bg-gradient-to-br from-[var(--brand)]/10 to-[var(--brand-secondary)]/10">
-        <div className="flex-1 max-w-xl" data-aos="fade-right" data-aos-duration="800">
-          <h1 className="text-5xl md:text-6xl font-extrabold text-gray-800 leading-tight mb-6">Secure Your Business Data with Smart VDR Platform</h1>
-          <p className="text-xl text-gray-600 mb-8">IPO, Due Diligence, Legal Docs — All in One Place. Enterprise-grade security meets intelligent collaboration.</p>
-          <div className="flex gap-4">
-            <Link href="/documents" className="px-8 py-3 bg-[var(--brand)] text-white rounded-full font-semibold shadow-lg hover:bg-[var(--brand-dark)] hover:shadow-xl hover:scale-102 transition-all duration-300 flex items-center gap-2">Get Started <i className="fas fa-arrow-right"></i></Link>
-            <button className="px-8 py-3 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300 flex items-center gap-2">Request Demo <i className="fas fa-play"></i></button>
+      <section className="min-h-screen flex flex-col md:flex-row items-center justify-between px-4 md:px-16 pt-32 pb-16 bg-gradient-to-br from-[var(--brand)]/10 to-[var(--brand-secondary)]/10">
+        <div className="flex-1 max-w-xl text-center md:text-left" data-aos="fade-right" data-aos-duration="800">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-800 leading-tight mb-6">Secure Your Business Data with Smart VDR Platform</h1>
+          <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-8">IPO, Due Diligence, Legal Docs — All in One Place. Enterprise-grade security meets intelligent collaboration.</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+            <Link href="/documents" className="w-full sm:w-auto px-8 py-3 bg-[var(--brand)] text-white rounded-full font-semibold shadow-lg hover:bg-[var(--brand-dark)] hover:shadow-xl hover:scale-102 transition-all duration-300 flex items-center justify-center gap-2">Get Started <i className="fas fa-arrow-right"></i></Link>
+            <button className="w-full sm:w-auto px-8 py-3 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300 flex items-center justify-center gap-2">Request Demo <i className="fas fa-play"></i></button>
           </div>
         </div>
-        <div className="flex-1 flex justify-center mt-12 md:mt-0" data-aos="fade-left" data-aos-duration="800">
-          <div className="relative w-80 h-80">
+        <div className="flex-1 flex justify-center mt-16 md:mt-0 w-full" data-aos="fade-left" data-aos-duration="800">
+          <div className="relative w-72 h-72 md:w-80 md:h-80 scale-90 md:scale-100">
             <div className="absolute top-0 left-0 bg-white p-5 rounded-2xl shadow-xl flex flex-col items-center gap-2 animate-float">
               <FaFolderOpen className="text-4xl text-[var(--brand)]" />
               <p className="font-semibold text-gray-700">Due Diligence</p>
@@ -106,8 +129,8 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-8 md:px-16 bg-white" data-aos="fade-up">
-        <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-12">Powerful Features for Modern Data Rooms</h2>
+      <section className="py-20 px-4 md:px-16 bg-white" data-aos="fade-up">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center text-gray-800 mb-12">Powerful Features for Modern Data Rooms</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
           <div className="bg-gray-50 p-6 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 text-center" data-aos="zoom-in" data-aos-delay="50">
             <i className="fas fa-fingerprint text-5xl text-brand mb-4"></i>
@@ -143,8 +166,8 @@ export default function Home() {
       </section>
 
       {/* How It Works */}
-      <section className="py-20 px-8 md:px-16 bg-gray-50">
-        <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-12">How It Works — Simple 5 Steps</h2>
+      <section className="py-20 px-4 md:px-16 bg-gray-50">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center text-gray-800 mb-12">How It Works — Simple 5 Steps</h2>
         <div className="flex flex-wrap justify-center gap-8 max-w-5xl mx-auto">
           <div className="bg-white p-6 rounded-xl shadow-md w-48 text-center" data-aos="flip-up" data-aos-delay="0">
             <div className="w-12 h-12 bg-[var(--brand)] text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">1</div>
@@ -175,12 +198,12 @@ export default function Home() {
       </section>
 
       {/* Dashboard Mock */}
-      <section className="py-20 px-8 md:px-16 bg-white" data-aos="fade-up" data-aos-offset="100">
-        <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-12">Real-Time Analytics Dashboard</h2>
+      <section className="py-20 px-4 md:px-16 bg-white" data-aos="fade-up" data-aos-offset="100">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center text-gray-800 mb-12">Real-Time Analytics Dashboard</h2>
         <div className="dashboard-mock max-w-4xl mx-auto bg-gray-800 rounded-2xl p-6 shadow-xl transition-transform duration-300">
-          <div className="flex justify-between text-white mb-6">
+          <div className="flex flex-col sm:flex-row justify-between text-white mb-6 gap-2 text-sm sm:text-base">
             <span><i className="fas fa-chart-simple mr-2"></i> Data Room Insights</span>
-            <span><i className="fas fa-download mr-2"></i> Export logs</span>
+            <span className="opacity-80"><i className="fas fa-download mr-2"></i> Export logs</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-gray-700 p-4 rounded-xl text-white" data-aos="fade-right" data-aos-delay="80">
@@ -204,8 +227,8 @@ export default function Home() {
       </section>
 
       {/* Roles Cards */}
-      <section className="py-20 px-8 md:px-16 bg-gray-50">
-        <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-12">Granular Roles & Access Control</h2>
+      <section className="py-20 px-4 md:px-16 bg-gray-50">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center text-gray-800 mb-12">Granular Roles & Access Control</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-center" data-aos="flip-left" data-aos-delay="0">
             <i className="fas fa-building text-5xl text-[var(--brand)] mb-4"></i>
@@ -231,8 +254,8 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 px-8 md:px-16 bg-white">
-        <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-12">What Our Clients Say</h2>
+      <section className="py-20 px-4 md:px-16 bg-white">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center text-gray-800 mb-12">What Our Clients Say</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           <div className="bg-gray-50 p-6 rounded-xl shadow-md" data-aos="fade-right" data-aos-duration="600">
             <div className="flex gap-1 text-yellow-400 mb-4">
@@ -260,8 +283,8 @@ export default function Home() {
       </section>
 
       {/* Security Stack */}
-      <section className="py-20 px-8 md:px-16 bg-gray-50">
-        <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-12">Military‑Grade Security Stack</h2>
+      <section className="py-20 px-4 md:px-16 bg-gray-50">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center text-gray-800 mb-12">Military‑Grade Security Stack</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-center" data-aos="zoom-in-right">
             <i className="fas fa-fingerprint text-5xl text-brand mb-4"></i>
@@ -287,8 +310,8 @@ export default function Home() {
       </section>
 
       {/* Badges */}
-      <section className="py-20 px-8 md:px-16 bg-white">
-        <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-12">Trusted & Compliant Worldwide</h2>
+      <section className="py-20 px-4 md:px-16 bg-white">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center text-gray-800 mb-12">Trusted & Compliant Worldwide</h2>
         <div className="flex flex-wrap justify-center gap-6 max-w-4xl mx-auto" data-aos="fade-up">
           <div className="bg-gray-100 px-6 py-3 rounded-full flex items-center gap-2 font-semibold text-gray-700 shadow-sm" data-aos="flip-down" data-aos-delay="0">
             <i className="fas fa-shield-alt"></i> SOC 2 Type II
@@ -306,8 +329,8 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section className="py-20 px-8 md:px-16 bg-gray-50">
-        <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 mb-12">Flexible Plans for Every Business</h2>
+      <section className="py-20 px-4 md:px-16 bg-gray-50">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center text-gray-800 mb-12">Flexible Plans for Every Business</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           <div className="bg-white p-6 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 text-center" data-aos="fade-up" data-aos-delay="0">
             <h3 className="text-2xl font-bold text-gray-800">Basic</h3>
@@ -347,7 +370,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12 px-8 md:px-16">
+      <footer className="bg-gray-900 text-gray-400 py-12 px-4 md:px-16">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
             <div>
@@ -406,11 +429,18 @@ export default function Home() {
         .animate-float-delayed {
           animation: float-delayed 4.5s ease-in-out infinite;
         }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-out forwards;
+        }
         #scrollTopBtn.show {
           opacity: 1 !important;
           visibility: visible !important;
         }
       `}</style>
-    </>
+    </main>
   );
 }
