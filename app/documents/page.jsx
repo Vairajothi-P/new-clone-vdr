@@ -294,6 +294,16 @@ function UnifiedWorkspace() {
         } catch (err) { console.error('Bookmark toggle failed', err); }
     };
 
+    // ── Q&A REDIRECT HANDLER ───────────────────────────────────────────────
+    const handleGoToQA = (item, e) => {
+        e.stopPropagation();
+        if (item.type === 'folder') {
+            router.push(`/qa?folderId=${item.id}`);
+        } else {
+            router.push(`/qa?fileId=${item.id}`);
+        }
+    };
+
     const handleItemClick = (item) => {
         if (item.type === 'folder') {
             setCurrentFolderId(item.id); setSelectedIds(new Set()); setSearchQuery('');
@@ -811,6 +821,9 @@ function UnifiedWorkspace() {
                                     {currentView !== 'trash' && (
                                         <th className="py-4 px-2 w-8 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Star</th>
                                     )}
+                                    {currentView !== 'trash' && (
+                                        <th className="py-4 px-3 w-16 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Q&amp;A</th>
+                                    )}
                                     {currentView === 'trash' ? (
                                         <>
                                             <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deleted By</th>
@@ -856,6 +869,13 @@ function UnifiedWorkspace() {
                                                 <td className="py-4 px-2 text-center" onClick={e => handleToggleBookmark(item, e)}>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={bookmarkedIds.has(item.id) ? "#fbbf24" : "none"} stroke={bookmarkedIds.has(item.id) ? "#fbbf24" : "#cbd5e1"} strokeWidth="2.5" className="cursor-pointer transition-colors hover:stroke-amber-400 mx-auto">
                                                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                    </svg>
+                                                </td>
+                                            )}
+                                            {currentView !== 'trash' && (
+                                                <td className="py-4 px-3 text-center" onClick={e => handleGoToQA(item, e)}>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto cursor-pointer hover:stroke-[var(--brand)] transition-colors">
+                                                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
                                                     </svg>
                                                 </td>
                                             )}

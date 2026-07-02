@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FaFileAlt, FaUpload } from "react-icons/fa";
+import { FaFileAlt, FaUpload, FaShieldAlt } from "react-icons/fa";
 
 export default function RedactionSidebar() {
   const pathname = usePathname();
@@ -17,6 +17,11 @@ export default function RedactionSidebar() {
       name: "Upload",
       href: "/redaction/upload",
       icon: <FaUpload className="w-5 h-5" />,
+    },
+    {
+      name: "Redacted Files",
+      href: "/redaction/redacted",
+      icon: <FaShieldAlt className="w-5 h-5" />,
     }
   ];
 
