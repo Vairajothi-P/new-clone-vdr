@@ -116,12 +116,7 @@ input[type="radio"] {
 .to-blue-50 { --tw-gradient-to: var(--brand-50) !important; }
 .to-blue-700 { --tw-gradient-to: var(--brand-dark) !important; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* Dark mode removed to ensure consistent UI theme */
 
 body {
   background: var(--background);

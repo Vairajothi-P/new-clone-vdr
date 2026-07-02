@@ -109,12 +109,12 @@ function QAPageContent() {
         const currentUser = session.name || session.email || "User";
         const askedByStr = firstMsg?.sender || "Unknown";
         const isMyQuestion = (askedByStr === currentUser);
-        const isAssignedToMe = assigneeStr !== "N/A" ? (assigneeStr === currentUser) : true;
+        const isAssignedToMe = assigneeStr === "N/A" || assigneeStr === currentUser;
         
         let actionStr = "Answer / Assign";
         if (t.status === "Answered") actionStr = "View";
         else if (isMyQuestion) actionStr = "View (Awaiting Answer)";
-        else if (!isAssignedToMe) actionStr = "View (Assigned)";
+        else if (!isAssignedToMe) actionStr = "View";
 
         return {
           id: t.id,
@@ -257,6 +257,40 @@ function QAPageContent() {
     }
   };
 
+  const handleExport = () => {
+    if (qaData.length === 0) {
+      alert("No data to export.");
+      return;
+    }
+    
+    const headers = ["ID", "Question", "File Name", "Asked By", "Assignee", "Answered By", "Asked On", "Status"];
+    const csvRows = [headers.join(",")];
+    
+    qaData.forEach(item => {
+      const row = [
+        item.displayId,
+        `"${(item.question || "").replace(/"/g, '""')}"`,
+        `"${(item.fileName || "").replace(/"/g, '""')}"`,
+        `"${(item.askedBy || "").replace(/"/g, '""')}"`,
+        `"${(item.assignee || "").replace(/"/g, '""')}"`,
+        `"${(item.answeredBy || "").replace(/"/g, '""')}"`,
+        `"${(item.askedOn || "").replace(/"/g, '""')}"`,
+        `"${(item.status || "").replace(/"/g, '""')}"`
+      ];
+      csvRows.push(row.join(","));
+    });
+    
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `qa_data_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="flex w-full h-full bg-[#F8F9FB] font-sans">
       
@@ -392,7 +426,10 @@ function QAPageContent() {
                 ASK QUERY
               </button>
             )}
-            <button className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-[var(--brand)] bg-white border border-[var(--brand)]/30 rounded-xl shadow-sm hover:bg-[var(--brand)]/5 hover:scale-[1.02] transition-all">
+            <button 
+              onClick={handleExport}
+              className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-[var(--brand)] bg-white border border-[var(--brand)]/30 rounded-xl shadow-sm hover:bg-[var(--brand)]/5 hover:scale-[1.02] transition-all"
+            >
               EXPORT DATA <FaDownload className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -540,7 +577,7 @@ function QAPageContent() {
                 onChange={(e) => setSelectedAssignee(e.target.value)}
                 className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] bg-white"
               >
-                <option value="">Select Assignee</option>
+                <option value="">Without Assignee (Anyone can answer)</option>
                 {admins.map(admin => (
                   <option key={admin.id} value={admin.name}>{admin.name} ({admin.role})</option>
                 ))}
@@ -606,17 +643,26 @@ function QAPageContent() {
             </div>
             
             <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-4 bg-[#F8F9FB]">
-              {selectedThread.messages?.map((msg, i) => (
-                <div key={msg.id || i} className={`flex flex-col max-w-[85%] ${msg.is_user ? 'self-end items-end' : 'self-start items-start'}`}>
-                  <div className="flex items-center gap-2 mb-1 px-1">
-                    <span className="text-[11px] font-bold text-slate-500">{msg.sender}</span>
-                    <span className="text-[10px] text-slate-400">{new Date(msg.created_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                  </div>
-                  <div className={`px-4 py-3 rounded-2xl text-sm ${msg.is_user ? 'bg-[var(--brand)] text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm shadow-sm'}`}>
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
+              {(() => {
+                const sessionStr = localStorage.getItem('vdr_session');
+                const session = sessionStr ? JSON.parse(sessionStr) : {};
+                const currentUser = session.name || session.email || "User";
+                
+                return selectedThread.messages?.map((msg, i) => {
+                  const isMine = msg.sender === currentUser;
+                  return (
+                    <div key={msg.id || i} className={`flex flex-col max-w-[85%] ${isMine ? 'self-end items-end' : 'self-start items-start'}`}>
+                      <div className={`flex items-center gap-2 mb-1 px-1 ${isMine ? 'flex-row-reverse' : ''}`}>
+                        <span className="text-[11px] font-bold text-slate-500">{isMine ? 'You' : msg.sender}</span>
+                        <span className="text-[10px] text-slate-400">{new Date(msg.created_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                      </div>
+                      <div className={`px-4 py-3 rounded-2xl text-sm ${isMine ? 'bg-[var(--brand)] text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm'}`}>
+                        {msg.text}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
               {(!selectedThread.messages || selectedThread.messages.length === 0) && (
                 <div className="text-center text-slate-500 text-sm py-4">No messages yet.</div>
               )}
@@ -629,12 +675,12 @@ function QAPageContent() {
                   const session = sessionStr ? JSON.parse(sessionStr) : {};
                   const senderName = session.name || session.email || "User";
                   const isMyQuestion = selectedThread.askedBy === senderName;
-                  const isAssignedToMe = selectedThread.assignee !== "N/A" ? selectedThread.assignee === senderName : true;
+                  const isAssignedToMe = selectedThread.assignee === "N/A" || selectedThread.assignee === senderName;
 
                   if (isMyQuestion) {
                     return (
                       <div className="text-center text-sm text-amber-600 font-medium py-3 flex flex-col items-center">
-                        You cannot answer your own question.
+                        You cannot reply to your own question. You can only view the conversation.
                         <div className="mt-3 w-full flex justify-end">
                           <button 
                             onClick={() => setSelectedThread(null)}
@@ -650,7 +696,7 @@ function QAPageContent() {
                   if (!isAssignedToMe) {
                     return (
                       <div className="text-center text-sm text-slate-500 font-medium py-3 flex flex-col items-center">
-                        This question is assigned to {selectedThread.assignee}.
+                        This question is assigned to {selectedThread.assignee}. You can only view.
                         <div className="mt-3 w-full flex justify-end">
                           <button 
                             onClick={() => setSelectedThread(null)}
