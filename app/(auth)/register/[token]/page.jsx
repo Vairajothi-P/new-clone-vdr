@@ -247,6 +247,7 @@ export default function TokenRegisterPage() {
     //     }
     // };
 
+
     const handleFinalSubmit = async () => {
         if (formData.password !== formData.confirmPassword) {
             alert("Passwords do not match.");
@@ -254,18 +255,15 @@ export default function TokenRegisterPage() {
         }
 
         try {
-            // Set role based on group name (if it matches enum, use it; else external_user)
-            // const VALID_ROLES = ["admin", "sub_admin", "super_admin", "external_user"];
-            // const groupName = invitationDetails?.groups?.name || "";
-            // const normalizedName = groupName.trim().toLowerCase().replace(/\s+/g, "_");
-            // const targetRole = VALID_ROLES.includes(normalizedName) ? normalizedName : "external_user";
             const targetRole = invitationDetails?.groups?.role || "external_user";
-
             const targetCompany =
                 invitationDetails?.groups?.company_id ||
                 "11111111-1111-1111-1111-111111111111";
 
-            // 1. Insert user
+            // 🔥 1. Check if NDA is required from the invite
+            const assignedNdaStatus = invitationDetails.requires_nda ? "pending" : "not_required";
+
+            // 2. Insert user with nda_status
             const { data: newUser, error: userError } = await supabase
                 .from("users")
                 .insert({
@@ -276,13 +274,14 @@ export default function TokenRegisterPage() {
                     role: targetRole,
                     company_id: targetCompany,
                     status: "active",
+                    nda_status: assignedNdaStatus, // <-- Added NDA Status here!
                 })
                 .select("id")
                 .single();
 
             if (userError) throw new Error(userError.message);
 
-            // 2. ALWAYS insert into user_groups (ALL group types)
+            // 3. ALWAYS insert into user_groups (ALL group types)
             const { error: ugError } = await supabase
                 .from("user_groups")
                 .upsert(
@@ -291,19 +290,92 @@ export default function TokenRegisterPage() {
                 );
             if (ugError) throw new Error(ugError.message);
 
-            // 3. Mark invitation accepted
+            // 4. Mark invitation accepted
             await supabase
                 .from("invitations")
                 .update({ status: "accepted" })
                 .eq("id", invitationDetails.id);
 
-            setStep(2);
+            // 🔥 5. THE FORK IN THE ROAD 🔥
+            if (invitationDetails.requires_nda) {
+                // If NDA is ON: Create a temporary session and route to NDA Page
+                localStorage.setItem('vdr_session', JSON.stringify({
+                    id: newUser.id,
+                    company_id: targetCompany,
+                    name: formData.name,
+                    email: invitationDetails.email,
+                    role: targetRole,
+                    nda_status: assignedNdaStatus
+                }));
+                router.push("/sign-nda?from=register");
+            } else {
+                // If NDA is OFF: Show the "Registration Successful" Step 2 UI
+                setStep(2);
+            }
 
         } catch (err) {
             console.error("Registration Error:", err);
             alert("Failed to complete registration: " + err.message);
         }
     };
+
+    // const handleFinalSubmit = async () => {
+    //     if (formData.password !== formData.confirmPassword) {
+    //         alert("Passwords do not match.");
+    //         return;
+    //     }
+
+    //     try {
+    //         // Set role based on group name (if it matches enum, use it; else external_user)
+    //         // const VALID_ROLES = ["admin", "sub_admin", "super_admin", "external_user"];
+    //         // const groupName = invitationDetails?.groups?.name || "";
+    //         // const normalizedName = groupName.trim().toLowerCase().replace(/\s+/g, "_");
+    //         // const targetRole = VALID_ROLES.includes(normalizedName) ? normalizedName : "external_user";
+    //         const targetRole = invitationDetails?.groups?.role || "external_user";
+
+    //         const targetCompany =
+    //             invitationDetails?.groups?.company_id ||
+    //             "11111111-1111-1111-1111-111111111111";
+
+    //         // 1. Insert user
+    //         const { data: newUser, error: userError } = await supabase
+    //             .from("users")
+    //             .insert({
+    //                 name: formData.name,
+    //                 email: invitationDetails.email,
+    //                 phone_number: formData.mobile,
+    //                 password_hash: formData.password,
+    //                 role: targetRole,
+    //                 company_id: targetCompany,
+    //                 status: "active",
+    //             })
+    //             .select("id")
+    //             .single();
+
+    //         if (userError) throw new Error(userError.message);
+
+    //         // 2. ALWAYS insert into user_groups (ALL group types)
+    //         const { error: ugError } = await supabase
+    //             .from("user_groups")
+    //             .upsert(
+    //                 { user_id: newUser.id, group_id: invitationDetails.group_id },
+    //                 { onConflict: "user_id,group_id" }
+    //             );
+    //         if (ugError) throw new Error(ugError.message);
+
+    //         // 3. Mark invitation accepted
+    //         await supabase
+    //             .from("invitations")
+    //             .update({ status: "accepted" })
+    //             .eq("id", invitationDetails.id);
+
+    //         setStep(2);
+
+    //     } catch (err) {
+    //         console.error("Registration Error:", err);
+    //         alert("Failed to complete registration: " + err.message);
+    //     }
+    // };
 
 
     if (loadingInvite) {

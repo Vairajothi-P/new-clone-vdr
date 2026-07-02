@@ -23,6 +23,72 @@ export default function NdaSettingsPage() {
   // -------------------------------------------------------------
   // DB FETCH: Get Company Users & Pending Invites
   // -------------------------------------------------------------
+  // const fetchUsersAndInvites = useCallback(async () => {
+  //   setLoadingUsers(true);
+  //   try {
+  //     const rawSession = localStorage.getItem("vdr_session");
+  //     if (!rawSession) return;
+  //     const session = JSON.parse(rawSession);
+  //     const compId = session.company_id;
+
+  //     // 1. Fetch Registered Users in the company
+  //     const { data: usersData } = await supabase
+  //       .from('users')
+  //       .select('id, name, email, created_at, nda_status, nda_accepted_at')
+  //       .eq('company_id', compId);
+
+  //     // 2. Fetch pending invites (by finding groups this company owns)
+  //     const { data: groups } = await supabase.from('groups').select('id').eq('company_id', compId);
+  //     const groupIds = groups ? groups.map(g => g.id) : [];
+
+  //     let invitesData = [];
+  //     if (groupIds.length > 0) {
+  //       const { data: invites } = await supabase
+  //         .from('invitations')
+  //         .select('*')
+  //         .in('group_id', groupIds)
+  //         .eq('status', 'pending');
+  //       invitesData = invites || [];
+  //     }
+
+  //     // 3. Merge them into a clean array for the table
+  //     let combined = [];
+
+  //     if (usersData) {
+  //       combined = [...combined, ...usersData.map(u => ({
+  //         id: u.id,
+  //         name: u.name || u.email,
+  //         datetime: u.nda_accepted_at ? new Date(u.nda_accepted_at).toLocaleString() : 'N/A',
+  //         ndaAttached: (u.nda_status === 'accepted' || u.nda_status === 'pending') ? 'Yes' : 'No',
+  //         status: u.nda_status === 'accepted' ? 'Accepted' : (u.nda_status === 'pending' ? 'Pending' : 'Not Required'),
+  //         isRealUser: true,
+  //         rawStatus: u.nda_status || 'not_required'
+  //       }))];
+  //     }
+
+  //     if (invitesData) {
+  //       combined = [...combined, ...invitesData.map(i => ({
+  //         id: i.id,
+  //         name: i.email + " (Invite)",
+  //         datetime: new Date(i.created_at).toLocaleString(),
+  //         ndaAttached: i.requires_nda ? 'Yes' : 'No',
+  //         status: 'Pending Invite',
+  //         isRealUser: false,
+  //         rawStatus: 'invite'
+  //       }))];
+  //     }
+
+  //     setNdaUsersList(combined);
+  //   } catch (error) {
+  //     console.error("Error fetching users:", error);
+  //   } finally {
+  //     setLoadingUsers(false);
+  //   }
+  // }, []);
+
+  // -------------------------------------------------------------
+  // DB FETCH: Get ONLY Real Company Users (No Pending Invites)
+  // -------------------------------------------------------------
   const fetchUsersAndInvites = useCallback(async () => {
     setLoadingUsers(true);
     try {
@@ -31,54 +97,28 @@ export default function NdaSettingsPage() {
       const session = JSON.parse(rawSession);
       const compId = session.company_id;
 
-      // 1. Fetch Registered Users in the company
-      const { data: usersData } = await supabase
+      // 1. Fetch ONLY Registered Users in the company
+      const { data: usersData, error } = await supabase
         .from('users')
         .select('id, name, email, created_at, nda_status, nda_accepted_at')
         .eq('company_id', compId);
 
-      // 2. Fetch pending invites (by finding groups this company owns)
-      const { data: groups } = await supabase.from('groups').select('id').eq('company_id', compId);
-      const groupIds = groups ? groups.map(g => g.id) : [];
+      if (error) throw error;
 
-      let invitesData = [];
-      if (groupIds.length > 0) {
-        const { data: invites } = await supabase
-          .from('invitations')
-          .select('*')
-          .in('group_id', groupIds)
-          .eq('status', 'pending');
-        invitesData = invites || [];
-      }
+      // 2. Map them cleanly for the table
+      const mappedUsers = (usersData || []).map(u => ({
+        id: u.id,
+        name: u.name || u.email, // Uses their real name
+        datetime: u.nda_accepted_at ? new Date(u.nda_accepted_at).toLocaleString() : 'N/A',
+        ndaAttached: (u.nda_status === 'accepted' || u.nda_status === 'pending') ? 'Yes' : 'No',
+        status: u.nda_status === 'accepted' ? 'Accepted' : (u.nda_status === 'pending' ? 'Pending' : 'Not Required'),
+        isRealUser: true,
+        rawStatus: u.nda_status || 'not_required'
+      }));
 
-      // 3. Merge them into a clean array for the table
-      let combined = [];
+      // 3. Update the state with ONLY the real users
+      setNdaUsersList(mappedUsers);
 
-      if (usersData) {
-        combined = [...combined, ...usersData.map(u => ({
-          id: u.id,
-          name: u.name || u.email,
-          datetime: u.nda_accepted_at ? new Date(u.nda_accepted_at).toLocaleString() : 'N/A',
-          ndaAttached: (u.nda_status === 'accepted' || u.nda_status === 'pending') ? 'Yes' : 'No',
-          status: u.nda_status === 'accepted' ? 'Accepted' : (u.nda_status === 'pending' ? 'Pending' : 'Not Required'),
-          isRealUser: true,
-          rawStatus: u.nda_status || 'not_required'
-        }))];
-      }
-
-      if (invitesData) {
-        combined = [...combined, ...invitesData.map(i => ({
-          id: i.id,
-          name: i.email + " (Invite)",
-          datetime: new Date(i.created_at).toLocaleString(),
-          ndaAttached: i.requires_nda ? 'Yes' : 'No',
-          status: 'Pending Invite',
-          isRealUser: false,
-          rawStatus: 'invite'
-        }))];
-      }
-
-      setNdaUsersList(combined);
     } catch (error) {
       console.error("Error fetching users:", error);
     } finally {
@@ -119,6 +159,24 @@ export default function NdaSettingsPage() {
   // -------------------------------------------------------------
   // FILE UPLOAD & EDITOR LOGIC
   // -------------------------------------------------------------
+  // const handleFileUpload = (e) => {
+  //   if (e.target.files && e.target.files.length > 0) {
+  //     const file = e.target.files[0];
+  //     setUploadedFile(file);
+
+  //     if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+  //       const reader = new FileReader();
+  //       reader.onload = (event) => {
+  //         setNdaText(event.target.result.replace(/\n/g, '<br>'));
+  //       };
+  //       reader.readAsText(file);
+  //     } else {
+  //       alert("Please upload a valid text (.txt) file.");
+  //       setUploadedFile(null);
+  //     }
+  //   }
+  // };
+
   const handleFileUpload = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
@@ -128,6 +186,7 @@ export default function NdaSettingsPage() {
         const reader = new FileReader();
         reader.onload = (event) => {
           setNdaText(event.target.result.replace(/\n/g, '<br>'));
+          setShowEditor(true); // <-- This instantly opens the editor!
         };
         reader.readAsText(file);
       } else {
@@ -242,7 +301,7 @@ export default function NdaSettingsPage() {
 
       {activeTab === 'settings' && (
         <div className="animate-in fade-in duration-300">
-          <div className="mb-10">
+          {/* <div className="mb-10">
             <h3 className="text-[15px] font-bold text-gray-900 mb-3">Upload NDA Document</h3>
             <p className="text-[13px] text-gray-500 mb-4">Upload a text file (.txt) containing the NDA content.</p>
 
@@ -275,6 +334,28 @@ export default function NdaSettingsPage() {
                 </div>
               </div>
             )}
+          </div> */}
+          <div className="mb-10">
+            <h3 className="text-[15px] font-bold text-gray-900 mb-3">NDA Document Content</h3>
+            <p className="text-[13px] text-gray-500 mb-4">Upload a new text file (.txt) OR edit the currently active NDA.</p>
+
+            <div className="flex items-center gap-4">
+              {/* Button 1: Upload New File */}
+              <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--brand)] text-white text-sm font-semibold rounded-lg shadow-md shadow-[var(--brand)]/20 hover:bg-[var(--brand)]/90 transition-all cursor-pointer">
+                <UploadCloud size={18} />
+                <span>Upload New File</span>
+                <input type="file" className="hidden" accept=".txt,text/plain" onChange={handleFileUpload} />
+              </label>
+
+              {/* Button 2: Edit Existing DB Text */}
+              <button
+                onClick={() => setShowEditor(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-50 transition-all shadow-sm"
+              >
+                <Pencil size={16} className="text-blue-500" />
+                <span>Edit Current NDA</span>
+              </button>
+            </div>
           </div>
 
           <div className="mb-8">
@@ -368,8 +449,8 @@ export default function NdaSettingsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-bold ${u.status === 'Accepted' ? 'bg-green-100 text-green-700' :
-                            u.status === 'Pending' || u.status === 'Pending Invite' ? 'bg-orange-100 text-orange-700' :
-                              'bg-gray-100 text-gray-600'
+                          u.status === 'Pending' || u.status === 'Pending Invite' ? 'bg-orange-100 text-orange-700' :
+                            'bg-gray-100 text-gray-600'
                           }`}>
                           {u.status === 'Accepted' && <Check size={12} strokeWidth={3} />}
                           {u.status}
@@ -385,16 +466,19 @@ export default function NdaSettingsPage() {
                           <Download size={16} />
                         </button>
 
-                        {/* Force Old User to Sign NDA */}
-                        {u.isRealUser && u.rawStatus === 'not_required' && (
+
+
+                        {/* Force User to Sign NDA */}
+                        {u.isRealUser && u.rawStatus !== 'pending' && (
                           <button
                             onClick={() => handleRequireNdaForUser(u.id)}
                             className="inline-flex items-center gap-1 px-3 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-xs font-bold transition-all shadow-sm"
-                            title="Force this user to sign the NDA on next login"
+                            title={u.rawStatus === 'accepted' ? "Force user to sign updated agreement" : "Force old user to sign NDA on next login"}
                           >
                             <ShieldAlert size={14} /> Require NDA
                           </button>
                         )}
+
                       </td>
                     </tr>
                   ))}
