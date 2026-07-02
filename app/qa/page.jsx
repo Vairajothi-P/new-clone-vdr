@@ -18,6 +18,7 @@ function QAPageContent() {
   const [sidebarItems, setSidebarItems] = useState([]);
   const [expandedFolders, setExpandedFolders] = useState({});
   const [loading, setLoading] = useState(true);
+  const [sidebarSearch, setSidebarSearch] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [questionText, setQuestionText] = useState("");
@@ -269,6 +270,8 @@ function QAPageContent() {
             <input 
               type="text" 
               placeholder="Search..." 
+              value={sidebarSearch}
+              onChange={e => setSidebarSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10 transition-all placeholder:text-slate-400"
             />
           </div>
@@ -293,9 +296,22 @@ function QAPageContent() {
             <span className="truncate flex-1 text-left">All Documents</span>
           </button>
 
-          {sidebarItems
-            .filter((item) => !item.parentId)
-            .map((item) => {
+          {(() => {
+            const searchTerm = sidebarSearch.trim().toLowerCase();
+
+            // Helper: check if a node or any of its descendants match
+            const doesNodeMatch = (node) => {
+              if (node.name.toLowerCase().includes(searchTerm)) return true;
+              const children = sidebarItems.filter(c => c.parentId === node.id);
+              return children.some(c => doesNodeMatch(c));
+            };
+
+            // Get root items, filtered if search is active
+            const rootItems = sidebarItems
+              .filter(item => !item.parentId)
+              .filter(item => !searchTerm || doesNodeMatch(item));
+
+            return rootItems.map((item) => {
               const renderSidebarItem = (node, depth = 0) => {
                 const isFolder = node.type === 'folder';
                 const isExpanded = !!expandedFolders[node.id];
@@ -334,10 +350,11 @@ function QAPageContent() {
                     </button>
 
                     {/* Render children if expanded */}
-                    {isFolder && isExpanded && hasChildren && (
+                    {isFolder && (isExpanded || searchTerm) && hasChildren && (
                       <div className="flex flex-col gap-0.5 mt-0.5 relative before:absolute before:left-[1.35rem] before:top-0 before:bottom-0 before:w-[1px] before:bg-slate-200/60">
                         {sidebarItems
                           .filter((child) => child.parentId === node.id)
+                          .filter((child) => !searchTerm || doesNodeMatch(child))
                           .map((child) => renderSidebarItem(child, depth + 1))}
                       </div>
                     )}
@@ -346,7 +363,8 @@ function QAPageContent() {
               };
 
               return renderSidebarItem(item);
-            })}
+            });
+          })()}
         </div>
       </div>
 
