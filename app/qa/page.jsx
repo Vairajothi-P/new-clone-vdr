@@ -109,12 +109,12 @@ function QAPageContent() {
         const currentUser = session.name || session.email || "User";
         const askedByStr = firstMsg?.sender || "Unknown";
         const isMyQuestion = (askedByStr === currentUser);
-        const isAssignedToMe = assigneeStr !== "N/A" ? (assigneeStr === currentUser) : true;
+        const isAssignedToMe = assigneeStr !== "N/A" && (assigneeStr === currentUser);
         
         let actionStr = "Answer / Assign";
         if (t.status === "Answered") actionStr = "View";
         else if (isMyQuestion) actionStr = "View (Awaiting Answer)";
-        else if (!isAssignedToMe) actionStr = "View (Assigned)";
+        else if (!isAssignedToMe) actionStr = "View";
 
         return {
           id: t.id,
@@ -257,6 +257,40 @@ function QAPageContent() {
     }
   };
 
+  const handleExport = () => {
+    if (qaData.length === 0) {
+      alert("No data to export.");
+      return;
+    }
+    
+    const headers = ["ID", "Question", "File Name", "Asked By", "Assignee", "Answered By", "Asked On", "Status"];
+    const csvRows = [headers.join(",")];
+    
+    qaData.forEach(item => {
+      const row = [
+        item.displayId,
+        `"${(item.question || "").replace(/"/g, '""')}"`,
+        `"${(item.fileName || "").replace(/"/g, '""')}"`,
+        `"${(item.askedBy || "").replace(/"/g, '""')}"`,
+        `"${(item.assignee || "").replace(/"/g, '""')}"`,
+        `"${(item.answeredBy || "").replace(/"/g, '""')}"`,
+        `"${(item.askedOn || "").replace(/"/g, '""')}"`,
+        `"${(item.status || "").replace(/"/g, '""')}"`
+      ];
+      csvRows.push(row.join(","));
+    });
+    
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `qa_data_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="flex w-full h-full bg-[#F8F9FB] font-sans">
       
@@ -392,7 +426,10 @@ function QAPageContent() {
                 ASK QUERY
               </button>
             )}
-            <button className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-[var(--brand)] bg-white border border-[var(--brand)]/30 rounded-xl shadow-sm hover:bg-[var(--brand)]/5 hover:scale-[1.02] transition-all">
+            <button 
+              onClick={handleExport}
+              className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-[var(--brand)] bg-white border border-[var(--brand)]/30 rounded-xl shadow-sm hover:bg-[var(--brand)]/5 hover:scale-[1.02] transition-all"
+            >
               EXPORT DATA <FaDownload className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -629,12 +666,12 @@ function QAPageContent() {
                   const session = sessionStr ? JSON.parse(sessionStr) : {};
                   const senderName = session.name || session.email || "User";
                   const isMyQuestion = selectedThread.askedBy === senderName;
-                  const isAssignedToMe = selectedThread.assignee !== "N/A" ? selectedThread.assignee === senderName : true;
+                  const isAssignedToMe = selectedThread.assignee !== "N/A" && selectedThread.assignee === senderName;
 
                   if (isMyQuestion) {
                     return (
                       <div className="text-center text-sm text-amber-600 font-medium py-3 flex flex-col items-center">
-                        You cannot answer your own question.
+                        You cannot reply to your own question. You can only view the conversation.
                         <div className="mt-3 w-full flex justify-end">
                           <button 
                             onClick={() => setSelectedThread(null)}
@@ -650,7 +687,9 @@ function QAPageContent() {
                   if (!isAssignedToMe) {
                     return (
                       <div className="text-center text-sm text-slate-500 font-medium py-3 flex flex-col items-center">
-                        This question is assigned to {selectedThread.assignee}.
+                        {selectedThread.assignee !== "N/A" 
+                          ? `This question is assigned to ${selectedThread.assignee}. You can only view.` 
+                          : "This question is not assigned to you. You can only view."}
                         <div className="mt-3 w-full flex justify-end">
                           <button 
                             onClick={() => setSelectedThread(null)}
