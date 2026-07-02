@@ -75,7 +75,7 @@ export default function NdaSettingsPage() {
       )}
 
       <div className="mb-8 border-b border-gray-200">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Non-disclosure Agreement (NDA)</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Non - disclosure Agreement (NDA)</h1>
         <div className="flex gap-8">
           <button
             onClick={() => setActiveTab('settings')}
