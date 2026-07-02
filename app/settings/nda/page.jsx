@@ -47,6 +47,21 @@ export default function NdaSettingsPage() {
     }
   };
 
+  const handleEditorImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        // Restore selection and insert image
+        if (editorRef.current) editorRef.current.focus();
+        document.execCommand('insertImage', false, event.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset input so the same file can be uploaded again if needed
+    e.target.value = null;
+  };
+
   useEffect(() => {
     if (showEditor && editorRef.current && editorRef.current.innerHTML !== ndaText) {
       editorRef.current.innerHTML = ndaText;
@@ -161,34 +176,41 @@ export default function NdaSettingsPage() {
             <div className="mb-10 animate-in fade-in slide-in-from-top-4 duration-500">
               <h3 className="text-[15px] font-bold text-gray-900 mb-3">Edit terms here</h3>
               <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                <style>{`
+                  .editor-content ul { list-style-type: disc; margin-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+                  .editor-content ol { list-style-type: decimal; margin-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+                  .editor-content blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; font-style: italic; color: #6b7280; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+                `}</style>
                 <div className="border-b border-gray-100 p-2 flex flex-wrap items-center gap-1 bg-gray-50/50">
                   <select
                     onChange={(e) => handleFormat('formatBlock', e.target.value)}
                     className="px-3 py-1.5 text-[13px] text-gray-600 bg-transparent border-none focus:outline-none cursor-pointer hover:bg-gray-100 rounded"
                     defaultValue="P"
+                    title="Text Format"
                   >
                     <option value="P">Paragraph</option>
                     <option value="H1">Heading 1</option>
                     <option value="H2">Heading 2</option>
                   </select>
                   <div className="w-px h-5 bg-gray-200 mx-1"></div>
-                  <button onMouseDown={(e) => { e.preventDefault(); handleFormat('bold'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Bold size={16} /></button>
-                  <button onMouseDown={(e) => { e.preventDefault(); handleFormat('italic'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Italic size={16} /></button>
-                  <button onMouseDown={(e) => { e.preventDefault(); handleFormat('underline'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Underline size={16} /></button>
+                  <button title="Bold" onMouseDown={(e) => { e.preventDefault(); handleFormat('bold'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Bold size={16} /></button>
+                  <button title="Italic" onMouseDown={(e) => { e.preventDefault(); handleFormat('italic'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Italic size={16} /></button>
+                  <button title="Underline" onMouseDown={(e) => { e.preventDefault(); handleFormat('underline'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Underline size={16} /></button>
                   <div className="w-px h-5 bg-gray-200 mx-1"></div>
-                  <button onMouseDown={(e) => { e.preventDefault(); handleFormat('insertUnorderedList'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><List size={16} /></button>
-                  <button onMouseDown={(e) => { e.preventDefault(); handleFormat('insertOrderedList'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><ListOrdered size={16} /></button>
+                  <button title="Bullet List" onMouseDown={(e) => { e.preventDefault(); handleFormat('insertUnorderedList'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><List size={16} /></button>
+                  <button title="Numbered List" onMouseDown={(e) => { e.preventDefault(); handleFormat('insertOrderedList'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><ListOrdered size={16} /></button>
                   <div className="w-px h-5 bg-gray-200 mx-1"></div>
-                  <button onMouseDown={(e) => { e.preventDefault(); const url = prompt('Enter image URL:'); if (url) handleFormat('insertImage', url); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><ImageIcon size={16} /></button>
-                  <button onMouseDown={(e) => { e.preventDefault(); handleFormat('formatBlock', 'BLOCKQUOTE'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Quote size={16} /></button>
-                  <button onMouseDown={(e) => { e.preventDefault(); handleFormat('insertHTML', '<table border="1" style="width:100%; border-collapse: collapse; margin: 10px 0;"><tr><td style="padding: 8px;">Cell 1</td><td style="padding: 8px;">Cell 2</td></tr><tr><td style="padding: 8px;">Cell 3</td><td style="padding: 8px;">Cell 4</td></tr></table><br/>'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Table size={16} /></button>
+                  <input type="file" id="editor-image-upload" accept="image/*" className="hidden" onChange={handleEditorImageUpload} />
+                  <button title="Upload Image" onMouseDown={(e) => { e.preventDefault(); document.getElementById('editor-image-upload').click(); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><ImageIcon size={16} /></button>
+                  <button title="Quote" onMouseDown={(e) => { e.preventDefault(); handleFormat('formatBlock', 'BLOCKQUOTE'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Quote size={16} /></button>
+                  <button title="Table" onMouseDown={(e) => { e.preventDefault(); handleFormat('insertHTML', '<table border="1" style="width:100%; border-collapse: collapse; margin: 10px 0;"><tr><td style="padding: 8px;">Cell 1</td><td style="padding: 8px;">Cell 2</td></tr><tr><td style="padding: 8px;">Cell 3</td><td style="padding: 8px;">Cell 4</td></tr></table><br/>'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Table size={16} /></button>
                   <div className="w-px h-5 bg-gray-200 mx-1"></div>
-                  <button onMouseDown={(e) => { e.preventDefault(); handleFormat('undo'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Undo size={16} /></button>
-                  <button onMouseDown={(e) => { e.preventDefault(); handleFormat('redo'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Redo size={16} /></button>
+                  <button title="Undo" onMouseDown={(e) => { e.preventDefault(); handleFormat('undo'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Undo size={16} /></button>
+                  <button title="Redo" onMouseDown={(e) => { e.preventDefault(); handleFormat('redo'); }} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"><Redo size={16} /></button>
                 </div>
                 <div
                   ref={editorRef}
-                  className="w-full min-h-[250px] p-4 text-[14px] text-gray-800 focus:outline-none overflow-y-auto"
+                  className="editor-content w-full min-h-[250px] p-4 text-[14px] text-gray-800 focus:outline-none overflow-y-auto"
                   contentEditable={true}
                   onBlur={(e) => setNdaText(e.currentTarget.innerHTML)}
                   style={{ minHeight: '250px' }}
