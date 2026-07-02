@@ -109,7 +109,7 @@ function QAPageContent() {
         const currentUser = session.name || session.email || "User";
         const askedByStr = firstMsg?.sender || "Unknown";
         const isMyQuestion = (askedByStr === currentUser);
-        const isAssignedToMe = assigneeStr !== "N/A" && (assigneeStr === currentUser);
+        const isAssignedToMe = assigneeStr === "N/A" || assigneeStr === currentUser;
         
         let actionStr = "Answer / Assign";
         if (t.status === "Answered") actionStr = "View";
@@ -577,7 +577,7 @@ function QAPageContent() {
                 onChange={(e) => setSelectedAssignee(e.target.value)}
                 className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] bg-white"
               >
-                <option value="">Select Assignee</option>
+                <option value="">Without Assignee (Anyone can answer)</option>
                 {admins.map(admin => (
                   <option key={admin.id} value={admin.name}>{admin.name} ({admin.role})</option>
                 ))}
@@ -643,17 +643,26 @@ function QAPageContent() {
             </div>
             
             <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-4 bg-[#F8F9FB]">
-              {selectedThread.messages?.map((msg, i) => (
-                <div key={msg.id || i} className={`flex flex-col max-w-[85%] ${msg.is_user ? 'self-end items-end' : 'self-start items-start'}`}>
-                  <div className="flex items-center gap-2 mb-1 px-1">
-                    <span className="text-[11px] font-bold text-slate-500">{msg.sender}</span>
-                    <span className="text-[10px] text-slate-400">{new Date(msg.created_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                  </div>
-                  <div className={`px-4 py-3 rounded-2xl text-sm ${msg.is_user ? 'bg-[var(--brand)] text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm shadow-sm'}`}>
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
+              {(() => {
+                const sessionStr = localStorage.getItem('vdr_session');
+                const session = sessionStr ? JSON.parse(sessionStr) : {};
+                const currentUser = session.name || session.email || "User";
+                
+                return selectedThread.messages?.map((msg, i) => {
+                  const isMine = msg.sender === currentUser;
+                  return (
+                    <div key={msg.id || i} className={`flex flex-col max-w-[85%] ${isMine ? 'self-end items-end' : 'self-start items-start'}`}>
+                      <div className={`flex items-center gap-2 mb-1 px-1 ${isMine ? 'flex-row-reverse' : ''}`}>
+                        <span className="text-[11px] font-bold text-slate-500">{isMine ? 'You' : msg.sender}</span>
+                        <span className="text-[10px] text-slate-400">{new Date(msg.created_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                      </div>
+                      <div className={`px-4 py-3 rounded-2xl text-sm ${isMine ? 'bg-[var(--brand)] text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm'}`}>
+                        {msg.text}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
               {(!selectedThread.messages || selectedThread.messages.length === 0) && (
                 <div className="text-center text-slate-500 text-sm py-4">No messages yet.</div>
               )}
@@ -666,7 +675,7 @@ function QAPageContent() {
                   const session = sessionStr ? JSON.parse(sessionStr) : {};
                   const senderName = session.name || session.email || "User";
                   const isMyQuestion = selectedThread.askedBy === senderName;
-                  const isAssignedToMe = selectedThread.assignee !== "N/A" && selectedThread.assignee === senderName;
+                  const isAssignedToMe = selectedThread.assignee === "N/A" || selectedThread.assignee === senderName;
 
                   if (isMyQuestion) {
                     return (
@@ -687,9 +696,7 @@ function QAPageContent() {
                   if (!isAssignedToMe) {
                     return (
                       <div className="text-center text-sm text-slate-500 font-medium py-3 flex flex-col items-center">
-                        {selectedThread.assignee !== "N/A" 
-                          ? `This question is assigned to ${selectedThread.assignee}. You can only view.` 
-                          : "This question is not assigned to you. You can only view."}
+                        This question is assigned to {selectedThread.assignee}. You can only view.
                         <div className="mt-3 w-full flex justify-end">
                           <button 
                             onClick={() => setSelectedThread(null)}
