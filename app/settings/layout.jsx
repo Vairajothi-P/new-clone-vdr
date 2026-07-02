@@ -10,7 +10,7 @@ export default function SettingsLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
-  const [perms, setPerms] = useState({ settings: false, branding: false, watermark: false });
+  const [perms, setPerms] = useState({ settings: false, branding: false, watermark: false, nda: false });
 
   useEffect(() => {
     const verifyAccess = async () => {
@@ -20,7 +20,7 @@ export default function SettingsLayout({ children }) {
 
       // ONLY Super Admin gets automatic access to all settings
       if (session.role === 'super_admin') {
-        setPerms({ settings: true, branding: true, watermark: true });
+        setPerms({ settings: true, branding: true, watermark: true, nda: true });
         setLoading(false);
         return;
       }
@@ -55,7 +55,7 @@ export default function SettingsLayout({ children }) {
           return;
         }
 
-        setPerms({ settings: !!hasSettings, branding: !!hasBranding, watermark: !!hasWatermark });
+        setPerms({ settings: !!hasSettings, branding: !!hasBranding, watermark: !!hasWatermark, nda: !!hasSettings });
       } else {
         router.push('/documents');
         return;
@@ -130,7 +130,19 @@ export default function SettingsLayout({ children }) {
             </Link>
           )}
 
-          {!perms.branding && !perms.watermark && (
+          {perms.nda && (
+            <Link href="/settings/nda"
+              className={`px-4 py-3 rounded-xl text-[13px] font-semibold transition-all duration-300 flex items-center gap-3 group ${
+                pathname.includes('/nda')
+                  ? 'bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white shadow-md shadow-[0_8px_30px_rgba(var(--brand-rgb),0.14)]'
+                  : 'text-gray-600 hover:bg-[var(--brand)]/8 hover:text-[var(--brand)]'
+              }`}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              NDA
+            </Link>
+          )}
+
+          {!perms.branding && !perms.watermark && !perms.nda && (
             <div className="px-4 py-6 text-center text-xs text-gray-400 font-medium border-2 border-dashed border-gray-100 rounded-xl">
               No menu options assigned
             </div>
