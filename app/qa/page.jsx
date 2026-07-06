@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
 import { supabase } from "@/utils/supabase/client";
-import { FaFilter, FaDownload, FaSyncAlt, FaSearch, FaChevronRight, FaRegFolder, FaRegFileAlt, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
+import { FaFilter, FaDownload, FaSyncAlt, FaSearch, FaChevronRight, FaRegFolder, FaRegFileAlt, FaCheckCircle, FaExclamationCircle, FaPaperclip } from "react-icons/fa";
 
 function QAPageContent() {
   const searchParams = useSearchParams();
@@ -31,6 +31,8 @@ function QAPageContent() {
   const [selectedThread, setSelectedThread] = useState(null);
   const [replyText, setReplyText] = useState("");
   const [isReplying, setIsReplying] = useState(false);
+  const [askFile, setAskFile] = useState(null);
+  const [replyFile, setReplyFile] = useState(null);
 
   // Fetch the sidebar documents and folders
   const fetchSidebarData = async () => {
@@ -178,6 +180,14 @@ function QAPageContent() {
       const session = sessionStr ? JSON.parse(sessionStr) : { name: "User" };
       const senderName = session.name || session.email || "User";
 
+      let attachmentStr = "";
+      if (askFile) {
+        const path = `qa-attachments/${Date.now()}_${askFile.name}`;
+        const { data: uploadData, error: uploadErr } = await supabase.storage.from('original-files').upload(path, askFile);
+        if (uploadErr) throw uploadErr;
+        attachmentStr = `|ATTACHMENT|${askFile.name}|${uploadData.path}`;
+      }
+
       const finalQuestionText = selectedAssignee ? `[Assigned to: ${selectedAssignee}] ${questionText}` : questionText;
 
       // 1. Insert Thread
@@ -195,7 +205,7 @@ function QAPageContent() {
 
       // 2. Insert Messages
       const msgs = [
-        { thread_id: threadData.id, sender: senderName, text: finalQuestionText, is_user: true }
+        { thread_id: threadData.id, sender: senderName, text: finalQuestionText + attachmentStr, is_user: true }
       ];
       if (answerText.trim()) {
         msgs.push({ thread_id: threadData.id, sender: senderName, text: answerText, is_user: false });
@@ -207,6 +217,7 @@ function QAPageContent() {
       // Reset and refresh
       setQuestionText("");
       setAnswerText("");
+      setAskFile(null);
       setIsModalOpen(false);
       fetchQAData();
 
@@ -219,18 +230,26 @@ function QAPageContent() {
   };
 
   const handleReply = async () => {
-    if (!replyText.trim() || !selectedThread) return;
+    if ((!replyText.trim() && !replyFile) || !selectedThread) return;
     setIsReplying(true);
     try {
       const sessionStr = localStorage.getItem('vdr_session');
       const session = sessionStr ? JSON.parse(sessionStr) : { name: "User" };
       const senderName = session.name || session.email || "User";
 
+      let attachmentStr = "";
+      if (replyFile) {
+        const path = `qa-attachments/${Date.now()}_${replyFile.name}`;
+        const { data: uploadData, error: uploadErr } = await supabase.storage.from('original-files').upload(path, replyFile);
+        if (uploadErr) throw uploadErr;
+        attachmentStr = `|ATTACHMENT|${replyFile.name}|${uploadData.path}`;
+      }
+
       // 1. Insert Reply
       const { error: msgErr } = await supabase.from('qna_messages').insert([{
         thread_id: selectedThread.id,
         sender: senderName,
-        text: replyText,
+        text: replyText + attachmentStr,
         is_user: false // Assuming reply from admin/assignee
       }]);
 
@@ -242,6 +261,7 @@ function QAPageContent() {
       }
 
       setReplyText("");
+      setReplyFile(null);
       // Refetch and update selectedThread messages
       await fetchQAData();
       
@@ -254,6 +274,23 @@ function QAPageContent() {
       alert("Failed to send reply.");
     } finally {
       setIsReplying(false);
+    }
+  };
+
+  const handleDownloadAttachment = async (path, name) => {
+    try {
+      const { data, error } = await supabase.storage.from('original-files').download(path);
+      if (error) throw error;
+      const url = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', name);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Error downloading attachment:", err);
+      alert("Failed to download attachment.");
     }
   };
 
@@ -603,6 +640,20 @@ function QAPageContent() {
                 className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] min-h-[80px]"
               />
             </div>
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-semibold text-slate-600">Attachment (Optional)</label>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors text-sm text-slate-600 font-medium">
+                  <FaPaperclip className="w-4 h-4 text-slate-400" />
+                  <span className="truncate max-w-[200px]">{askFile ? askFile.name : "Select File"}</span>
+                  <input type="file" className="hidden" onChange={(e) => setAskFile(e.target.files[0])} />
+                </label>
+                {askFile && (
+                  <button onClick={() => setAskFile(null)} className="text-xs text-red-500 hover:underline">Remove</button>
+                )}
+              </div>
+            </div>
 
             <div className="flex justify-end gap-3 mt-2">
               <button 
@@ -650,14 +701,27 @@ function QAPageContent() {
                 
                 return selectedThread.messages?.map((msg, i) => {
                   const isMine = msg.sender === currentUser;
+                  const parts = (msg.text || "").split('|ATTACHMENT|');
+                  const msgText = parts[0];
+                  const attachment = parts.length > 1 ? parts[1].split('|') : null;
                   return (
                     <div key={msg.id || i} className={`flex flex-col max-w-[85%] ${isMine ? 'self-end items-end' : 'self-start items-start'}`}>
                       <div className={`flex items-center gap-2 mb-1 px-1 ${isMine ? 'flex-row-reverse' : ''}`}>
                         <span className="text-[11px] font-bold text-slate-500">{isMine ? 'You' : msg.sender}</span>
                         <span className="text-[10px] text-slate-400">{new Date(msg.created_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                       </div>
-                      <div className={`px-4 py-3 rounded-2xl text-sm ${isMine ? 'bg-[var(--brand)] text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm'}`}>
-                        {msg.text}
+                      <div className={`px-4 py-3 rounded-2xl text-sm flex flex-col gap-2 ${isMine ? 'bg-[var(--brand)] text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm'}`}>
+                        {msgText && <div className="whitespace-pre-wrap">{msgText}</div>}
+                        {attachment && (
+                          <button 
+                            onClick={() => handleDownloadAttachment(attachment[1], attachment[0])}
+                            className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg transition-colors w-max ${isMine ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+                            title="Download Attachment"
+                          >
+                            <FaPaperclip className="w-3.5 h-3.5" />
+                            <span className="truncate max-w-[200px] font-medium">{attachment[0]}</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -717,20 +781,36 @@ function QAPageContent() {
                         placeholder="Type your reply or answer..."
                         className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] min-h-[80px]"
                       />
-                      <div className="flex justify-end gap-2">
-                        <button 
-                          onClick={() => setSelectedThread(null)}
-                          className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
-                        >
-                          Close
-                        </button>
-                        <button 
-                          onClick={handleReply}
-                          disabled={isReplying || !replyText.trim()}
-                          className="px-4 py-2 text-sm font-bold text-white bg-[var(--brand)] hover:bg-[var(--brand-secondary)] rounded-xl transition-colors disabled:opacity-50"
-                        >
-                          {isReplying ? "Sending..." : "Send Reply"}
-                        </button>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors text-xs text-slate-600 font-medium">
+                            <FaPaperclip className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="truncate max-w-[150px]">{replyFile ? replyFile.name : "Attach File"}</span>
+                            <input type="file" className="hidden" onChange={(e) => setReplyFile(e.target.files[0])} />
+                          </label>
+                          {replyFile && (
+                            <button onClick={() => setReplyFile(null)} className="text-xs text-red-500 hover:underline">Remove</button>
+                          )}
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button 
+                            onClick={() => {
+                              setSelectedThread(null);
+                              setReplyFile(null);
+                              setReplyText("");
+                            }}
+                            className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                          >
+                            Close
+                          </button>
+                          <button 
+                            onClick={handleReply}
+                            disabled={isReplying || (!replyText.trim() && !replyFile)}
+                            className="px-4 py-2 text-sm font-bold text-white bg-[var(--brand)] hover:bg-[var(--brand-secondary)] rounded-xl transition-colors disabled:opacity-50"
+                          >
+                            {isReplying ? "Sending..." : "Send"}
+                          </button>
+                        </div>
                       </div>
                     </>
                   );
