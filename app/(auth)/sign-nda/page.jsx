@@ -148,11 +148,19 @@ export default function SignNdaPage() {
                             <div className="absolute top-0 left-0 w-full h-4 bg-gradient-to-b from-slate-50 to-transparent z-10 pointer-events-none rounded-t-2xl"></div>
                             <div className="absolute bottom-0 left-0 w-full h-4 bg-gradient-to-t from-slate-50 to-transparent z-10 pointer-events-none rounded-b-2xl"></div>
 
-                            <div className="w-full h-96 overflow-y-auto border-2 border-slate-100 bg-slate-50 rounded-2xl p-8 custom-scrollbar">
-                                {/* 🔥 Render the HTML Exactly as the Admin Formatted It 🔥 */}
+                            {/* <div className="w-full h-96 overflow-y-auto border-2 border-slate-100 bg-slate-50 rounded-2xl p-8 custom-scrollbar">
+                            
+                            <div
+                                className="prose prose-sm prose-slate max-w-none prose-headings:text-slate-800 prose-p:text-slate-600 prose-a:text-[var(--brand)]"
+                                dangerouslySetInnerHTML={{ __html: companyData?.nda_text || "No terms provided." }}
+                            />
+                        </div> */}
+
+                            <div className="w-full h-96 overflow-y-auto border-2 border-slate-200 bg-white rounded-2xl p-8 custom-scrollbar">
+                                {/* 🔥 FORCED PURE BLACK TEXT & PROPER HEADER SIZING 🔥 */}
                                 <div
-                                    className="prose prose-sm prose-slate max-w-none prose-headings:text-slate-800 prose-p:text-slate-600 prose-a:text-[var(--brand)]"
-                                    dangerouslySetInnerHTML={{ __html: companyData?.nda_text || "No terms provided." }}
+                                    className="prose max-w-none text-black prose-p:text-black prose-headings:text-black prose-li:text-black prose-strong:text-black prose-h1:text-2xl prose-h1:font-extrabold prose-h1:text-center prose-h2:text-xl prose-h2:font-bold prose-h2:mt-6 prose-h2:mb-4 prose-h2:border-b prose-h2:border-gray-300 prose-h2:pb-2"
+                                    dangerouslySetInnerHTML={{ __html: companyData?.nda_text || "<p>No terms provided.</p>" }}
                                 />
                             </div>
                         </div>
@@ -239,6 +247,6 @@ export default function SignNdaPage() {
                     background-color: #94a3b8;
                 }
             `}</style>
-        </div>
+        </div >
     );
 }

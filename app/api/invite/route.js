@@ -130,7 +130,7 @@ const transporter = nodemailer.createTransport({
 
 export async function POST(request) {
   try {
-    const { email, description, group_id, invited_by } = await request.json();
+    const { email, description, group_id, invited_by, requires_nda } = await request.json();
 
     if (!email || !group_id || !invited_by) {
       return NextResponse.json(
@@ -163,6 +163,7 @@ export async function POST(request) {
         description,
         invited_by,
         status: "pending",
+        requires_nda: requires_nda,
         expires_at: expiresAt.toISOString(),
       })
       .select()
