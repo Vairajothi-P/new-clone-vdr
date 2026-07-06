@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { FaFilePdf, FaDownload, FaTrash } from "react-icons/fa";
+import { FaFilePdf, FaEye, FaTrash } from "react-icons/fa";
 
 export default function RedactedFilesPage() {
   const [files, setFiles] = useState([]);
@@ -18,10 +18,10 @@ export default function RedactedFilesPage() {
     const fetchFiles = async () => {
       setLoading(true);
       try {
-        const folderPath = parsed.company_id ? `${parsed.company_id}` : '';
+        const folderPath = `users/${parsed.id}`;
         const { data, error } = await supabase
           .storage
-          .from('restricted-files')
+          .from('redacted-files')
           .list(folderPath, {
             limit: 100,
             offset: 0,
@@ -41,29 +41,22 @@ export default function RedactedFilesPage() {
     fetchFiles();
   }, []);
 
-  const handleDownload = async (file) => {
+  const handleView = async (file) => {
     try {
-      const path = session.company_id ? `${session.company_id}/${file.name}` : file.name;
-      const { data, error } = await supabase.storage.from('restricted-files').download(path);
+      const path = `users/${session.id}/${file.name}`;
+      const { data, error } = await supabase.storage.from('redacted-files').createSignedUrl(path, 3600);
       if (error) throw error;
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      window.open(data.signedUrl, '_blank');
     } catch (err) {
-      alert("Download failed: " + err.message);
+      alert("Failed to open document: " + err.message);
     }
   };
 
   const handleDelete = async (file) => {
     if (!confirm(`Are you sure you want to delete ${file.name}?`)) return;
     try {
-      const path = session.company_id ? `${session.company_id}/${file.name}` : file.name;
-      const { error } = await supabase.storage.from('restricted-files').remove([path]);
+      const path = `users/${session.id}/${file.name}`;
+      const { error } = await supabase.storage.from('redacted-files').remove([path]);
       if (error) throw error;
       setFiles(files.filter(f => f.name !== file.name));
     } catch (err) {
@@ -110,10 +103,10 @@ export default function RedactedFilesPage() {
               </div>
               <div className="mt-auto pt-3 border-t border-slate-100 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button 
-                  onClick={() => handleDownload(file)}
-                  className="px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5"
+                  onClick={() => handleView(file)}
+                  className="px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-[var(--brand-soft)] hover:text-[var(--brand)] rounded-lg transition-colors flex items-center gap-1.5"
                 >
-                  <FaDownload /> Download
+                  <FaEye /> View Document
                 </button>
                 <button 
                   onClick={() => handleDelete(file)}
