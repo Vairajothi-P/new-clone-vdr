@@ -14,7 +14,7 @@ export default function AnalyticsSidebar({ isOpen = true }) {
     const pathname = usePathname();
 
     return (
-        <aside className={`${isOpen ? 'w-64 border-r' : 'w-0 border-r-0'} transition-all duration-300 bg-white flex flex-col h-screen sticky top-0 shrink-0 font-sans`}>
+        <aside className={`${isOpen ? 'w-64 border-r border-gray-200' : 'w-0 border-r-0'} transition-all duration-300 bg-white flex flex-col h-screen sticky top-0 shrink-0 font-sans overflow-hidden`}>
             <div className="flex-1 overflow-y-auto">
                 <div className="p-5 border-b border-gray-100 flex items-center justify-between">
                     <h2 className="text-[14px] font-bold font-sans text-gray-800 tracking-tight uppercase">Analytics</h2>
