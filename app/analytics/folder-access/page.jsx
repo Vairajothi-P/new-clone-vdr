@@ -4,6 +4,43 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
+const CustomSelect = ({ label, options, value, onChange }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const selectedOption = options.find(o => o.value === value) || options[0];
+
+    return (
+        <div className="relative flex flex-col gap-1.5 w-56">
+            <span className="text-[11px] uppercase tracking-wider text-gray-500 font-bold ml-1">{label}</span>
+            <div 
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center justify-between px-4 py-2.5 bg-white border border-gray-200 hover:border-[var(--brand)] rounded-xl cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-all duration-300"
+            >
+                <span className="text-sm font-semibold text-gray-700 truncate mr-2">{selectedOption?.label || 'Select'}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-gray-400 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
+                    <polyline points="6 9 12 15 18 9" />
+                </svg>
+            </div>
+            
+            {isOpen && (
+                <>
+                    <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)}></div>
+                    <div className="absolute top-[105%] left-0 w-full bg-white border border-gray-100 rounded-xl shadow-xl z-20 py-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                        {options.map((opt) => (
+                            <div 
+                                key={opt.value}
+                                onClick={() => { onChange(opt.value); setIsOpen(false); }}
+                                className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${value === opt.value ? 'bg-[var(--brand)]/10 text-[var(--brand)] font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+                            >
+                                {opt.label}
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
 export default function FolderAccessPage() {
     const router = useRouter();
     const [session, setSession] = useState(null);
@@ -172,43 +209,29 @@ export default function FolderAccessPage() {
                     </svg>
                 </div>
 
-                {/* Action Dropdown */}
-                <div className="relative flex flex-col gap-1 w-48">
-                    <span className="text-[10px] text-gray-400 font-medium">Action</span>
-                    <select 
-                        value={selectedAction}
-                        onChange={(e) => setSelectedAction(e.target.value)}
-                        className="border-b border-gray-300 pb-1 text-sm text-gray-700 outline-none bg-transparent cursor-pointer appearance-none"
-                    >
-                        <option value="All Action">All Action</option>
-                        <option value="view">View</option>
-                        <option value="upload">Upload</option>
-                        <option value="edit">Edit</option>
-                        <option value="download_secure">Secure Download</option>
-                        <option value="download_original">Original Download</option>
-                        <option value="delete">Delete</option>
-                    </select>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute right-0 bottom-2 text-gray-400 pointer-events-none">
-                        <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                </div>
+                {/* Custom Action Dropdown */}
+                <CustomSelect 
+                    label="Action"
+                    value={selectedAction}
+                    onChange={setSelectedAction}
+                    options={[
+                        { value: 'All Action', label: 'All Action' },
+                        { value: 'view', label: 'View' },
+                        { value: 'upload', label: 'Upload' },
+                        { value: 'edit', label: 'Edit' },
+                        { value: 'download_secure', label: 'Secure Download' },
+                        { value: 'download_original', label: 'Original Download' },
+                        { value: 'delete', label: 'Delete' }
+                    ]}
+                />
 
-                {/* Group Dropdown */}
-                <div className="relative flex flex-col gap-1 w-48">
-                    <span className="text-[10px] text-gray-400 font-medium">Group</span>
-                    <select 
-                        value={selectedGroupId}
-                        onChange={(e) => setSelectedGroupId(e.target.value)}
-                        className="border-b border-gray-300 pb-1 text-sm text-gray-700 outline-none bg-transparent cursor-pointer appearance-none"
-                    >
-                        {groups.map(g => (
-                            <option key={g.id} value={g.id}>{g.name}</option>
-                        ))}
-                    </select>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute right-0 bottom-2 text-gray-400 pointer-events-none">
-                        <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                </div>
+                {/* Custom Group Dropdown */}
+                <CustomSelect 
+                    label="Group"
+                    value={selectedGroupId}
+                    onChange={setSelectedGroupId}
+                    options={groups.map(g => ({ value: g.id, label: g.name }))}
+                />
             </div>
 
             {loading ? (
