@@ -30,15 +30,48 @@ export default function GroupUsersPage() {
                     return;
                 }
 
-                // Since we don't have login_history yet, we will just display 0 for Login Count
-                // But we could also fetch user_groups to show user count if needed.
-                // For now, mapping groups with a static 0 for Login Count.
+                if (!groupsData || groupsData.length === 0) {
+                    setGroups([]);
+                    return;
+                }
+
+                const groupIds = groupsData.map(g => g.id);
+
+                // Fetch user_groups to know which user belongs to which group
+                const { data: userGroupsData, error: ugError } = await supabase
+                    .from('user_groups')
+                    .select('user_id, group_id')
+                    .in('group_id', groupIds);
                 
-                const mappedGroups = (groupsData || []).map(g => ({
-                    id: g.id,
-                    name: g.name,
-                    loginCount: 0 // Placeholder until login_history table is created
-                }));
+                if (ugError) console.error('Error fetching user_groups:', ugError);
+
+                // Fetch login history for the company
+                const { data: loginHistoryData, error: lhError } = await supabase
+                    .from('login_history')
+                    .select('user_id')
+                    .eq('company_id', companyId)
+                    .eq('action', 'LOGIN');
+
+                if (lhError) console.error('Error fetching login_history:', lhError);
+
+                // Calculate login counts
+                const mappedGroups = groupsData.map(group => {
+                    // Find all users in this group
+                    const groupUsers = (userGroupsData || [])
+                        .filter(ug => ug.group_id === group.id)
+                        .map(ug => ug.user_id);
+                    
+                    // Count logins for these users
+                    const loginCount = (loginHistoryData || [])
+                        .filter(log => groupUsers.includes(log.user_id))
+                        .length;
+
+                    return {
+                        id: group.id,
+                        name: group.name,
+                        loginCount: loginCount
+                    };
+                });
 
                 setGroups(mappedGroups);
             } catch (err) {
