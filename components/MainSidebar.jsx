@@ -9,6 +9,7 @@ import { NAV_ITEMS } from '@/lib/nav-items';
 export default function MainSidebar() {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [hasSettingsAccess, setHasSettingsAccess] = useState(false);
   const isGroupsActive = pathname?.startsWith('/groups');
 
@@ -17,6 +18,7 @@ export default function MainSidebar() {
     if (!rawSession) return;
     const session = JSON.parse(rawSession);
     setIsAdmin(session.role === 'admin');
+    setIsSuperAdmin(session.role === 'super_admin');
 
     const checkSettingsPermission = async () => {
       // 1. ONLY Super Admin gets the automatic free pass
@@ -64,6 +66,7 @@ export default function MainSidebar() {
       <div className="flex flex-col gap-1.5 flex-1">
         {NAV_ITEMS.map((item) => {
           if (item.key === 'settings' && !hasSettingsAccess) return null;
+          if (item.key === 'analytics' && !isAdmin && !isSuperAdmin) return null;
           const isActive = pathname?.startsWith(item.href);
 
           return (

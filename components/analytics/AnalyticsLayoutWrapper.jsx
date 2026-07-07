@@ -1,10 +1,25 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import AnalyticsSidebar from '@/components/analytics/AnalyticsSidebar';
 
 export default function AnalyticsLayoutWrapper({ children }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const router = useRouter();
+
+    useEffect(() => {
+        const rawSession = localStorage.getItem('vdr_session');
+        if (!rawSession) {
+            router.push('/login');
+            return;
+        }
+        
+        const session = JSON.parse(rawSession);
+        if (session.role !== 'admin' && session.role !== 'super_admin') {
+            router.push('/documents'); // Or wherever their home/dashboard is
+        }
+    }, [router]);
 
     return (
         <>
