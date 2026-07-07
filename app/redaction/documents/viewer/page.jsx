@@ -44,9 +44,7 @@ const loadPdfJs = async () => {
   return pdfjsLib;
 };
 
-/* ─────────────────────────────────────────────
-   Page-range helpers (unchanged from original)
-───────────────────────────────────────────── */
+
 const expandPageRanges = (ranges = []) => {
   const pages = new Set();
   ranges.forEach((r) => {
@@ -646,7 +644,7 @@ function DocumentViewerContent() {
   return (
     <div className="flex flex-col items-center w-full h-full bg-[#FAFBFD]">
 
-      {/* ── Toolbar ── */}
+      
       <div
         style={{
           width: "100%",
