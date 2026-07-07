@@ -353,7 +353,7 @@ export default function NdaSettingsPage() {
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-50 transition-all shadow-sm"
               >
                 <Pencil size={16} className="text-blue-500" />
-                <span>Edit Current NDA</span>
+                <span>Preview & Edit Current NDA</span>
               </button>
             </div>
           </div>
