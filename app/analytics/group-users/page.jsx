@@ -1,8 +1,56 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '@/utils/supabase/client';
 
 export default function GroupUsersPage() {
+    const [groups, setGroups] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchGroupsData = async () => {
+            setIsLoading(true);
+            try {
+                const sessionRaw = localStorage.getItem('vdr_session');
+                if (!sessionRaw) return;
+                const session = JSON.parse(sessionRaw);
+                const companyId = session.company_id;
+
+                if (!companyId) return;
+
+                // Fetch groups for the company
+                const { data: groupsData, error: groupsError } = await supabase
+                    .from('groups')
+                    .select('id, name')
+                    .eq('company_id', companyId)
+                    .order('created_at', { ascending: false });
+
+                if (groupsError) {
+                    console.error('Error fetching groups:', groupsError);
+                    return;
+                }
+
+                // Since we don't have login_history yet, we will just display 0 for Login Count
+                // But we could also fetch user_groups to show user count if needed.
+                // For now, mapping groups with a static 0 for Login Count.
+                
+                const mappedGroups = (groupsData || []).map(g => ({
+                    id: g.id,
+                    name: g.name,
+                    loginCount: 0 // Placeholder until login_history table is created
+                }));
+
+                setGroups(mappedGroups);
+            } catch (err) {
+                console.error("Failed to load group users data:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchGroupsData();
+    }, []);
+
     return (
         <div className="p-8 bg-white min-h-full font-sans">
             {/* Header Section */}
@@ -47,19 +95,28 @@ export default function GroupUsersPage() {
                 </div>
 
                 {/* Table Body */}
-                <div className="flex flex-col">
-                    <div className="grid grid-cols-2 px-4 py-3 border-b border-gray-100 bg-gray-50/50">
-                        <div className="text-gray-500">Admin</div>
-                        <div className="text-gray-600 underline cursor-pointer hover:text-gray-900 font-medium">93</div>
-                    </div>
-                    <div className="grid grid-cols-2 px-4 py-3 border-b border-gray-100">
-                        <div className="text-gray-500">Investor</div>
-                        <div className="text-gray-600 underline cursor-pointer hover:text-gray-900 font-medium">1</div>
-                    </div>
-                    <div className="grid grid-cols-2 px-4 py-3 border-b border-gray-100 bg-gray-50/50">
-                        <div className="text-gray-500">Sub Admin</div>
-                        <div className="text-gray-600 underline cursor-pointer hover:text-gray-900 font-medium">93</div>
-                    </div>
+                <div className="flex flex-col relative min-h-[150px]">
+                    {isLoading ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+                            <div className="w-6 h-6 border-2 border-gray-300 border-t-[var(--brand)] rounded-full animate-spin"></div>
+                        </div>
+                    ) : groups.length > 0 ? (
+                        groups.map((group, index) => (
+                            <div 
+                                key={group.id} 
+                                className={`grid grid-cols-2 px-4 py-3 border-b border-gray-100 ${index % 2 === 0 ? 'bg-gray-50/50' : 'bg-white'}`}
+                            >
+                                <div className="text-gray-500">{group.name}</div>
+                                <div className="text-gray-600 underline cursor-pointer hover:text-gray-900 font-medium">
+                                    {group.loginCount}
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="py-8 text-center text-gray-400">
+                            No groups found
+                        </div>
+                    )}
                 </div>
 
                 {/* Pagination */}
@@ -74,7 +131,9 @@ export default function GroupUsersPage() {
                         </div>
                     </div>
                     
-                    <div className="text-gray-500">1-3 of 3</div>
+                    <div className="text-gray-500">
+                        {groups.length > 0 ? `1-${groups.length} of ${groups.length}` : '0 of 0'}
+                    </div>
 
                     <div className="flex items-center gap-4">
                         <button className="text-gray-300 hover:text-gray-500 transition-colors disabled:opacity-50" disabled>
