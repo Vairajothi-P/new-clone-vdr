@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import { supabase } from "@/utils/supabase/client";
 import {
   FaTimes,
@@ -421,14 +422,24 @@ if (urlError) throw urlError;
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8">
               
               {/* Document Preview Trigger */}
-              <button
-                onClick={openPreview}
-                className="w-full h-40 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-brand hover:text-brand hover:bg-brand-soft/40 transition-colors group"
-              >
-                <FaEye className="w-8 h-8 mb-2 text-slate-300 group-hover:text-brand transition-colors" />
-                <span className="text-sm font-bold">Preview Document</span>
-                <span className="text-xs text-slate-400 mt-1">See redaction rules applied live</span>
-              </button>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={openPreview}
+                  className="w-full h-32 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-brand hover:text-brand hover:bg-brand-soft/40 transition-colors group"
+                >
+                  <FaEye className="w-6 h-6 mb-1 text-slate-300 group-hover:text-brand transition-colors" />
+                  <span className="text-sm font-bold">Preview Document</span>
+                  <span className="text-xs text-slate-400 mt-1">See redaction rules applied live</span>
+                </button>
+                
+                <Link
+                  href={`/redaction/documents/viewer?id=${selectedDoc.id}`}
+                  className="w-full h-16 bg-slate-100 rounded-xl border-2 border-slate-300 flex items-center justify-center text-slate-600 hover:border-brand hover:text-brand hover:bg-brand-soft/40 transition-colors group gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 group-hover:text-brand transition-colors"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  <span className="text-sm font-bold">Advanced Redaction Tool</span>
+                </Link>
+              </div>
 
               {/* Mode Toggle */}
               <div>
