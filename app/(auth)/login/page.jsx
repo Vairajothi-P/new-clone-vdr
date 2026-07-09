@@ -50,6 +50,19 @@ export default function LoginPage() {
         return;
       }
 
+      // Log the login action to login_history table
+      const { error: historyError } = await supabase.from('login_history').insert([
+        {
+          user_id: user.id,
+          company_id: user.company_id,
+          action: 'LOGIN'
+        }
+      ]);
+
+      if (historyError) {
+        console.error('Failed to insert login history:', historyError);
+      }
+
       // 2. Add nda_status to local storage so the whole app knows
       localStorage.setItem('vdr_session', JSON.stringify({
         id: user.id,

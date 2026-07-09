@@ -2356,11 +2356,18 @@ function UnifiedWorkspace() {
     };
 
     // ── Q&A REDIRECT HANDLER ───────────────────────────────────────────────
-    const handleGoToQA = (item, e) => {
+    const handleGoToQA = async (item, e) => {
         e.stopPropagation();
         if (item.type === 'folder') {
             router.push(`/qa?folderId=${item.id}`);
         } else {
+            // Log access to document_access_logs
+            if (session) {
+                await supabase.from('document_access_logs').insert([{
+                    user_id: session.id,
+                    document_id: item.id
+                }]);
+            }
             router.push(`/qa?fileId=${item.id}`);
         }
     };
@@ -2683,6 +2690,14 @@ function UnifiedWorkspace() {
                     URL.revokeObjectURL(url);
 
                     await supabase.from('documents').update({ is_downloaded: true }).eq('id', file.id);
+                    
+                    if (session) {
+                        await supabase.from('document_edit_logs').insert([{
+                            user_id: session.id,
+                            document_id: file.id,
+                            action_type: 'DOWNLOAD_PDF'
+                        }]);
+                    }
                 }
 
 
@@ -2705,6 +2720,14 @@ function UnifiedWorkspace() {
                         URL.revokeObjectURL(url);
                     } else {
                         alert("Original file not found.");
+                    }
+
+                    if (session) {
+                        await supabase.from('document_edit_logs').insert([{
+                            user_id: session.id,
+                            document_id: file.id,
+                            action_type: 'DOWNLOAD_ORIGINAL'
+                        }]);
                     }
                 }
             } catch (err) {
