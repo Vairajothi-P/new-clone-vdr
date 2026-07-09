@@ -22,7 +22,30 @@ import {
   FaTimes,
   FaCheck,
   FaFileAlt,
+  FaUndo,
 } from "react-icons/fa";
+import WordViewer from "@/components/redaction/viewers/WordViewer";
+import ExcelViewer from "@/components/redaction/viewers/ExcelViewer";
+import PowerPointViewer from "@/components/redaction/viewers/PowerPointViewer";
+import TextViewer from "@/components/redaction/viewers/TextViewer";
+import ImageViewer from "@/components/redaction/viewers/ImageViewer";
+
+/* ─────────────────────────────────────────────
+   File-type detection helper
+   Returns: "pdf" | "word" | "excel" | "ppt" | "pptx" | "text" | "image" | "unknown"
+───────────────────────────────────────────── */
+const getFileType = (filePath) => {
+  if (!filePath) return "unknown";
+  const ext = filePath.split(".").pop().toLowerCase().trim();
+  if (ext === "pdf")  return "pdf";
+  if (ext === "doc" || ext === "docx") return "word";
+  if (ext === "xls" || ext === "xlsx" || ext === "csv") return "excel";
+  if (ext === "ppt")  return "ppt";
+  if (ext === "pptx") return "pptx";
+  if (ext === "txt")  return "text";
+  if (ext === "png" || ext === "jpg" || ext === "jpeg") return "image";
+  return "unknown";
+};
 
 /* ─────────────────────────────────────────────
    PDF.js loader (same as original)
@@ -95,6 +118,10 @@ function DocumentViewerContent() {
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLoading, setPageLoading] = useState(false);
+
+  /* ── multi-format support ── */
+  const [fileType, setFileType] = useState("pdf"); // detected file type
+  const [fileUrl, setFileUrl] = useState(null);   // signed URL for non-PDF viewers
 
   /* ── new toolbar / tool state ── */
   const [scale, setScale] = useState(1.5);
@@ -192,14 +219,14 @@ function DocumentViewerContent() {
           );
         }
 
-        // 4. Check if a redacted PDF exists → prefer it
+        // 4. Check if a redacted file exists → prefer it
         const { data: redactedDoc } = await supabase
           .from("redacted_documents")
           .select("redacted_path")
           .eq("document_id", docId)
           .maybeSingle();
 
-        let pdfUrl;
+        let resolvedUrl;
 
         if (redactedDoc?.redacted_path) {
           // Load from redacted-files bucket
@@ -208,15 +235,14 @@ function DocumentViewerContent() {
             .createSignedUrl(redactedDoc.redacted_path, 3600);
           if (rUrlError) {
              console.error("Redacted bucket error:", rUrlError);
-             // We'll throw this so you can see it on screen if it fails
              throw new Error(`redacted-files bucket error: ${rUrlError.message}. Path tried: ${redactedDoc.redacted_path}`);
           }
           if (rUrlData) {
-            pdfUrl = rUrlData.signedUrl;
+            resolvedUrl = rUrlData.signedUrl;
           }
         }
 
-        if (!pdfUrl) {
+        if (!resolvedUrl) {
           // Fall back to original-files bucket
           const storagePath = docData.file_path;
 
@@ -227,18 +253,27 @@ function DocumentViewerContent() {
           if (urlError) {
              throw new Error(`original-files bucket error: ${urlError.message}. Path tried: ${storagePath}`);
           }
-          pdfUrl = urlData.signedUrl;
+          resolvedUrl = urlData.signedUrl;
         }
 
-        // 5. Load the PDF via pdf.js
-        const pdfjs = await loadPdfJs();
-        if (!pdfjs) throw new Error("PDF.js failed to load");
+        // 5. Detect file type from path; route to appropriate viewer
+        const detectedType = getFileType(docData.file_path || docData.name || "");
+        setFileType(detectedType);
 
-        const pdf = await pdfjs.getDocument(pdfUrl).promise;
-        pdfRef.current = pdf;
+        if (detectedType === "pdf") {
+          // ── Existing PDF.js path (unchanged) ──
+          const pdfjs = await loadPdfJs();
+          if (!pdfjs) throw new Error("PDF.js failed to load");
 
-        setNumPages(docData.total_pages || pdf.numPages);
-        setCurrentPage(1);
+          const pdf = await pdfjs.getDocument(resolvedUrl).promise;
+          pdfRef.current = pdf;
+
+          setNumPages(docData.total_pages || pdf.numPages);
+          setCurrentPage(1);
+        } else {
+          // ── Non-PDF: store URL; specific viewer component handles rendering ──
+          setFileUrl(resolvedUrl);
+        }
       } catch (err) {
         console.error("Error loading document viewer:", err);
         setError(err.message || "Failed to load document.");
@@ -394,22 +429,32 @@ function DocumentViewerContent() {
     const selectedText = window.getSelection()?.toString() || "";
     window.getSelection()?.removeAllRanges();
 
-    setSelections((prev) => [
-      ...prev,
-      {
-        id: nextSelId(),
+    onAddSelection({
         page: currentPage,
         text: selectedText,
         x: finalBox.x,
         y: finalBox.y,
         w: finalBox.w,
         h: finalBox.h,
-      },
+    });
+  };
+
+  const onAddSelection = (sel) => {
+    setSelections((prev) => [
+      ...prev,
+      { id: Date.now().toString(), page: currentPage, ...sel },
     ]);
   };
 
-  const removeSelection = (id) =>
+  const removeSelection = (id) => {
     setSelections((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const updateSelection = (id, newProps) => {
+    setSelections((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, ...newProps } : s))
+    );
+  };
 
   /* ─────────────────────────────────────────
      Save Redaction — Save as New File
@@ -658,108 +703,139 @@ function DocumentViewerContent() {
           zIndex: 10,
         }}
       >
-        {/* Prev / Next */}
-        <button
-          onClick={() => goToPage(currentPage - 1)}
-          disabled={currentPage <= 1}
-          title="Previous Page"
-          style={toolbarBtnStyle(false, currentPage <= 1)}
-        >
-          <FaChevronLeft size={12} />
-        </button>
+        {/* ── Toolbar controls (all file types) ── */}
+        {(() => {
+          // Context-aware label and nav disabled states per file type
+          const isMultiPage = numPages > 1;
+          const navDisabledPrev = currentPage <= 1;
+          const navDisabledNext = currentPage >= numPages;
+          const searchDisabled = fileType === "image";
+          const selectionDisabled = fileType !== "pdf";
 
-        <span style={{ color: "#64748b", fontSize: "12px", minWidth: "80px", textAlign: "center", fontWeight: "500" }}>
-          {currentPage} / {numPages || "?"}
-        </span>
+          const pageLabel =
+            fileType === "excel" ? "Sheet" :
+            fileType === "pptx" || fileType === "ppt" ? "Slide" :
+            "Page";
 
-        <button
-          onClick={() => goToPage(currentPage + 1)}
-          disabled={currentPage >= numPages}
-          title="Next Page"
-          style={toolbarBtnStyle(false, currentPage >= numPages)}
-        >
-          <FaChevronRight size={12} />
-        </button>
+          return (
+            <>
+              {/* Prev / Next */}
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={navDisabledPrev}
+                title={`Previous ${pageLabel}`}
+                style={toolbarBtnStyle(false, navDisabledPrev)}
+              >
+                <FaChevronLeft size={12} />
+              </button>
 
-        <div style={toolbarDivider} />
+              <span style={{ color: "#64748b", fontSize: "12px", minWidth: "80px", textAlign: "center", fontWeight: "500" }}>
+                {currentPage} / {numPages || "?"}
+              </span>
 
-        {/* Zoom */}
-        <button onClick={zoomOut} title="Zoom Out" style={toolbarBtnStyle()}>
-          <FaSearchMinus size={13} />
-        </button>
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={navDisabledNext}
+                title={`Next ${pageLabel}`}
+                style={toolbarBtnStyle(false, navDisabledNext)}
+              >
+                <FaChevronRight size={12} />
+              </button>
 
-        <span style={{ color: "#475569", fontSize: "12px", minWidth: "44px", textAlign: "center", fontVariantNumeric: "tabular-nums", fontWeight: "500" }}>
-          {Math.round(scale * 100)}%
-        </span>
+              <div style={toolbarDivider} />
 
-        <button onClick={zoomIn} title="Zoom In" style={toolbarBtnStyle()}>
-          <FaSearchPlus size={13} />
-        </button>
+              {/* Zoom */}
+              <button onClick={zoomOut} title="Zoom Out" style={toolbarBtnStyle()}>
+                <FaSearchMinus size={13} />
+              </button>
 
-        <div style={toolbarDivider} />
+              <span style={{ color: "#475569", fontSize: "12px", minWidth: "44px", textAlign: "center", fontVariantNumeric: "tabular-nums", fontWeight: "500" }}>
+                {Math.round(scale * 100)}%
+              </span>
 
-        {/* Selection Tool */}
-        <button
-          onClick={() => setTool(tool === "select" ? "pointer" : "select")}
-          title="Selection Tool"
-          style={toolbarBtnStyle(tool === "select")}
-        >
-          <FaMousePointer size={13} />
-          <span style={{ fontSize: "11px", marginLeft: "4px" }}>Selection</span>
-        </button>
+              <button onClick={zoomIn} title="Zoom In" style={toolbarBtnStyle()}>
+                <FaSearchPlus size={13} />
+              </button>
 
-        <div style={toolbarDivider} />
+              <div style={toolbarDivider} />
 
-        {/* Search */}
-        <button
-          onClick={() => setSearchOpen((o) => !o)}
-          title="Search"
-          style={toolbarBtnStyle(searchOpen)}
-        >
-          <FaSearch size={13} />
-          <span style={{ fontSize: "11px", marginLeft: "4px" }}>Search</span>
-        </button>
+              {/* Selection Tool */}
+              <button
+                onClick={() => setTool(tool === "select" ? "pointer" : "select")}
+                title="Selection Tool"
+                style={toolbarBtnStyle(tool === "select")}
+              >
+                <FaMousePointer size={13} />
+                <span style={{ fontSize: "11px", marginLeft: "4px" }}>Selection</span>
+              </button>
+              
+              {/* Undo Selection */}
+              <button
+                onClick={() => setSelections(prev => prev.slice(0, -1))}
+                disabled={selections.length === 0}
+                title="Undo Last Selection"
+                style={toolbarBtnStyle(false, selections.length === 0)}
+              >
+                <FaUndo size={13} />
+                <span style={{ fontSize: "11px", marginLeft: "4px" }}>Undo</span>
+              </button>
 
-        {searchOpen && (
-          <input
-            autoFocus
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search text…"
-            style={{
-              background: "#f8fafc",
-              border: "1px solid #cbd5e1",
-              borderRadius: "6px",
-              color: "#0f172a",
-              fontSize: "12px",
-              padding: "4px 8px",
-              outline: "none",
-              width: "160px",
-            }}
-          />
-        )}
+              <div style={toolbarDivider} />
 
-        <div style={toolbarDivider} />
+              {/* Search — disabled for images */}
+              <button
+                onClick={() => !searchDisabled && setSearchOpen((o) => !o)}
+                title={searchDisabled ? "Search is not supported for images" : "Search"}
+                disabled={searchDisabled}
+                style={toolbarBtnStyle(searchOpen && !searchDisabled, searchDisabled)}
+              >
+                <FaSearch size={13} />
+                <span style={{ fontSize: "11px", marginLeft: "4px" }}>Search</span>
+              </button>
 
-        {/* Save Redaction */}
-        <button
-          onClick={() => {
-            setSaveError(null);
-            setSaveSuccess(false);
-            setSaveMode(null);
-            setShowSaveDialog(true);
-          }}
-          title="Save Redaction"
-          style={{
-            ...toolbarBtnStyle(false),
-            background: "#dc2626",
-            color: "#fff",
-            fontWeight: 600,
-          }}
-        >
-          <FaSave size={13} />
-          <span style={{ fontSize: "11px", marginLeft: "4px" }}>Save Redaction</span>
-        </button>
+              {searchOpen && !searchDisabled && (
+                <input
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search text…"
+                  style={{
+                    background: "#f8fafc",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    color: "#0f172a",
+                    fontSize: "12px",
+                    padding: "4px 8px",
+                    outline: "none",
+                    width: "160px",
+                  }}
+                />
+              )}
+
+              <div style={toolbarDivider} />
+
+              {/* Save Redaction */}
+              <button
+                onClick={() => {
+                  setSaveError(null);
+                  setSaveSuccess(false);
+                  setSaveMode(null);
+                  setShowSaveDialog(true);
+                }}
+                title="Save Redaction"
+                style={{
+                  ...toolbarBtnStyle(false),
+                  background: "#dc2626",
+                  color: "#fff",
+                  fontWeight: 600,
+                }}
+              >
+                <FaSave size={13} />
+                <span style={{ fontSize: "11px", marginLeft: "4px" }}>Save Redaction</span>
+              </button>
+            </>
+          );
+        })()}
 
         {/* Spacer */}
         <div style={{ flex: 1 }} />
@@ -819,7 +895,7 @@ function DocumentViewerContent() {
         </div>
       )}
 
-      {/* ── Document name / pagination header (original) ── */}
+      {/* ── Document name / pagination header (original, PDF-only nav buttons kept) ── */}
       <div className="w-full max-w-5xl flex items-center justify-between px-4 py-3">
         <h1
           className="text-lg font-bold text-slate-800 truncate"
@@ -828,25 +904,27 @@ function DocumentViewerContent() {
           <FaFileAlt className="inline mr-2 text-slate-400" />
           {doc?.name}
         </h1>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage <= 1}
-            className="p-2 rounded-lg border border-slate-300 text-slate-600 disabled:opacity-30 hover:bg-slate-100 transition-colors"
-          >
-            <FaChevronLeft />
-          </button>
-          <span className="text-sm font-medium text-slate-600">
-            Page {currentPage} of {numPages || "?"}
-          </span>
-          <button
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage >= numPages}
-            className="p-2 rounded-lg border border-slate-300 text-slate-600 disabled:opacity-30 hover:bg-slate-100 transition-colors"
-          >
-            <FaChevronRight />
-          </button>
-        </div>
+        {fileType === "pdf" && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="p-2 rounded-lg border border-slate-300 text-slate-600 disabled:opacity-30 hover:bg-slate-100 transition-colors"
+            >
+              <FaChevronLeft />
+            </button>
+            <span className="text-sm font-medium text-slate-600">
+              Page {currentPage} of {numPages || "?"}
+            </span>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= numPages}
+              className="p-2 rounded-lg border border-slate-300 text-slate-600 disabled:opacity-30 hover:bg-slate-100 transition-colors"
+            >
+              <FaChevronRight />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Page Content ── */}
@@ -854,122 +932,239 @@ function DocumentViewerContent() {
         className="relative flex-1 w-full max-w-5xl flex items-start justify-center bg-white border border-slate-200 rounded-xl shadow-sm overflow-auto p-4 mx-4 mb-4"
         style={{ minHeight: "500px" }}
       >
-        {pageIsRedacted ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-24 text-slate-400 w-full">
-            <FaLock className="w-10 h-10" />
-            <span className="text-base font-semibold text-slate-500">
-              This page is redacted
-            </span>
-          </div>
-        ) : (
-          <>
-            {pageLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10">
-                <FaSpinner className="w-5 h-5 text-brand animate-spin" />
-              </div>
-            )}
+        {/* ── PDF viewer (original, unchanged) ── */}
+        {fileType === "pdf" && (
+          pageIsRedacted ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-24 text-slate-400 w-full">
+              <FaLock className="w-10 h-10" />
+              <span className="text-base font-semibold text-slate-500">
+                This page is redacted
+              </span>
+            </div>
+          ) : (
+            <>
+              {pageLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10">
+                  <FaSpinner className="w-5 h-5 text-brand animate-spin" />
+                </div>
+              )}
 
-            {/* Canvas + text layer + overlay, all stacked */}
-            <div style={{ position: "relative", display: "inline-block" }}>
-              {/* PDF render canvas */}
-              <canvas ref={canvasRef} className="max-w-full h-auto shadow-sm" />
+              {/* Canvas + text layer + overlay, all stacked */}
+              <div style={{ position: "relative", display: "inline-block" }}>
+                {/* PDF render canvas */}
+                <canvas ref={canvasRef} className="max-w-full h-auto shadow-sm" />
 
-              {/* Text layer (transparent, on top of canvas for selection) */}
-              <div
-                ref={textLayerRef}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  overflow: "hidden",
-                  lineHeight: 1,
-                  pointerEvents: tool === "select" ? "none" : "auto",
-                }}
-              />
+                {/* Text layer (transparent, on top of canvas for selection) */}
+                <div
+                  ref={textLayerRef}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    overflow: "hidden",
+                    lineHeight: 1,
+                    pointerEvents: tool === "select" ? "none" : "auto",
+                  }}
+                />
 
-              {/* Interaction overlay (captures drag for region selection) */}
-              <div
-                ref={overlayRef}
-                onMouseDown={handleOverlayMouseDown}
-                onMouseMove={handleOverlayMouseMove}
-                onMouseUp={handleOverlayMouseUp}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  cursor: tool === "select" ? "crosshair" : "default",
-                  zIndex: 2,
-                  userSelect: "none",
-                }}
-              >
-                {/* Committed selections for this page */}
-                {pageSelections.map((s) => (
-                  <div
-                    key={s.id}
-                    style={{
-                      position: "absolute",
-                      left: s.x,
-                      top: s.y,
-                      width: s.w,
-                      height: s.h,
-                      background: "rgba(0,0,0,0.45)",
-                      border: "2px solid rgba(220,38,38,0.8)",
-                      boxSizing: "border-box",
-                      cursor: "default",
-                    }}
-                    title={s.text || "Redacted region"}
-                  >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeSelection(s.id);
-                      }}
+                {/* Interaction overlay (captures drag for region selection) */}
+                <div
+                  ref={overlayRef}
+                  onMouseDown={handleOverlayMouseDown}
+                  onMouseMove={handleOverlayMouseMove}
+                  onMouseUp={handleOverlayMouseUp}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    cursor: tool === "select" ? "crosshair" : "default",
+                    zIndex: 2,
+                    userSelect: "none",
+                  }}
+                >
+                  {/* Committed selections for this page */}
+                  {pageSelections.map((s) => (
+                    <div
+                      key={s.id}
                       style={{
                         position: "absolute",
-                        top: -10,
-                        right: -10,
-                        width: 18,
-                        height: 18,
-                        background: "#dc2626",
-                        border: "none",
-                        borderRadius: "50%",
-                        color: "#fff",
-                        fontSize: 9,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        lineHeight: 1,
-                        zIndex: 3,
-                        padding: 0,
+                        left: s.x,
+                        top: s.y,
+                        width: s.w,
+                        height: s.h,
+                        background: "rgba(0,0,0,0.45)",
+                        border: "2px solid rgba(220,38,38,0.8)",
+                        boxSizing: "border-box",
+                        cursor: "default",
                       }}
+                      title={s.text || "Redacted region"}
                     >
-                      <FaTimes size={8} />
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeSelection(s.id);
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: -10,
+                          right: -10,
+                          width: 18,
+                          height: 18,
+                          background: "#dc2626",
+                          border: "none",
+                          borderRadius: "50%",
+                          color: "#fff",
+                          fontSize: 9,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          lineHeight: 1,
+                          zIndex: 3,
+                          padding: 0,
+                        }}
+                      >
+                        <FaTimes size={8} />
+                      </button>
+                    </div>
+                  ))}
 
-                {/* Live drag rectangle */}
-                {dragBox && dragBox.w > 2 && dragBox.h > 2 && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: dragBox.x,
-                      top: dragBox.y,
-                      width: dragBox.w,
-                      height: dragBox.h,
-                      background: "rgba(0,0,0,0.3)",
-                      border: "2px dashed rgba(220,38,38,0.9)",
-                      boxSizing: "border-box",
-                      pointerEvents: "none",
-                    }}
-                  />
-                )}
+                  {/* Live drag rectangle */}
+                  {dragBox && dragBox.w > 2 && dragBox.h > 2 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: dragBox.x,
+                        top: dragBox.y,
+                        width: dragBox.w,
+                        height: dragBox.h,
+                        background: "rgba(0,0,0,0.3)",
+                        border: "2px dashed rgba(220,38,38,0.9)",
+                        boxSizing: "border-box",
+                        pointerEvents: "none",
+                      }}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          </>
+            </>
+          )
+        )}
+
+        {/* ── Word viewer (DOC / DOCX) ── */}
+        {(fileType === "word") && fileUrl && (
+          <div style={{ width: "100%" }}>
+            <WordViewer
+              url={fileUrl}
+              scale={scale}
+              searchQuery={searchQuery}
+              onNumPages={(n) => setNumPages(n)}
+              tool={tool}
+              selections={selections}
+              onAddSelection={onAddSelection}
+              onRemoveSelection={removeSelection}
+              onUpdateSelection={updateSelection}
+            />
+          </div>
+        )}
+
+        {/* ── Excel viewer (XLS / XLSX / CSV) ── */}
+        {fileType === "excel" && fileUrl && (
+          <div style={{ width: "100%" }}>
+            <ExcelViewer
+              url={fileUrl}
+              currentPage={currentPage - 1}
+              scale={scale}
+              searchQuery={searchQuery}
+              onNumPages={(n) => { setNumPages(n); setCurrentPage(1); }}
+              tool={tool}
+              selections={pageSelections}
+              onAddSelection={onAddSelection}
+              onRemoveSelection={removeSelection}
+              onUpdateSelection={updateSelection}
+            />
+          </div>
+        )}
+
+        {/* ── PowerPoint viewer (PPTX) ── */}
+        {(fileType === "pptx" || fileType === "ppt") && fileUrl && (
+          <div style={{ width: "100%" }}>
+            <PowerPointViewer
+              url={fileUrl}
+              fileExt={fileType}
+              currentPage={currentPage - 1}
+              scale={scale}
+              searchQuery={searchQuery}
+              onNumPages={(n) => { setNumPages(n); setCurrentPage(1); }}
+              tool={tool}
+              selections={pageSelections}
+              onAddSelection={onAddSelection}
+              onRemoveSelection={removeSelection}
+              onUpdateSelection={updateSelection}
+            />
+          </div>
+        )}
+
+        {/* ── Text viewer (TXT) ── */}
+        {fileType === "text" && fileUrl && (
+          <div style={{ width: "100%" }}>
+            <TextViewer
+              url={fileUrl}
+              scale={scale}
+              searchQuery={searchQuery}
+              onNumPages={(n) => setNumPages(n)}
+              tool={tool}
+              selections={pageSelections}
+              onAddSelection={onAddSelection}
+              onRemoveSelection={removeSelection}
+              onUpdateSelection={updateSelection}
+            />
+          </div>
+        )}
+
+        {/* ── Image viewer (PNG / JPG / JPEG) ── */}
+        {fileType === "image" && fileUrl && (
+          <div style={{ width: "100%" }}>
+            <ImageViewer
+              url={fileUrl}
+              name={doc?.name}
+              scale={scale}
+              onNumPages={(n) => setNumPages(n)}
+              tool={tool}
+              selections={pageSelections}
+              onAddSelection={onAddSelection}
+              onRemoveSelection={removeSelection}
+              onUpdateSelection={updateSelection}
+            />
+          </div>
+        )}
+
+        {/* ── Unknown file type fallback ── */}
+        {fileType === "unknown" && fileUrl && (
+          <div style={{ padding: 32, textAlign: "center", color: "#64748b" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
+            <p style={{ fontWeight: 600, fontSize: 15, color: "#334155", marginBottom: 8 }}>
+              Preview not available for this file type.
+            </p>
+            <a
+              href={fileUrl}
+              download
+              style={{
+                display: "inline-block",
+                padding: "10px 22px",
+                background: "var(--brand)",
+                color: "#fff",
+                borderRadius: 8,
+                fontWeight: 700,
+                fontSize: 13,
+                textDecoration: "none",
+              }}
+            >
+              Download File
+            </a>
+          </div>
         )}
       </div>
 
