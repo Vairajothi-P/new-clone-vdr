@@ -30,6 +30,9 @@ function AccessPageContent() {
 
     // UI State
     const [loading, setLoading] = useState(true);
+    const [pendingChanges, setPendingChanges] = useState({}); // 🔥 TRACKS UNSAVED TOGGLES
+    const [isSubmitting, setIsSubmitting] = useState(false);  // 🔥 TRACKS SAVE BUTTON STATE
+    const [saveMessage, setSaveMessage] = useState({ text: '', type: '' });
     const [saving, setSaving] = useState({});
     const [selectedGroup, setSelectedGroup] = useState(null);
     const [expandedGroups, setExpandedGroups] = useState(new Set());
@@ -55,6 +58,68 @@ function AccessPageContent() {
         if (session) fetchAll();
     }, [session]);
 
+    // const fetchAll = useCallback(async () => {
+    //     setLoading(true);
+    //     try {
+    //         let groupQuery = supabase.from('groups').select('*').eq('company_id', session.company_id).order('created_at', { ascending: false });
+    //         if (session.role !== 'super_admin') groupQuery = groupQuery.eq('created_by', session.id);
+
+    //         const [
+    //             { data: groupsData },
+    //             { data: foldersData },
+    //             { data: docsData },
+    //             { data: permsData },
+    //             { data: userGroups },
+    //             { data: usersData }
+    //         ] = await Promise.all([
+    //             groupQuery,
+    //             supabase.from('folders').select('*').eq('company_id', session.company_id),
+    //             supabase.from('documents').select('id, name, folder_id, index').eq('company_id', session.company_id).eq('is_deleted', false).order('created_at', { ascending: true }),
+    //             // Fetching exactly the columns we know exist in your DB now
+    //             supabase.from('permissions').select('id, document_id, folder_id, scope, group_id, can_view, can_edit, can_upload, can_download_secure, can_download_original, can_delete').eq('company_id', session.company_id),
+    //             supabase.from('user_groups').select('user_id, group_id'),
+    //             supabase.from('users').select('id, name, email')
+    //         ]);
+
+    //         setGroups(groupsData || []);
+    //         setFolders(foldersData || []);
+
+    //         const cleanedDocs = (docsData || []).map((doc, index) => ({
+    //             ...doc, displayIndex: (index + 1).toString()
+    //         }));
+    //         setDocuments(cleanedDocs);
+
+    //         const membersMap = {};
+    //         if (userGroups && usersData) {
+    //             const userDict = {};
+    //             usersData.forEach(u => userDict[u.id] = u);
+    //             userGroups.forEach(ug => {
+    //                 if (!membersMap[ug.group_id]) membersMap[ug.group_id] = [];
+    //                 if (userDict[ug.user_id]) membersMap[ug.group_id].push(userDict[ug.user_id]);
+    //             });
+    //         }
+    //         setGroupMembers(membersMap);
+
+    //         const map = {};
+    //         (permsData || []).forEach(p => {
+    //             if (p.scope === 'document' && p.document_id) {
+    //                 map[`${p.group_id}_doc_${p.document_id}`] = p;
+    //             } else if (p.scope === 'folder' && p.folder_id) {
+    //                 map[`${p.group_id}_fol_${p.folder_id}`] = p;
+    //             }
+    //         });
+    //         setPermissions(map);
+
+    //         if (groupsData?.length > 0) {
+    //             setSelectedGroup(urlGroupId || groupsData[0].id);
+    //         }
+    //     } catch (err) { console.error('Fetch error:', err); }
+    //     finally { setLoading(false); }
+    // }, [session, urlGroupId]);
+
+    // ── HIERARCHY HELPERS ────────────────────────────────────────────────────
+
+
     const fetchAll = useCallback(async () => {
         setLoading(true);
         try {
@@ -71,21 +136,50 @@ function AccessPageContent() {
             ] = await Promise.all([
                 groupQuery,
                 supabase.from('folders').select('*').eq('company_id', session.company_id),
-                supabase.from('documents').select('id, name, folder_id, index').eq('company_id', session.company_id).eq('is_deleted', false).order('created_at', { ascending: true }),
-                // Fetching exactly the columns we know exist in your DB now
+                supabase.from('documents').select('id, name, folder_id, index, uploaded_by, creator_revoked').eq('company_id', session.company_id).eq('is_deleted', false).order('created_at', { ascending: true }),
                 supabase.from('permissions').select('id, document_id, folder_id, scope, group_id, can_view, can_edit, can_upload, can_download_secure, can_download_original, can_delete').eq('company_id', session.company_id),
                 supabase.from('user_groups').select('user_id, group_id'),
                 supabase.from('users').select('id, name, email')
             ]);
 
             setGroups(groupsData || []);
-            setFolders(foldersData || []);
 
-            const cleanedDocs = (docsData || []).map((doc, index) => ({
-                ...doc, displayIndex: (index + 1).toString()
-            }));
-            setDocuments(cleanedDocs);
+            // 🔥 DELEGATION RULE: Calculate My Access First 🔥
+            let myGroupIds = [];
+            if (session.role !== 'super_admin' && userGroups) {
+                myGroupIds = userGroups.filter(ug => ug.user_id === session.id).map(ug => ug.group_id);
+            }
 
+            const myPerms = {};
+            if (session.role !== 'super_admin' && permsData) {
+                permsData.forEach(p => {
+                    if (myGroupIds.includes(p.group_id)) {
+                        if (p.scope === 'document' && p.document_id) myPerms[`doc_${p.document_id}`] = p;
+                        if (p.scope === 'folder' && p.folder_id) myPerms[`fol_${p.folder_id}`] = p;
+                    }
+                });
+            }
+
+            // FILTER FOLDERS (Only show what I have access to)
+            const allowedFolders = (foldersData || []).filter(f => {
+                if (session.role === 'super_admin') return true;
+                if (f.created_by === session.id && f.creator_revoked !== true) return true; // I am the creator
+                return myPerms[`fol_${f.id}`]?.can_view === true; // Or I was granted access
+            });
+            setFolders(allowedFolders);
+
+            // FILTER DOCS (Only show what I have access to)
+            const allowedDocs = (docsData || []).filter(doc => {
+                if (session.role === 'super_admin') return true;
+                if (doc.uploaded_by === session.id && doc.creator_revoked !== true) return true;
+                if (myPerms[`doc_${doc.id}`]?.can_view === true) return true;
+                if (doc.folder_id && myPerms[`fol_${doc.folder_id}`]?.can_view === true) return true;
+                return false;
+            });
+
+            setDocuments(allowedDocs.map((doc, idx) => ({ ...doc, displayIndex: (idx + 1).toString() })));
+
+            // (Keep rest of existing fetch mapping for members and permissions map)
             const membersMap = {};
             if (userGroups && usersData) {
                 const userDict = {};
@@ -99,22 +193,19 @@ function AccessPageContent() {
 
             const map = {};
             (permsData || []).forEach(p => {
-                if (p.scope === 'document' && p.document_id) {
-                    map[`${p.group_id}_doc_${p.document_id}`] = p;
-                } else if (p.scope === 'folder' && p.folder_id) {
-                    map[`${p.group_id}_fol_${p.folder_id}`] = p;
-                }
+                if (p.scope === 'document' && p.document_id) map[`${p.group_id}_doc_${p.document_id}`] = p;
+                else if (p.scope === 'folder' && p.folder_id) map[`${p.group_id}_fol_${p.folder_id}`] = p;
             });
             setPermissions(map);
 
-            if (groupsData?.length > 0) {
-                setSelectedGroup(urlGroupId || groupsData[0].id);
-            }
+            if (groupsData?.length > 0) setSelectedGroup(urlGroupId || groupsData[0].id);
+
         } catch (err) { console.error('Fetch error:', err); }
         finally { setLoading(false); }
     }, [session, urlGroupId]);
 
-    // ── HIERARCHY HELPERS ────────────────────────────────────────────────────
+
+
     const getDescendantDocs = (folderId) => {
         let descendants = [];
         const findDocs = (fid) => {
@@ -146,86 +237,200 @@ function AccessPageContent() {
     };
 
     // ── CORE BULLETPROOF DB TOGGLE ───────────────────────────────────────────
-    const togglePermission = async (groupId, targetId, type, field, overrideTarget = null) => {
+    // const togglePermission = async (groupId, targetId, type, field, overrideTarget = null) => {
 
+    //     if (type === 'doc' && field === 'can_upload') {
+    //         alert("Upload permission can only be granted to Folders.");
+    //         return;
+    //     }
+
+    //     const key = `${groupId}_${type}_${targetId}`;
+    //     const saveKey = `${key}_${field}`;
+    //     const current = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false, can_delete: false, perm_id: null };
+
+    //     let targetState = overrideTarget !== null ? overrideTarget : !current[field];
+    //     let updated = { ...current, [field]: targetState };
+
+    //     // CASCADE LOGIC
+    //     if (['can_edit', 'can_upload', 'can_download_secure', 'can_download_original', 'can_delete'].includes(field) && updated[field]) updated.can_view = true;
+    //     if (field === 'can_download_original' && updated.can_download_original) updated.can_download_secure = true;
+    //     if (field === 'can_view' && updated.can_view && type === 'doc') updated.can_download_secure = true;
+    //     if (field === 'can_view' && !updated.can_view) {
+    //         updated.can_edit = false; updated.can_upload = false; updated.can_download_secure = false; updated.can_download_original = false;
+    //     }
+
+    //     if (JSON.stringify(current) === JSON.stringify(updated)) return;
+
+    //     // Optimistic UI
+    //     setPermissions(prev => ({ ...prev, [key]: updated }));
+    //     setSaving(prev => ({ ...prev, [saveKey]: true }));
+
+    //     // 🚨 STRICT DB WRITING LOGIC 🚨
+    //     try {
+    //         const allFalse = !updated.can_view && !updated.can_edit && !updated.can_upload && !updated.can_download_secure && !updated.can_download_original && !updated.can_delete;
+
+    //         // This payload exactly matches the columns in your database
+    //         const dbPayload = {
+    //             can_view: updated.can_view,
+    //             can_edit: updated.can_edit,
+    //             can_upload: updated.can_upload,
+    //             can_download_secure: updated.can_download_secure,
+    //             can_download_original: updated.can_download_original,
+    //             can_delete: updated.can_delete,
+    //             updated_at: new Date().toISOString()
+    //         };
+
+    //         if (current.id || current.perm_id) {
+    //             const rowId = current.id || current.perm_id;
+
+    //             if (allFalse) {
+    //                 const { error } = await supabase.from('permissions').delete().eq('id', rowId);
+    //                 if (error) throw error;
+    //                 updated.perm_id = null;
+    //             } else {
+    //                 const { error } = await supabase.from('permissions').update(dbPayload).eq('id', rowId);
+    //                 if (error) throw error;
+    //             }
+    //         } else if (!allFalse) {
+    //             const insertPayload = {
+    //                 company_id: session.company_id,
+    //                 group_id: groupId,
+    //                 scope: type === 'doc' ? 'document' : 'folder',
+    //                 document_id: type === 'doc' ? targetId : null,
+    //                 folder_id: type === 'fol' ? targetId : null,
+    //                 ...dbPayload
+    //             };
+
+    //             const { data, error } = await supabase.from('permissions').insert(insertPayload).select('id').single();
+    //             if (error) throw error;
+    //             updated.perm_id = data.id;
+    //         }
+
+    //         setPermissions(prev => ({ ...prev, [key]: updated }));
+
+    //     } catch (err) {
+    //         console.error('DATABASE WRITE FAILED:', err);
+    //         // 🔥 POPUP ALERT IF DATABASE FAILS 🔥
+    //         alert("Database Save Error: " + (err.message || JSON.stringify(err)));
+    //         setPermissions(prev => ({ ...prev, [key]: current }));
+    //     } finally {
+    //         setSaving(prev => { const n = { ...prev }; delete n[saveKey]; return n; });
+    //     }
+    // };
+
+
+    // ── FAST LOCAL TOGGLE (NO DB CALL YET) ──────────────────────────────────
+    const togglePermission = async (groupId, targetId, type, field, overrideTarget = null) => {
         if (type === 'doc' && field === 'can_upload') {
-            alert("Upload permission can only be granted to Folders.");
-            return;
+            alert("Upload permission can only be granted to Folders."); return;
         }
 
         const key = `${groupId}_${type}_${targetId}`;
-        const saveKey = `${key}_${field}`;
         const current = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false, can_delete: false, perm_id: null };
 
         let targetState = overrideTarget !== null ? overrideTarget : !current[field];
         let updated = { ...current, [field]: targetState };
 
-        // CASCADE LOGIC
+        // CASCADE LOGIC (If they can edit, they must be able to view, etc.)
         if (['can_edit', 'can_upload', 'can_download_secure', 'can_download_original', 'can_delete'].includes(field) && updated[field]) updated.can_view = true;
         if (field === 'can_download_original' && updated.can_download_original) updated.can_download_secure = true;
         if (field === 'can_view' && updated.can_view && type === 'doc') updated.can_download_secure = true;
         if (field === 'can_view' && !updated.can_view) {
-            updated.can_edit = false; updated.can_upload = false; updated.can_download_secure = false; updated.can_download_original = false;
+            updated.can_edit = false; updated.can_upload = false; updated.can_download_secure = false; updated.can_download_original = false; updated.can_delete = false;
         }
 
         if (JSON.stringify(current) === JSON.stringify(updated)) return;
 
-        // Optimistic UI
+        // 1. Update the UI instantly
         setPermissions(prev => ({ ...prev, [key]: updated }));
-        setSaving(prev => ({ ...prev, [saveKey]: true }));
 
-        // 🚨 STRICT DB WRITING LOGIC 🚨
+        // 2. Queue the final "Net Change" for the Submit button
+        setPendingChanges(prev => ({
+            ...prev,
+            [key]: { groupId, targetId, type, updatedState: updated }
+        }));
+    };
+    // ── BATCH SAVE & RETURN (EXPLICIT DENY - NO DELETION) ────────────────────
+    const handleSaveAndReturn = async () => {
+        const changes = Object.values(pendingChanges);
+
+        if (changes.length === 0) {
+            triggerRedirect();
+            return;
+        }
+
+        setIsSubmitting(true);
+        setSaveMessage({ text: '', type: '' }); // Clear old messages
+
         try {
-            const allFalse = !updated.can_view && !updated.can_edit && !updated.can_upload && !updated.can_download_secure && !updated.can_download_original && !updated.can_delete;
+            // 1. FETCH EXISTING PERMS
+            const groupId = changes[0].groupId;
+            const { data: existingPerms, error: fetchErr } = await supabase
+                .from('permissions')
+                .select('id, scope, document_id, folder_id')
+                .eq('company_id', session.company_id)
+                .eq('group_id', groupId);
 
-            // This payload exactly matches the columns in your database
-            const dbPayload = {
-                can_view: updated.can_view,
-                can_edit: updated.can_edit,
-                can_upload: updated.can_upload,
-                can_download_secure: updated.can_download_secure,
-                can_download_original: updated.can_download_original,
-                can_delete: updated.can_delete,
-                updated_at: new Date().toISOString()
-            };
+            if (fetchErr) throw fetchErr;
 
-            if (current.id || current.perm_id) {
-                const rowId = current.id || current.perm_id;
+            // 2. BUILD UPSERT ARRAY (Everything gets explicitly updated)
+            const toUpsert = [];
 
-                if (allFalse) {
-                    const { error } = await supabase.from('permissions').delete().eq('id', rowId);
-                    if (error) throw error;
-                    updated.perm_id = null;
-                } else {
-                    const { error } = await supabase.from('permissions').update(dbPayload).eq('id', rowId);
-                    if (error) throw error;
-                }
-            } else if (!allFalse) {
-                const insertPayload = {
+            for (const change of changes) {
+                const { targetId, type, updatedState } = change;
+
+                const existing = (existingPerms || []).find(p =>
+                    p.scope === (type === 'doc' ? 'document' : 'folder') &&
+                    (type === 'doc' ? p.document_id === targetId : p.folder_id === targetId)
+                );
+
+                // Create the payload with explicitly true/false values
+                const payload = {
                     company_id: session.company_id,
                     group_id: groupId,
                     scope: type === 'doc' ? 'document' : 'folder',
                     document_id: type === 'doc' ? targetId : null,
                     folder_id: type === 'fol' ? targetId : null,
-                    ...dbPayload
+                    can_view: updatedState.can_view,
+                    can_edit: updatedState.can_edit,
+                    can_upload: updatedState.can_upload,
+                    can_download_secure: updatedState.can_download_secure,
+                    can_download_original: updatedState.can_download_original,
+                    can_delete: updatedState.can_delete,
+                    updated_at: new Date().toISOString()
                 };
 
-                const { data, error } = await supabase.from('permissions').insert(insertPayload).select('id').single();
-                if (error) throw error;
-                updated.perm_id = data.id;
+                if (existing) payload.id = existing.id; // Update exact row
+                toUpsert.push(payload);
             }
 
-            setPermissions(prev => ({ ...prev, [key]: updated }));
+            // 3. EXECUTE MASS UPSERT
+            if (toUpsert.length > 0) {
+                const { error: upsertErr } = await supabase.from('permissions').upsert(toUpsert);
+                if (upsertErr) throw upsertErr;
+            }
 
-        } catch (err) {
-            console.error('DATABASE WRITE FAILED:', err);
-            // 🔥 POPUP ALERT IF DATABASE FAILS 🔥
-            alert("Database Save Error: " + (err.message || JSON.stringify(err)));
-            setPermissions(prev => ({ ...prev, [key]: current }));
-        } finally {
-            setSaving(prev => { const n = { ...prev }; delete n[saveKey]; return n; });
+            // 4. SHOW INLINE SUCCESS & REDIRECT
+            setSaveMessage({ text: '✅ Saved successfully! Redirecting...', type: 'success' });
+            setPendingChanges({});
+
+            // Wait 800ms so the user can read the green text before screen changes
+            setTimeout(() => {
+                triggerRedirect();
+            }, 800);
+
+        } catch (error) {
+            console.error("Save failed:", error);
+            setSaveMessage({ text: `❌ Failed to save: ${error.message || 'Check connection'}`, type: 'error' });
+            setIsSubmitting(false);
         }
     };
+    const triggerRedirect = () => {
+        if (selectedGroup === 'subadmin') router.push('/groups/subadmin?view=permissions');
+        else if (selectedGroup) router.push(`/groups/${selectedGroup}?view=permissions`);
+        else router.push('/groups');
+    };
+
 
     // ── BULK TOGGLES ─────────────────────────────────────────────────────────
     const toggleFolderBulk = async (groupId, folderId, field) => {
@@ -363,197 +568,227 @@ function AccessPageContent() {
                             </div>
 
                             <div className="overflow-x-auto">
-                            <table className="w-full min-w-[750px] border-collapse text-left">
-                                <thead>
-                                    <tr className="bg-slate-100/50 border-b border-slate-200">
-                                        <th colSpan="2" className="py-2.5 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Apply to All Below →</th>
-                                        {['can_view', 'can_edit', 'can_upload', 'can_download_secure', 'can_download_original', 'can_delete'].map(field => {
-                                            const isAllChecked = field === 'can_upload'
-                                                ? (displayFolders.length > 0 && displayFolders.every(f => permissions[`${selectedGroup}_fol_${f.id}`]?.can_upload))
-                                                : (displayDocs.length > 0 && displayDocs.every(d => permissions[`${selectedGroup}_doc_${d.id}`]?.[field]));
+                                <table className="w-full min-w-[750px] border-collapse text-left">
+                                    <thead>
+                                        <tr className="bg-slate-100/50 border-b border-slate-200">
+                                            <th colSpan="2" className="py-2.5 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Apply to All Below →</th>
+                                            {['can_view', 'can_edit', 'can_upload', 'can_download_secure', 'can_download_original', 'can_delete'].map(field => {
+                                                const isAllChecked = field === 'can_upload'
+                                                    ? (displayFolders.length > 0 && displayFolders.every(f => permissions[`${selectedGroup}_fol_${f.id}`]?.can_upload))
+                                                    : (displayDocs.length > 0 && displayDocs.every(d => permissions[`${selectedGroup}_doc_${d.id}`]?.[field]));
+
+                                                return (
+                                                    <th key={`bulk_${field}`} className="py-2.5 px-3 text-center">
+                                                        <button onClick={() => toggleAllForGroup(selectedGroup, field)} className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md transition-colors border ${isAllChecked ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
+                                                            {isAllChecked ? 'Uncheck All' : 'Check All'}
+                                                        </button>
+                                                    </th>
+                                                );
+                                            })}
+                                        </tr>
+
+                                        <tr className="border-b border-slate-100 bg-slate-50/60">
+                                            <th className="py-3.5 px-4 w-16 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Index</th>
+                                            <th className="py-3.5 px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</th>
+                                            <th className="py-3.5 px-3 w-24 text-center">
+                                                <div className="inline-block relative group cursor-pointer">
+                                                    <FaEye className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
+                                                    <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                        View
+                                                        <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                    </div>
+                                                </div>
+                                            </th>
+                                            <th className="py-3.5 px-3 w-24 text-center">
+                                                <div className="inline-block relative group cursor-pointer">
+                                                    <FaEdit className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
+                                                    <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                        Edit
+                                                        <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                    </div>
+                                                </div>
+                                            </th>
+                                            <th className="py-3.5 px-3 w-24 text-center">
+                                                <div className="inline-block relative group cursor-pointer">
+                                                    <FaUpload className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
+                                                    <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                        Upload
+                                                        <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                    </div>
+                                                </div>
+                                            </th>
+                                            <th className="py-3.5 px-3 w-24 text-center">
+                                                <div className="inline-block relative group cursor-pointer">
+                                                    <FaShieldAlt className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
+                                                    <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                        DL Secure
+                                                        <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                    </div>
+                                                </div>
+                                            </th>
+                                            <th className="py-3.5 px-3 w-24 text-center">
+                                                <div className="inline-block relative group cursor-pointer">
+                                                    <FaDownload className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
+                                                    <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                        DL Original
+                                                        <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                    </div>
+                                                </div>
+                                            </th>
+                                            <th className="py-3.5 px-3 w-24 text-center">
+                                                <div className="inline-block relative group cursor-pointer">
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        width="16"
+                                                        height="16"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors"
+                                                    >
+                                                        <path d="M3 6h18" />
+                                                        <path d="M8 6V4h8v2" />
+                                                        <path d="M19 6l-1 14H6L5 6" />
+                                                    </svg>
+
+                                                    <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                        Delete
+                                                        <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                    </div>
+                                                </div>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+
+                                        {displayFolders.map(folder => {
+                                            const toggles = [
+                                                { field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand-dark' },
+                                                { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' },
+                                                { field: 'can_download_original', color: 'bg-orange-500' },
+                                                { field: 'can_delete', color: 'bg-red-600' },
+                                            ];
 
                                             return (
-                                                <th key={`bulk_${field}`} className="py-2.5 px-3 text-center">
-                                                    <button onClick={() => toggleAllForGroup(selectedGroup, field)} className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md transition-colors border ${isAllChecked ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
-                                                        {isAllChecked ? 'Uncheck All' : 'Check All'}
-                                                    </button>
-                                                </th>
+                                                <tr key={folder.id} className="group hover:bg-slate-50/60 transition-all duration-150 cursor-pointer" onDoubleClick={() => setCurrentFolderId(folder.id)}>
+                                                    <td className="py-3.5 px-4 text-center font-mono text-[11.5px] font-semibold text-slate-400">{folder.displayIndex}</td>
+                                                    <td className="py-3.5 px-3" onClick={() => setCurrentFolderId(folder.id)}>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-amber-50 border border-amber-100 text-amber-500">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
+                                                            </div>
+                                                            <div><p className="font-semibold text-[13px] text-slate-700 truncate max-w-[240px] group-hover:underline decoration-slate-300 underline-offset-2">{folder.name}</p></div>
+                                                        </div>
+                                                    </td>
+
+                                                    {toggles.map(({ field, color }) => {
+                                                        if (field === 'can_upload') {
+                                                            const isActive = permissions[`${selectedGroup}_fol_${folder.id}`]?.can_upload;
+                                                            const isSaving = saving[`${selectedGroup}_fol_${folder.id}_can_upload`];
+                                                            return (
+                                                                <td key={field} className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                                                    <button onClick={() => togglePermission(selectedGroup, folder.id, 'fol', 'can_upload')} disabled={isSaving} className={`relative w-11 h-6 rounded-full transition-all duration-200 mx-auto block ${isActive ? color : 'bg-slate-200'}`}>
+                                                                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${isActive ? 'left-0.5 translate-x-5' : 'left-0.5 translate-x-0'}`} />
+                                                                    </button>
+                                                                </td>
+                                                            );
+                                                        } else {
+                                                            const state = getFolderBulkState(selectedGroup, folder.id, field);
+                                                            return (
+                                                                <td key={field} className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                                                    <button onClick={() => toggleFolderBulk(selectedGroup, folder.id, field)} className={`relative w-11 h-6 rounded-full transition-all duration-200 mx-auto block ${state === 'all' ? color : state === 'some' ? 'bg-slate-400' : 'bg-slate-200'}`} title={state === 'some' ? 'Partial Access' : ''}>
+                                                                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${state === 'all' ? 'left-0.5 translate-x-5' : state === 'some' ? 'left-[12px]' : 'left-0.5 translate-x-0'}`} />
+                                                                    </button>
+                                                                </td>
+                                                            );
+                                                        }
+                                                    })}
+                                                </tr>
                                             );
                                         })}
-                                    </tr>
 
-                                    <tr className="border-b border-slate-100 bg-slate-50/60">
-                                        <th className="py-3.5 px-4 w-16 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Index</th>
-                                        <th className="py-3.5 px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</th>
-                                        <th className="py-3.5 px-3 w-24 text-center">
-                                            <div className="inline-block relative group cursor-pointer">
-                                                <FaEye className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
-                                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
-                                                    View
-                                                    <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
-                                                </div>
-                                            </div>
-                                        </th>
-                                        <th className="py-3.5 px-3 w-24 text-center">
-                                            <div className="inline-block relative group cursor-pointer">
-                                                <FaEdit className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
-                                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
-                                                    Edit
-                                                    <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
-                                                </div>
-                                            </div>
-                                        </th>
-                                        <th className="py-3.5 px-3 w-24 text-center">
-                                            <div className="inline-block relative group cursor-pointer">
-                                                <FaUpload className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
-                                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
-                                                    Upload
-                                                    <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
-                                                </div>
-                                            </div>
-                                        </th>
-                                        <th className="py-3.5 px-3 w-24 text-center">
-                                            <div className="inline-block relative group cursor-pointer">
-                                                <FaShieldAlt className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
-                                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
-                                                    DL Secure
-                                                    <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
-                                                </div>
-                                            </div>
-                                        </th>
-                                        <th className="py-3.5 px-3 w-24 text-center">
-                                            <div className="inline-block relative group cursor-pointer">
-                                                <FaDownload className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors" />
-                                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
-                                                    DL Original
-                                                    <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
-                                                </div>
-                                            </div>
-                                        </th>
-                                        <th className="py-3.5 px-3 w-24 text-center">
-                                            <div className="inline-block relative group cursor-pointer">
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    width="16"
-                                                    height="16"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2"
-                                                    className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors"
-                                                >
-                                                    <path d="M3 6h18" />
-                                                    <path d="M8 6V4h8v2" />
-                                                    <path d="M19 6l-1 14H6L5 6" />
-                                                </svg>
+                                        {displayDocs.map((doc) => {
+                                            const key = `${selectedGroup}_doc_${doc.id}`;
+                                            const perm = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false, can_delete: false };
+                                            const ext = doc.name.split('.').pop().toLowerCase();
+                                            const iconClass = { pdf: 'bg-rose-50 border-rose-100 text-rose-600', xlsx: 'bg-emerald-50 border-emerald-100 text-emerald-600', docx: 'bg-indigo-50 border-indigo-100 text-indigo-600' }[ext] || 'bg-slate-50 border-slate-200 text-slate-400';
 
-                                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
-                                                    Delete
-                                                    <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
-                                                </div>
-                                            </div>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-
-                                    {displayFolders.map(folder => {
-                                        const toggles = [
-                                            { field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand-dark' },
-                                            { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' },
-                                            { field: 'can_download_original', color: 'bg-orange-500' },
-                                            { field: 'can_delete', color: 'bg-red-600' },
-                                        ];
-
-                                        return (
-                                            <tr key={folder.id} className="group hover:bg-slate-50/60 transition-all duration-150 cursor-pointer" onDoubleClick={() => setCurrentFolderId(folder.id)}>
-                                                <td className="py-3.5 px-4 text-center font-mono text-[11.5px] font-semibold text-slate-400">{folder.displayIndex}</td>
-                                                <td className="py-3.5 px-3" onClick={() => setCurrentFolderId(folder.id)}>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-amber-50 border border-amber-100 text-amber-500">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
+                                            return (
+                                                <tr key={doc.id} className="group hover:bg-slate-50/60 transition-all duration-150">
+                                                    <td className="py-3.5 px-4 text-center font-mono text-[11.5px] font-semibold text-slate-400">{doc.displayIndex}</td>
+                                                    <td className="py-3.5 px-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[9px] font-black border ${iconClass}`}>
+                                                                {ext.toUpperCase().slice(0, 3)}
+                                                            </div>
+                                                            <p className="font-semibold text-[13px] text-slate-700 truncate max-w-[240px]">{doc.name}</p>
                                                         </div>
-                                                        <div><p className="font-semibold text-[13px] text-slate-700 truncate max-w-[240px] group-hover:underline decoration-slate-300 underline-offset-2">{folder.name}</p></div>
-                                                    </div>
-                                                </td>
+                                                    </td>
 
-                                                {toggles.map(({ field, color }) => {
-                                                    if (field === 'can_upload') {
-                                                        const isActive = permissions[`${selectedGroup}_fol_${folder.id}`]?.can_upload;
-                                                        const isSaving = saving[`${selectedGroup}_fol_${folder.id}_can_upload`];
+                                                    {[{ field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand-dark' }, { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' }, { field: 'can_download_original', color: 'bg-orange-500' }, { field: 'can_delete', color: 'bg-red-600' },].map(({ field, color }) => {
+                                                        if (field === 'can_upload') {
+                                                            return (
+                                                                <td key={field} className="py-3.5 px-3 text-center">
+                                                                    <button onClick={() => togglePermission(selectedGroup, doc.id, 'doc', 'can_upload')} className="relative w-11 h-6 rounded-full bg-slate-100 cursor-not-allowed mx-auto block opacity-60" title="Upload is only for folders">
+                                                                        <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-slate-300 rounded-full flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
+                                                                    </button>
+                                                                </td>
+                                                            );
+                                                        }
+
+                                                        const isActive = perm[field];
+                                                        const isSaving = saving[`${key}_${field}`];
                                                         return (
-                                                            <td key={field} className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                                                                <button onClick={() => togglePermission(selectedGroup, folder.id, 'fol', 'can_upload')} disabled={isSaving} className={`relative w-11 h-6 rounded-full transition-all duration-200 mx-auto block ${isActive ? color : 'bg-slate-200'}`}>
+                                                            <td key={field} className="py-3.5 px-3 text-center">
+                                                                <button onClick={() => togglePermission(selectedGroup, doc.id, 'doc', field)} disabled={isSaving} className={`relative w-11 h-6 rounded-full transition-all duration-200 mx-auto block ${isActive ? color : 'bg-slate-200'} ${isSaving ? 'opacity-50' : ''}`}>
                                                                     <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${isActive ? 'left-0.5 translate-x-5' : 'left-0.5 translate-x-0'}`} />
                                                                 </button>
                                                             </td>
                                                         );
-                                                    } else {
-                                                        const state = getFolderBulkState(selectedGroup, folder.id, field);
-                                                        return (
-                                                            <td key={field} className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                                                                <button onClick={() => toggleFolderBulk(selectedGroup, folder.id, field)} className={`relative w-11 h-6 rounded-full transition-all duration-200 mx-auto block ${state === 'all' ? color : state === 'some' ? 'bg-slate-400' : 'bg-slate-200'}`} title={state === 'some' ? 'Partial Access' : ''}>
-                                                                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${state === 'all' ? 'left-0.5 translate-x-5' : state === 'some' ? 'left-[12px]' : 'left-0.5 translate-x-0'}`} />
-                                                                </button>
-                                                            </td>
-                                                        );
-                                                    }
-                                                })}
-                                            </tr>
-                                        );
-                                    })}
-
-                                    {displayDocs.map((doc) => {
-                                        const key = `${selectedGroup}_doc_${doc.id}`;
-                                        const perm = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false, can_delete: false };
-                                        const ext = doc.name.split('.').pop().toLowerCase();
-                                        const iconClass = { pdf: 'bg-rose-50 border-rose-100 text-rose-600', xlsx: 'bg-emerald-50 border-emerald-100 text-emerald-600', docx: 'bg-indigo-50 border-indigo-100 text-indigo-600' }[ext] || 'bg-slate-50 border-slate-200 text-slate-400';
-
-                                        return (
-                                            <tr key={doc.id} className="group hover:bg-slate-50/60 transition-all duration-150">
-                                                <td className="py-3.5 px-4 text-center font-mono text-[11.5px] font-semibold text-slate-400">{doc.displayIndex}</td>
-                                                <td className="py-3.5 px-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[9px] font-black border ${iconClass}`}>
-                                                            {ext.toUpperCase().slice(0, 3)}
-                                                        </div>
-                                                        <p className="font-semibold text-[13px] text-slate-700 truncate max-w-[240px]">{doc.name}</p>
-                                                    </div>
-                                                </td>
-
-                                                {[{ field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand-dark' }, { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' }, { field: 'can_download_original', color: 'bg-orange-500' }, { field: 'can_delete', color: 'bg-red-600' },].map(({ field, color }) => {
-                                                    if (field === 'can_upload') {
-                                                        return (
-                                                            <td key={field} className="py-3.5 px-3 text-center">
-                                                                <button onClick={() => togglePermission(selectedGroup, doc.id, 'doc', 'can_upload')} className="relative w-11 h-6 rounded-full bg-slate-100 cursor-not-allowed mx-auto block opacity-60" title="Upload is only for folders">
-                                                                    <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-slate-300 rounded-full flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
-                                                                </button>
-                                                            </td>
-                                                        );
-                                                    }
-
-                                                    const isActive = perm[field];
-                                                    const isSaving = saving[`${key}_${field}`];
-                                                    return (
-                                                        <td key={field} className="py-3.5 px-3 text-center">
-                                                            <button onClick={() => togglePermission(selectedGroup, doc.id, 'doc', field)} disabled={isSaving} className={`relative w-11 h-6 rounded-full transition-all duration-200 mx-auto block ${isActive ? color : 'bg-slate-200'} ${isSaving ? 'opacity-50' : ''}`}>
-                                                                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${isActive ? 'left-0.5 translate-x-5' : 'left-0.5 translate-x-0'}`} />
-                                                            </button>
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                                                    })}
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     )}
                 </div>
 
+                {/* RETURN/SUBMIT BUTTON & INLINE MESSAGES */}
+                <div className="absolute bottom-8 right-8 z-50 flex flex-col items-end gap-3">
+
+                    {/* 🔥 INLINE MESSAGE BOX (Replaces the Alert) */}
+                    {saveMessage.text && (
+                        <div className={`px-4 py-2.5 rounded-xl font-bold text-[13px] shadow-lg flex items-center gap-2 animate-fade-in-up ${saveMessage.type === 'success'
+                                ? 'bg-emerald-500 text-white border border-emerald-600'
+                                : 'bg-red-500 text-white border border-red-600'
+                            }`}>
+                            {saveMessage.text}
+                        </div>
+                    )}
+
+                    <button
+                        onClick={handleSaveAndReturn}
+                        disabled={isSubmitting}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-full font-semibold shadow-lg transition-all active:scale-95 ${Object.keys(pendingChanges).length > 0
+                                ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'
+                                : 'bg-brand hover:bg-brand-dark text-white'
+                            } ${isSubmitting ? 'opacity-75 cursor-wait' : ''}`}
+                    >
+                        <span>{isSubmitting ? 'Saving Changes...' : (Object.keys(pendingChanges).length > 0 ? 'Save & Return' : 'Return (No Changes)')}</span>
+                        {!isSubmitting && (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+                            </svg>
+                        )}
+                    </button>
+                </div>
+
                 {/* RETURN/SUBMIT BUTTON */}
-                <div className="absolute bottom-8 right-8 z-50">
+                {/* <div className="absolute bottom-8 right-8 z-50">
                     <button onClick={() => {
                         if (selectedGroup === 'subadmin') {
                             router.push('/groups/subadmin?view=permissions');
@@ -566,7 +801,7 @@ function AccessPageContent() {
                         <span>Submit & Return</span>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                     </button>
-                </div>
+                </div> */}
             </div>
         </div>
     );
@@ -1048,17 +1283,6 @@ function AccessPageContent() {
 //         </div>
 //     );
 // }
-
-
-
-
-
-
-
-
-
-
-
 
 
 
