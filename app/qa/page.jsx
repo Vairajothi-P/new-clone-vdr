@@ -34,6 +34,14 @@ function QAPageContent() {
   const [askFile, setAskFile] = useState(null);
   const [replyFile, setReplyFile] = useState(null);
 
+  // ── FILTER STATE ─────────────────────────────────────────────────────
+  const [filterStatus, setFilterStatus] = useState('all');      // 'all' | 'Answered' | 'Submitted'
+  const [filterDateRange, setFilterDateRange] = useState('all'); // 'all' | 'today' | 'last7' | 'last30' | 'custom'
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [filterAssignee, setFilterAssignee] = useState('all');  // 'all' | assignee name
+  const [tableSearch, setTableSearch] = useState('');
+
   // Fetch the sidebar documents and folders
   const fetchSidebarData = async () => {
     try {
@@ -127,6 +135,7 @@ function QAPageContent() {
           assignee: assigneeStr,
           answeredBy: answeredByStr,
           askedOn: new Date(t.created_at).toLocaleString(),
+          rawDate: t.created_at,
           status: t.status === "Answered" ? "Answered" : "Submitted",
           action: actionStr,
           messages: msgs
@@ -328,6 +337,39 @@ function QAPageContent() {
     document.body.removeChild(link);
   };
 
+  const filteredQaData = qaData.filter(item => {
+    if (filterStatus !== 'all' && item.status !== filterStatus) return false;
+    if (filterAssignee !== 'all' && item.assignee !== filterAssignee) return false;
+    
+    if (filterDateRange !== 'all') {
+      const itemDate = new Date(item.rawDate);
+      const now = new Date();
+      if (filterDateRange === 'today') {
+        if (itemDate.toDateString() !== now.toDateString()) return false;
+      } else if (filterDateRange === 'last7') {
+        const diffTime = Math.abs(now - itemDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays > 7) return false;
+      } else if (filterDateRange === 'last30') {
+        const diffTime = Math.abs(now - itemDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays > 30) return false;
+      } else if (filterDateRange === 'custom') {
+        if (customStartDate) {
+          const start = new Date(customStartDate);
+          start.setHours(0, 0, 0, 0);
+          if (itemDate < start) return false;
+        }
+        if (customEndDate) {
+          const end = new Date(customEndDate);
+          end.setHours(23, 59, 59, 999);
+          if (itemDate > end) return false;
+        }
+      }
+    }
+    return true;
+  });
+
   return (
     <div className="flex w-full h-full bg-[#F8F9FB] font-sans">
       
@@ -489,19 +531,61 @@ function QAPageContent() {
             </button>
           </div>
 
-          <div className="flex items-center gap-4 pb-3">
+          <div className="flex items-center gap-4 pb-3 flex-wrap">
             <div className="flex items-center gap-2 text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
               <FaFilter className="w-3 h-3" />
               <span className="text-xs font-semibold text-slate-600">Filter By:</span>
             </div>
             
-            <select className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] cursor-pointer">
-              <option>Any Date Range</option>
-              <option>Last 7 Days</option>
+            <select 
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] cursor-pointer"
+            >
+              <option value="all">All Status</option>
+              <option value="Submitted">Submitted (Open)</option>
+              <option value="Answered">Answered (Closed)</option>
             </select>
+
+            <select 
+              value={filterDateRange}
+              onChange={(e) => setFilterDateRange(e.target.value)}
+              className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] cursor-pointer"
+            >
+              <option value="all">Any Date Range</option>
+              <option value="today">Today</option>
+              <option value="last7">Last 7 Days</option>
+              <option value="last30">Last 30 Days</option>
+              <option value="custom">Custom Range</option>
+            </select>
+
+            {filterDateRange === 'custom' && (
+              <div className="flex items-center gap-2">
+                <input 
+                  type="date" 
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                />
+                <span className="text-xs text-slate-400 font-medium">to</span>
+                <input 
+                  type="date" 
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                />
+              </div>
+            )}
             
-            <select className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] cursor-pointer">
-              <option>All Assignees</option>
+            <select 
+              value={filterAssignee}
+              onChange={(e) => setFilterAssignee(e.target.value)}
+              className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] cursor-pointer"
+            >
+              <option value="all">All Assignees</option>
+              {admins.map(admin => (
+                <option key={admin.id} value={admin.name}>{admin.name}</option>
+              ))}
             </select>
 
             <button onClick={fetchQAData} className="p-2 text-slate-400 hover:text-[var(--brand)] hover:bg-[var(--brand)]/10 rounded-lg transition-all" title="Refresh Data">
@@ -533,7 +617,7 @@ function QAPageContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {qaData.map((item) => (
+                {filteredQaData.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="px-6 py-4 text-sm font-bold text-slate-400 whitespace-nowrap">{item.displayId}</td>
                     <td className="px-4 py-4 text-sm text-slate-800 font-semibold max-w-[200px] truncate group-hover:text-[var(--brand)] transition-colors" title={item.question}>{item.question}</td>
@@ -587,10 +671,10 @@ function QAPageContent() {
                   </tr>
                 ))}
                 
-                {!loading && qaData.length === 0 && (
+                {!loading && filteredQaData.length === 0 && (
                   <tr>
-                    <td colSpan="8" className="px-6 py-12 text-center text-slate-500">
-                      No questions found.
+                    <td colSpan="9" className="px-6 py-12 text-center text-slate-500 font-medium">
+                      {qaData.length > 0 ? "No questions match your current filters." : "No questions found."}
                     </td>
                   </tr>
                 )}
