@@ -135,7 +135,10 @@ function AccessPageContent() {
                 { data: usersData }
             ] = await Promise.all([
                 groupQuery,
-                supabase.from('folders').select('*').eq('company_id', session.company_id),
+
+                // supabase.from('folders').select('*').eq('company_id', session.company_id),
+                // supabase.from('documents').select('id, name, folder_id, index, uploaded_by, creator_revoked').eq('company_id', session.company_id).eq('is_deleted', false).order('created_at', { ascending: true }),
+                supabase.from('folders').select('*').eq('company_id', session.company_id).eq('is_deleted', false),
                 supabase.from('documents').select('id, name, folder_id, index, uploaded_by, creator_revoked').eq('company_id', session.company_id).eq('is_deleted', false).order('created_at', { ascending: true }),
                 supabase.from('permissions').select('id, document_id, folder_id, scope, group_id, can_view, can_edit, can_upload, can_download_secure, can_download_original, can_delete').eq('company_id', session.company_id),
                 supabase.from('user_groups').select('user_id, group_id'),
