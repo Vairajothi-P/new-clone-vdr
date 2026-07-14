@@ -2293,18 +2293,44 @@ function UnifiedWorkspace() {
         return path;
     }, [currentFolderId, files]);
 
+    // ── STABLE INDEX MAP ─────────────────────────────────────────────────────
+    // Sequential 1,2,3 for root items; 1.1,1.2 for files inside folders.
+    // Computed once and used by ALL views so index never changes.
+    const stableIndexMap = useMemo(() => {
+        const map = new Map();
+        const byParent = {};
+        files.forEach(f => {
+            const pId = f.parentId || 'root';
+            if (!byParent[pId]) byParent[pId] = [];
+            byParent[pId].push(f);
+        });
+        Object.values(byParent).forEach(group => group.sort(sortItemsByIndex));
+
+        const assignIndex = (parentId, prefix) => {
+            (byParent[parentId] || []).forEach((child, idx) => {
+                const displayIndex = prefix ? `${prefix}.${idx + 1}` : `${idx + 1}`;
+                map.set(child.id, displayIndex);
+                if (child.type === 'folder') assignIndex(child.id, displayIndex);
+            });
+        };
+        assignIndex('root', '');
+        return map;
+    }, [files]);
+
     const currentItems = useMemo(() => {
-        if (currentView === 'trash') return files.filter(f => deletedIds.has(f.id));
-        if (currentView === 'bookmarks') return files.filter(f => bookmarkedIds.has(f.id) && !deletedIds.has(f.id));
-        if (currentView === 'downloads') return files.filter(f => downloadedIds.has(f.id) && !deletedIds.has(f.id));
-        return files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
-    }, [currentFolderId, files, currentView, deletedIds, bookmarkedIds, downloadedIds]);
+        const raw = (() => {
+            if (currentView === 'trash') return files.filter(f => deletedIds.has(f.id));
+            if (currentView === 'bookmarks') return files.filter(f => bookmarkedIds.has(f.id) && !deletedIds.has(f.id));
+            if (currentView === 'downloads') return files.filter(f => downloadedIds.has(f.id) && !deletedIds.has(f.id));
+            return files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
+        })();
+        return raw.map(f => ({ ...f, displayIndex: stableIndexMap.get(f.id) || '—' }));
+    }, [currentFolderId, files, currentView, deletedIds, bookmarkedIds, downloadedIds, stableIndexMap]);
 
     const filteredItems = useMemo(() => {
         return currentItems
             .filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-            .sort(sortItemsByIndex)
-            .map((item, idx) => ({ ...item, displayIndex: (idx + 1).toString() }));
+            .sort(sortItemsByIndex);
     }, [currentItems, searchQuery]);
     const selectedItemsArray = files.filter(f => selectedIds.has(f.id));
 
@@ -2690,7 +2716,7 @@ function UnifiedWorkspace() {
                     URL.revokeObjectURL(url);
 
                     await supabase.from('documents').update({ is_downloaded: true }).eq('id', file.id);
-                    
+
                     if (session) {
                         await supabase.from('document_edit_logs').insert([{
                             user_id: session.id,

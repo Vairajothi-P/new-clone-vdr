@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
 import { hasPermission } from '@/lib/access/permissions';
@@ -456,15 +456,51 @@ function AccessPageContent() {
         const aIndex = Number.isFinite(+(a.index_number || a.index)) ? +(a.index_number || a.index) : 999999;
         const bIndex = Number.isFinite(+(b.index_number || b.index)) ? +(b.index_number || b.index) : 999999;
         if (aIndex !== bIndex) return aIndex - bIndex;
+        if (a.type && b.type && a.type !== b.type) return a.type === 'folder' ? -1 : 1;
         return a.name.localeCompare(b.name);
     };
+
+    // ── STABLE INDEX MAP ─────────────────────────────────────────────────────
+    // Sequential 1,2,3 for root items; 1.1,1.2 for files inside folders.
+    const accessIndexMap = useMemo(() => {
+        const map = new Map();
+        const byParent = {};
+        folders.forEach(f => {
+            const pId = f.parent_folder_id || 'root';
+            if (!byParent[pId]) byParent[pId] = [];
+            byParent[pId].push({ ...f, _type: 'folder' });
+        });
+        documents.forEach(d => {
+            const pId = d.folder_id || 'root';
+            if (!byParent[pId]) byParent[pId] = [];
+            byParent[pId].push({ ...d, _type: 'doc' });
+        });
+        Object.values(byParent).forEach(group =>
+            group.sort((a, b) => sortItemsByIndex(
+                { index_number: a.index_number, index: a.index, name: a.name, type: a._type },
+                { index_number: b.index_number, index: b.index, name: b.name, type: b._type }
+            ))
+        );
+
+        const assignIndex = (parentId, prefix) => {
+            (byParent[parentId] || []).forEach((child, idx) => {
+                const displayIndex = prefix ? `${prefix}.${idx + 1}` : `${idx + 1}`;
+                const key = child._type === 'folder' ? `folder_${child.id}` : `doc_${child.id}`;
+                map.set(key, displayIndex);
+                if (child._type === 'folder') assignIndex(child.id, displayIndex);
+            });
+        };
+        assignIndex('root', '');
+        return map;
+    }, [folders, documents]);
 
     // ── RENDER ───────────────────────────────────────────────────────────────
     const activeGroup = groups.find(g => g.id === selectedGroup);
     const sortedFolders = folders.filter(f => f.parent_folder_id === currentFolderId && f.name.toLowerCase().includes(searchQuery.toLowerCase())).sort(sortItemsByIndex);
     const sortedDocs = documents.filter(d => d.folder_id === currentFolderId && d.name.toLowerCase().includes(searchQuery.toLowerCase())).sort(sortItemsByIndex);
-    const displayFolders = sortedFolders.map((f, idx) => ({ ...f, displayIndex: (idx + 1).toString() }));
-    const displayDocs = sortedDocs.map((d, idx) => ({ ...d, displayIndex: (idx + displayFolders.length + 1).toString() }));
+
+    const displayFolders = sortedFolders.map(f => ({ ...f, displayIndex: accessIndexMap.get(`folder_${f.id}`) || '—' }));
+    const displayDocs = sortedDocs.map(d => ({ ...d, displayIndex: accessIndexMap.get(`doc_${d.id}`) || '—' }));
 
     if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" /></div>;
 
@@ -763,8 +799,8 @@ function AccessPageContent() {
                     {/* 🔥 INLINE MESSAGE BOX (Replaces the Alert) */}
                     {saveMessage.text && (
                         <div className={`px-4 py-2.5 rounded-xl font-bold text-[13px] shadow-lg flex items-center gap-2 animate-fade-in-up ${saveMessage.type === 'success'
-                                ? 'bg-emerald-500 text-white border border-emerald-600'
-                                : 'bg-red-500 text-white border border-red-600'
+                            ? 'bg-emerald-500 text-white border border-emerald-600'
+                            : 'bg-red-500 text-white border border-red-600'
                             }`}>
                             {saveMessage.text}
                         </div>
@@ -774,8 +810,8 @@ function AccessPageContent() {
                         onClick={handleSaveAndReturn}
                         disabled={isSubmitting}
                         className={`flex items-center gap-2 px-6 py-3 rounded-full font-semibold shadow-lg transition-all active:scale-95 ${Object.keys(pendingChanges).length > 0
-                                ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'
-                                : 'bg-brand hover:bg-brand-dark text-white'
+                            ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'
+                            : 'bg-brand hover:bg-brand-dark text-white'
                             } ${isSubmitting ? 'opacity-75 cursor-wait' : ''}`}
                     >
                         <span>{isSubmitting ? 'Saving Changes...' : (Object.keys(pendingChanges).length > 0 ? 'Save & Return' : 'Return (No Changes)')}</span>
