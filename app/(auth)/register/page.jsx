@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { FaLock, FaUser, FaShieldAlt, FaCheckCircle } from "react-icons/fa";
 
-export default function RegisterPage() {
+function RegisterContent() {
+// export default function RegisterPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const token = searchParams.get("token");
@@ -194,10 +195,17 @@ export default function RegisterPage() {
                 </div>
             </div>
         </div>
+
     );
 }
 
-
+export default function RegisterPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-medium">Loading Registration...</div>}>
+            <RegisterContent />
+        </Suspense>
+    );
+}
 
 
 
