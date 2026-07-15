@@ -2598,8 +2598,8 @@ function UnifiedWorkspace() {
             if (fIdx > -1) {
                 updatedFiles[fIdx].index = (i + 1).toString();
                 if (sib.id === sourceId) {
-                     updatedFiles[fIdx].version = (parseInt(updatedFiles[fIdx].version) || 1) + 1;
-                     targetVersion = updatedFiles[fIdx].version;
+                    updatedFiles[fIdx].version = (parseInt(updatedFiles[fIdx].version) || 1) + 1;
+                    targetVersion = updatedFiles[fIdx].version;
                 }
             }
         });
@@ -2614,7 +2614,7 @@ function UnifiedWorkspace() {
             } else {
                 await supabase.from('documents').update({ version: targetVersion }).eq('id', sourceId);
             }
-            
+
             // Rebuild and save ALL indexes accurately without reloading the page
             await executeRebuildIndex(updatedFiles, deletedIds, false);
         } catch (err) {
@@ -2656,7 +2656,7 @@ function UnifiedWorkspace() {
 
             const folderUpdates = [];
             const docUpdates = [];
-            
+
             // To update local state correctly when not reloading
             const localUpdates = new Map();
 
@@ -3313,9 +3313,9 @@ function UnifiedWorkspace() {
                                     const isDL = downloading[item.id];
 
                                     return (
-                                        <tr 
-                                            key={item.id} 
-                                            className={`group transition-colors ${selectionEnabled ? 'cursor-pointer' : ''} ${isChecked ? 'bg-brand-soft' : 'hover:bg-brand-soft/50'}`} 
+                                        <tr
+                                            key={item.id}
+                                            className={`group transition-colors ${selectionEnabled ? 'cursor-pointer' : ''} ${isChecked ? 'bg-brand-soft' : 'hover:bg-brand-soft/50'}`}
                                             onClick={selectionEnabled ? () => handleItemClick(item) : undefined}
                                             draggable={currentView === 'files'}
                                             onDragStart={(e) => handleDragStart(e, item)}
@@ -3330,7 +3330,7 @@ function UnifiedWorkspace() {
                                             <td className="py-4 px-3 text-center text-[12px] font-mono font-semibold text-slate-500">
                                                 {item.displayIndex || '—'}
                                             </td>
-                                            <td className="py-4 px-3">
+                                            {/* <td className="py-4 px-3">
                                                 <div className="flex items-center gap-3">
                                                     {isFolder ? (
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fcd34d"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
@@ -3340,7 +3340,39 @@ function UnifiedWorkspace() {
                                                     <span className="text-[13px] font-semibold text-slate-800">{item.name}</span>
                                                     {isDL && <span className="ml-2 text-[10px] text-emerald-600 font-bold animate-pulse">Downloading...</span>}
                                                 </div>
+                                            </td> */}
+
+                                            <td className="py-4 px-3">
+                                                <div className="flex items-center gap-3">
+                                                    {isFolder ? (
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fcd34d"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
+                                                    ) : (
+                                                        <div className="w-5 h-5 bg-slate-100 rounded text-[8px] font-black text-slate-500 flex items-center justify-center">{item.type.toUpperCase().slice(0, 3)}</div>
+                                                    )}
+
+                                                    {/* 🔥 THE FIX: Clickable File Name opens in New Tab! */}
+                                                    <span
+                                                        className={`text-[13px] font-semibold transition-colors ${item.type !== 'folder' && canUser('can_view', item) ? 'text-slate-800 hover:text-[var(--brand)] hover:underline cursor-pointer' : 'text-slate-800'}`}
+                                                        onClick={(e) => {
+                                                            if (item.type !== 'folder') {
+                                                                e.stopPropagation(); // Stops the row from being selected
+                                                                if (canUser('can_view', item)) {
+                                                                    window.open(`/view/${item.id}`, '_blank');
+                                                                } else {
+                                                                    alert("You do not have permission to view this file.");
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        {item.name}
+                                                    </span>
+
+                                                    {isDL && <span className="ml-2 text-[10px] text-emerald-600 font-bold animate-pulse">Downloading...</span>}
+                                                </div>
                                             </td>
+
+
+                                            
                                             {currentView !== 'trash' && (
                                                 <td className="py-4 px-2 text-center" onClick={e => handleToggleBookmark(item, e)}>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={bookmarkedIds.has(item.id) ? "#fbbf24" : "none"} stroke={bookmarkedIds.has(item.id) ? "#fbbf24" : "#cbd5e1"} strokeWidth="2.5" className="cursor-pointer transition-colors hover:stroke-amber-400 mx-auto">
