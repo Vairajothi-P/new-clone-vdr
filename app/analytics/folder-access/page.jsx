@@ -1,45 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-
-const CustomSelect = ({ label, options, value, onChange }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const selectedOption = options.find(o => o.value === value) || options[0];
-
-    return (
-        <div className="relative flex flex-col gap-1.5 w-56">
-            <span className="text-[11px] uppercase tracking-wider text-gray-500 font-bold ml-1">{label}</span>
-            <div 
-                onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center justify-between px-4 py-2.5 bg-white border border-gray-200 hover:border-[var(--brand)] rounded-xl cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-all duration-300"
-            >
-                <span className="text-sm font-semibold text-gray-700 truncate mr-2">{selectedOption?.label || 'Select'}</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-gray-400 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
-                    <polyline points="6 9 12 15 18 9" />
-                </svg>
-            </div>
-            
-            {isOpen && (
-                <>
-                    <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)}></div>
-                    <div className="absolute top-[105%] left-0 w-full bg-white border border-gray-100 rounded-xl shadow-xl z-20 py-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                        {options.map((opt) => (
-                            <div 
-                                key={opt.value}
-                                onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                                className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${value === opt.value ? 'bg-[var(--brand)]/10 text-[var(--brand)] font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
-                            >
-                                {opt.label}
-                            </div>
-                        ))}
-                    </div>
-                </>
-            )}
-        </div>
-    );
-};
+import { X, Check } from 'lucide-react';
 
 export default function FolderAccessPage() {
     const router = useRouter();
@@ -50,9 +14,55 @@ export default function FolderAccessPage() {
     
     const [selectedAction, setSelectedAction] = useState('All Action');
     const [selectedGroupId, setSelectedGroupId] = useState('');
+    
+    const [isActionDropdownOpen, setIsActionDropdownOpen] = useState(false);
+    const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState(false);
+    
+    // Modal & UI States
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedFolderForModal, setSelectedFolderForModal] = useState(null);
+    
+    // Users Modal States
+    const [isUsersModalOpen, setIsUsersModalOpen] = useState(false);
+    const [selectedActionForUsers, setSelectedActionForUsers] = useState('');
+    const [usersList, setUsersList] = useState([]);
+    const [loadingUsers, setLoadingUsers] = useState(false);
+
+    const [sortOrder, setSortOrder] = useState('asc');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
     
     const [loading, setLoading] = useState(true);
+
+    const actionDropdownRef = useRef(null);
+    const groupDropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (actionDropdownRef.current && !actionDropdownRef.current.contains(event.target)) {
+                setIsActionDropdownOpen(false);
+            }
+            if (groupDropdownRef.current && !groupDropdownRef.current.contains(event.target)) {
+                setIsGroupDropdownOpen(false);
+            }
+        };
+
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                setIsActionDropdownOpen(false);
+                setIsGroupDropdownOpen(false);
+                setIsModalOpen(false);
+                setIsUsersModalOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, []);
 
     useEffect(() => {
         const rawSession = localStorage.getItem('vdr_session');
@@ -147,19 +157,38 @@ export default function FolderAccessPage() {
 
     const selectedGroupName = groups.find(g => g.id === selectedGroupId)?.name || 'Group';
 
-    // Apply Filter
-    const filteredTableData = tableData.filter(row => {
+    // Apply Filter, Sort, Pagination
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedAction, selectedGroupId, sortOrder]);
+
+    let processedData = tableData.filter(row => {
         if (selectedAction === 'All Action') return true;
         return row.permDetails[selectedAction] === true;
     });
 
+    if (sortOrder === 'asc') {
+        processedData.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+        processedData.sort((a, b) => b.name.localeCompare(a.name));
+    }
+
+    const totalItems = processedData.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+    const currentDisplayedData = processedData.slice(startIndex, endIndex);
+
+    const handlePrevPage = () => setCurrentPage(p => Math.max(1, p - 1));
+    const handleNextPage = () => setCurrentPage(p => Math.min(totalPages, p + 1));
+
     const handleExport = () => {
-        if (!filteredTableData || filteredTableData.length === 0) return;
+        if (!processedData || processedData.length === 0) return;
 
         const headers = ['Index', 'Folder Name', `Group: ${selectedGroupName} (%)`, 'View', 'Upload', 'Edit', 'Secure Download', 'Original Download', 'Delete'];
         const csvRows = [headers.join(',')];
 
-        filteredTableData.forEach(row => {
+        processedData.forEach(row => {
             const rowData = [
                 row.index,
                 `"${row.name}"`,
@@ -184,6 +213,123 @@ export default function FolderAccessPage() {
         document.body.removeChild(link);
     };
 
+    const handleOpenUsersModal = async (folderRow, actionKey) => {
+        setIsUsersModalOpen(true);
+        setSelectedFolderForModal(folderRow);
+        setSelectedActionForUsers(actionKey);
+        setLoadingUsers(true);
+        setUsersList([]);
+        
+        try {
+            const { data: userGroupsData, error: ugError } = await supabase
+                .from('user_groups')
+                .select('user_id')
+                .eq('group_id', selectedGroupId);
+                
+            if (ugError) throw ugError;
+            
+            const groupUserIds = (userGroupsData || []).map(ug => ug.user_id);
+            
+            if (groupUserIds.length === 0) {
+                setLoadingUsers(false);
+                return;
+            }
+
+            const { data: usersData, error: usersError } = await supabase
+                .from('users')
+                .select('id, name, email')
+                .in('id', groupUserIds)
+                .order('name');
+
+            if (usersError) throw usersError;
+            
+            let lastActionMap = {};
+            
+            const { data: docsData } = await supabase
+                .from('documents')
+                .select('id')
+                .eq('folder_id', folderRow.id)
+                .eq('is_deleted', false);
+                
+            const docIds = (docsData || []).map(d => d.id);
+            
+            if (docIds.length > 0) {
+                if (actionKey === 'view') {
+                    const { data: accessLogs } = await supabase
+                        .from('document_access_logs')
+                        .select('user_id, opened_at')
+                        .in('document_id', docIds)
+                        .in('user_id', groupUserIds);
+                        
+                    (accessLogs || []).forEach(log => {
+                        if (!lastActionMap[log.user_id] || new Date(log.opened_at) > new Date(lastActionMap[log.user_id])) {
+                            lastActionMap[log.user_id] = log.opened_at;
+                        }
+                    });
+                } else {
+                    let typeFilter = [];
+                    if (actionKey === 'upload') typeFilter = ['UPLOAD'];
+                    else if (actionKey === 'edit') typeFilter = ['EDIT'];
+                    else if (actionKey === 'download_secure') typeFilter = ['DOWNLOAD_PDF', 'DOWNLOAD_SECURE'];
+                    else if (actionKey === 'download_original') typeFilter = ['DOWNLOAD_ORIGINAL', 'DOWNLOAD'];
+                    else if (actionKey === 'delete') typeFilter = ['DELETE'];
+                    
+                    const { data: editLogs } = await supabase
+                        .from('document_edit_logs')
+                        .select('user_id, changed_at, action_type')
+                        .in('document_id', docIds)
+                        .in('user_id', groupUserIds);
+                        
+                    (editLogs || []).forEach(log => {
+                        if (typeFilter.includes(log.action_type)) {
+                            if (!lastActionMap[log.user_id] || new Date(log.changed_at) > new Date(lastActionMap[log.user_id])) {
+                                lastActionMap[log.user_id] = log.changed_at;
+                            }
+                        }
+                    });
+                }
+            }
+
+            const formattedUsersList = (usersData || [])
+                .filter(user => lastActionMap[user.id])
+                .map(user => ({
+                    ...user,
+                    last_performed: lastActionMap[user.id]
+                }))
+                .sort((a, b) => new Date(b.last_performed) - new Date(a.last_performed));
+
+            setUsersList(formattedUsersList);
+        } catch (err) {
+            console.error("Error fetching group users:", err);
+        } finally {
+            setLoadingUsers(false);
+        }
+    };
+
+    const actionNames = {
+        view: 'View',
+        upload: 'Upload',
+        edit: 'Edit',
+        download_secure: 'Secure Download',
+        download_original: 'Original Download',
+        delete: 'Delete'
+    };
+
+    const renderCheck = (row, actionKey) => {
+        if (row.permDetails[actionKey]) {
+            return (
+                <div 
+                    onClick={() => handleOpenUsersModal(row, actionKey)}
+                    className="cursor-pointer hover:scale-125 transition-transform flex items-center justify-center p-1 rounded-full hover:bg-green-50"
+                    title="View Users"
+                >
+                    <Check className="text-green-500" size={16} strokeWidth={3} />
+                </div>
+            );
+        }
+        return <X className="text-red-400 opacity-50" size={16} />;
+    };
+
     return (
         <div className="p-8 bg-white min-h-full font-sans relative">
             {/* Header Section */}
@@ -202,146 +348,366 @@ export default function FolderAccessPage() {
             </div>
 
             {/* Filter Section */}
-            <div className="flex items-end gap-6 mb-6">
+            <div className="flex items-end gap-5 mb-6">
                 <div className="pb-1">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                     </svg>
                 </div>
 
-                {/* Custom Action Dropdown */}
-                <CustomSelect 
-                    label="Action"
-                    value={selectedAction}
-                    onChange={setSelectedAction}
-                    options={[
-                        { value: 'All Action', label: 'All Action' },
-                        { value: 'view', label: 'View' },
-                        { value: 'upload', label: 'Upload' },
-                        { value: 'edit', label: 'Edit' },
-                        { value: 'download_secure', label: 'Secure Download' },
-                        { value: 'download_original', label: 'Original Download' },
-                        { value: 'delete', label: 'Delete' }
-                    ]}
-                />
+                {/* Action Filter */}
+                <div className="relative flex flex-col gap-1 w-48" ref={actionDropdownRef}>
+                    <span className="text-[10px] text-gray-400 font-medium">Action</span>
+                    <div 
+                        className="flex items-center justify-between border-b border-gray-300 pb-1 text-sm text-gray-700 cursor-pointer"
+                        onClick={() => {
+                            setIsActionDropdownOpen(!isActionDropdownOpen);
+                            setIsGroupDropdownOpen(false);
+                        }}
+                    >
+                        <span className="truncate pr-2">
+                            {
+                                [
+                                    { value: 'All Action', label: 'All Action' },
+                                    { value: 'view', label: 'View' },
+                                    { value: 'upload', label: 'Upload' },
+                                    { value: 'edit', label: 'Edit' },
+                                    { value: 'download_secure', label: 'Secure Download' },
+                                    { value: 'download_original', label: 'Original Download' },
+                                    { value: 'delete', label: 'Delete' }
+                                ].find(a => a.value === selectedAction)?.label || 'All Action'
+                            }
+                        </span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-gray-400 transition-transform ${isActionDropdownOpen ? 'rotate-180' : ''}`}>
+                            <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                    </div>
+                    {isActionDropdownOpen && (
+                        <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 shadow-lg rounded-md z-50 max-h-48 overflow-y-auto">
+                            {[
+                                { value: 'All Action', label: 'All Action' },
+                                { value: 'view', label: 'View' },
+                                { value: 'upload', label: 'Upload' },
+                                { value: 'edit', label: 'Edit' },
+                                { value: 'download_secure', label: 'Secure Download' },
+                                { value: 'download_original', label: 'Original Download' },
+                                { value: 'delete', label: 'Delete' }
+                            ].map(opt => (
+                                <div 
+                                    key={opt.value}
+                                    className="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer text-gray-700 truncate"
+                                    onClick={() => { setSelectedAction(opt.value); setIsActionDropdownOpen(false); }}
+                                    title={opt.label}
+                                >
+                                    {opt.label}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
-                {/* Custom Group Dropdown */}
-                <CustomSelect 
-                    label="Group"
-                    value={selectedGroupId}
-                    onChange={setSelectedGroupId}
-                    options={groups.map(g => ({ value: g.id, label: g.name }))}
-                />
+                {/* Group Filter */}
+                <div className="relative flex flex-col gap-1 w-48" ref={groupDropdownRef}>
+                    <span className="text-[10px] text-gray-400 font-medium">Group</span>
+                    <div 
+                        className="flex items-center justify-between border-b border-gray-300 pb-1 text-sm text-gray-700 cursor-pointer"
+                        onClick={() => {
+                            setIsGroupDropdownOpen(!isGroupDropdownOpen);
+                            setIsActionDropdownOpen(false);
+                        }}
+                    >
+                        <span className="truncate pr-2">
+                            {groups.find(g => g.id === selectedGroupId)?.name || 'Select Group'}
+                        </span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-gray-400 transition-transform ${isGroupDropdownOpen ? 'rotate-180' : ''}`}>
+                            <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                    </div>
+                    {isGroupDropdownOpen && (
+                        <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 shadow-lg rounded-md z-50 max-h-48 overflow-y-auto">
+                            {groups.map(g => (
+                                <div 
+                                    key={g.id}
+                                    className="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer text-gray-700 truncate"
+                                    onClick={() => { setSelectedGroupId(g.id); setIsGroupDropdownOpen(false); }}
+                                    title={g.name}
+                                >
+                                    {g.name}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {loading ? (
-                <div className="py-20 text-center text-gray-500 font-medium text-sm">Loading data...</div>
+                <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10 min-h-[300px]">
+                    <div className="w-6 h-6 border-2 border-gray-300 border-t-[var(--brand)] rounded-full animate-spin"></div>
+                </div>
             ) : (
                 <>
                     {/* Table Section */}
-                    <div className="w-full text-sm mt-8 border-t border-gray-100">
+                    <div className="w-full text-sm">
                         {/* Table Header */}
-                        <div className="grid grid-cols-2 px-4 py-4 text-gray-700 font-semibold border-b border-gray-100">
-                            <div className="flex items-center gap-2 cursor-pointer select-none">
-                                Name
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+                        <div className="grid grid-cols-[minmax(150px,1fr)_repeat(7,minmax(80px,1fr))] gap-2 px-4 py-3 text-gray-700 font-semibold border-b border-gray-100 items-center">
+                            <div 
+                                className="flex items-center gap-2 cursor-pointer hover:text-gray-900 select-none"
+                                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                            >
+                                Folder Name
+                                <svg 
+                                    xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
+                                    className={`text-gray-400 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`}
+                                >
                                     <line x1="12" y1="19" x2="12" y2="5" />
                                     <polyline points="5 12 12 5 19 12" />
                                 </svg>
                             </div>
-                            <div className="text-right pr-12">{selectedGroupName}</div>
+                            <div className="text-center">View</div>
+                            <div className="text-center">Upload</div>
+                            <div className="text-center">Edit</div>
+                            <div className="text-center">Secure DL</div>
+                            <div className="text-center">Orig DL</div>
+                            <div className="text-center">Delete</div>
+                            <div className="text-center">Perm %</div>
                         </div>
 
                         {/* Table Body */}
-                        <div className="flex flex-col">
-                            {filteredTableData.length === 0 ? (
-                                <div className="py-8 text-center text-gray-500">No folders found for this filter.</div>
+                        <div className="flex flex-col relative min-h-[150px]">
+                            {currentDisplayedData.length === 0 ? (
+                                <div className="py-8 text-center text-gray-400">No folders found for this filter.</div>
                             ) : (
-                                filteredTableData.map((row, index) => (
+                                currentDisplayedData.map((row, index) => (
                                     <div 
                                         key={row.id} 
-                                        className={`grid grid-cols-2 px-4 py-4 border-b border-gray-100 ${index % 2 === 0 ? 'bg-gray-50/50' : 'bg-white'}`}
+                                        className={`grid grid-cols-[minmax(150px,1fr)_repeat(7,minmax(80px,1fr))] gap-2 px-4 py-3 items-center border-b border-gray-100 ${index % 2 === 0 ? 'bg-gray-50/50' : 'bg-white'}`}
                                     >
-                                        <div className="text-gray-500 font-medium">{row.name}</div>
-                                        <div className="text-right pr-12">
+                                        <div className="text-gray-500 font-medium truncate pr-4" title={row.name}>{row.name}</div>
+                                        <div className="flex justify-center">
+                                            {renderCheck(row, 'view')}
+                                        </div>
+                                        <div className="flex justify-center">
+                                            {renderCheck(row, 'upload')}
+                                        </div>
+                                        <div className="flex justify-center">
+                                            {renderCheck(row, 'edit')}
+                                        </div>
+                                        <div className="flex justify-center">
+                                            {renderCheck(row, 'download_secure')}
+                                        </div>
+                                        <div className="flex justify-center">
+                                            {renderCheck(row, 'download_original')}
+                                        </div>
+                                        <div className="flex justify-center">
+                                            {renderCheck(row, 'delete')}
+                                        </div>
+                                        <div className="text-center">
                                             <span 
-                                                className="text-gray-600 underline cursor-pointer hover:text-[var(--brand)] font-medium transition-colors"
-                                                onClick={() => setIsModalOpen(true)}
+                                                className="text-gray-600 underline cursor-pointer hover:text-gray-900 font-medium transition-colors"
+                                                onClick={() => { setSelectedFolderForModal(row); setIsModalOpen(true); }}
                                             >
-                                                {row.percentage}
+                                                {row.percentage}%
                                             </span>
                                         </div>
                                     </div>
                                 ))
                             )}
                         </div>
-                    </div>
 
-                    {/* Modal Overlay */}
-                    {isModalOpen && (
-                        <div className="fixed inset-0 bg-gray-900/40 z-50 flex items-center justify-center p-4">
-                            <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col relative overflow-hidden">
-                                
-                                {/* Close Button */}
-                                <button 
-                                    onClick={() => setIsModalOpen(false)}
-                                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                        {/* Pagination */}
+                        <div className="flex items-center justify-end gap-6 py-4 text-xs text-gray-400">
+                            <div className="flex items-center gap-2">
+                                <span>Items per page:</span>
+                                <select 
+                                    value={itemsPerPage}
+                                    onChange={(e) => {
+                                        setItemsPerPage(Number(e.target.value));
+                                        setCurrentPage(1);
+                                    }}
+                                    className="border-b border-gray-300 pb-0.5 text-gray-500 outline-none bg-transparent cursor-pointer"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                </select>
+                            </div>
+                            
+                            <div className="text-gray-500">
+                                {totalItems > 0 ? `${startIndex + 1}-${endIndex} of ${totalItems}` : '0 of 0'}
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                                <button 
+                                    onClick={handlePrevPage}
+                                    disabled={currentPage === 1 || totalItems === 0}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="15 18 9 12 15 6" />
                                     </svg>
                                 </button>
+                                <button 
+                                    onClick={handleNextPage}
+                                    disabled={currentPage === totalPages || totalItems === 0}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="9 18 15 12 9 6" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
-                                <div className="flex-1 overflow-auto p-8">
-                                    {/* Modal Table Header */}
-                                    <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto_auto] gap-8 items-center border-b border-gray-100 pb-4 mb-4 text-xs font-semibold text-gray-600 pr-8">
-                                        <div className="text-gray-800">Index and Name</div>
-                                        <div className="flex justify-center w-8" title="View"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></div>
-                                        <div className="flex justify-center w-8" title="Upload"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></div>
-                                        <div className="flex justify-center w-8" title="Secure Download"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
-                                        <div className="flex justify-center w-8" title="Original Download"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
-                                        <div className="flex justify-center w-8" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
-                                        <div className="flex justify-center w-8" title="Edit"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></div>
+                    {/* Detail Modal */}
+                    {isModalOpen && selectedFolderForModal && (
+                        <div
+                            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                            style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+                            onClick={() => setIsModalOpen(false)}
+                        >
+                            <div
+                                className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden"
+                                onClick={e => e.stopPropagation()}
+                                style={{ animation: "slideUp 0.2s ease" }}
+                            >
+                                {/* Modal Header */}
+                                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                                    <div>
+                                        <h2 className="text-[15px] font-bold text-gray-900">Folder Access</h2>
+                                        <p className="text-[12px] text-gray-400 mt-0.5">
+                                            {selectedFolderForModal.name} &middot; {selectedGroupName}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsModalOpen(false)}
+                                        className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+
+                                {/* Modal Content */}
+                                <div className="p-6">
+                                    <div className="flex items-center justify-between mb-5 bg-gray-50 px-4 py-3 rounded-lg border border-gray-100">
+                                        <span className="text-[13px] font-semibold text-gray-600">Overall Access</span>
+                                        <span className="text-[15px] font-bold text-[var(--brand)]">{selectedFolderForModal.percentage}%</span>
                                     </div>
 
-                                    {/* Modal Table Body */}
-                                    <div className="flex flex-col gap-2">
-                                        {tableData.map((row) => (
-                                            <div key={row.id} className="grid grid-cols-[1fr_auto_auto_auto_auto_auto_auto] gap-8 items-center bg-gray-50/50 py-3 rounded-md pr-8">
-                                                <div className="flex items-center gap-3 px-4 text-sm text-gray-700">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
-                                                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                                                    </svg>
-                                                    <span className="font-semibold text-gray-800">{row.index}</span>
-                                                    <span>{row.name}</span>
-                                                </div>
-                                                
-                                                <div className="flex justify-center w-8">
-                                                    {row.permDetails.view && <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-500"><polyline points="20 6 9 17 4 12"/></svg>}
-                                                </div>
-                                                <div className="flex justify-center w-8">
-                                                    {row.permDetails.upload && <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-500"><polyline points="20 6 9 17 4 12"/></svg>}
-                                                </div>
-                                                <div className="flex justify-center w-8">
-                                                    {row.permDetails.download_secure && <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-500"><polyline points="20 6 9 17 4 12"/></svg>}
-                                                </div>
-                                                <div className="flex justify-center w-8">
-                                                    {row.permDetails.download_original && <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-500"><polyline points="20 6 9 17 4 12"/></svg>}
-                                                </div>
-                                                <div className="flex justify-center w-8">
-                                                    {row.permDetails.delete && <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-500"><polyline points="20 6 9 17 4 12"/></svg>}
-                                                </div>
-                                                <div className="flex justify-center w-8">
-                                                    {row.permDetails.edit && <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-500"><polyline points="20 6 9 17 4 12"/></svg>}
-                                                </div>
-                                            </div>
-                                        ))}
+                                    <div className="space-y-1">
+                                        <div className="flex items-center justify-between px-2 py-2 border-b border-gray-50">
+                                            <span className="text-[13px] text-gray-600">View</span>
+                                            {selectedFolderForModal.permDetails.view ? <Check className="text-green-500" size={16} /> : <X className="text-red-400" size={16} />}
+                                        </div>
+                                        <div className="flex items-center justify-between px-2 py-2 border-b border-gray-50">
+                                            <span className="text-[13px] text-gray-600">Upload</span>
+                                            {selectedFolderForModal.permDetails.upload ? <Check className="text-green-500" size={16} /> : <X className="text-red-400" size={16} />}
+                                        </div>
+                                        <div className="flex items-center justify-between px-2 py-2 border-b border-gray-50">
+                                            <span className="text-[13px] text-gray-600">Edit</span>
+                                            {selectedFolderForModal.permDetails.edit ? <Check className="text-green-500" size={16} /> : <X className="text-red-400" size={16} />}
+                                        </div>
+                                        <div className="flex items-center justify-between px-2 py-2 border-b border-gray-50">
+                                            <span className="text-[13px] text-gray-600">Secure Download</span>
+                                            {selectedFolderForModal.permDetails.download_secure ? <Check className="text-green-500" size={16} /> : <X className="text-red-400" size={16} />}
+                                        </div>
+                                        <div className="flex items-center justify-between px-2 py-2 border-b border-gray-50">
+                                            <span className="text-[13px] text-gray-600">Original Download</span>
+                                            {selectedFolderForModal.permDetails.download_original ? <Check className="text-green-500" size={16} /> : <X className="text-red-400" size={16} />}
+                                        </div>
+                                        <div className="flex items-center justify-between px-2 py-2">
+                                            <span className="text-[13px] text-gray-600">Delete</span>
+                                            {selectedFolderForModal.permDetails.delete ? <Check className="text-green-500" size={16} /> : <X className="text-red-400" size={16} />}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
+
+                    {/* Users List Modal */}
+                    {isUsersModalOpen && selectedFolderForModal && (
+                        <div
+                            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+                            style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+                            onClick={() => setIsUsersModalOpen(false)}
+                        >
+                            <div
+                                className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
+                                onClick={e => e.stopPropagation()}
+                                style={{ animation: "slideUp 0.2s ease" }}
+                            >
+                                {/* Header */}
+                                <div className="flex flex-col bg-gray-50 border-b border-gray-100 p-6 relative">
+                                    <button 
+                                        onClick={() => setIsUsersModalOpen(false)}
+                                        className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                    <h2 className="text-lg font-bold text-gray-900 pr-8">
+                                        Users with {actionNames[selectedActionForUsers]} Access
+                                    </h2>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        {selectedFolderForModal.name} &middot; {selectedGroupName}
+                                    </p>
+                                </div>
+
+                                {/* Content */}
+                                <div className="flex-1 overflow-auto p-6">
+                                    {loadingUsers ? (
+                                        <div className="flex justify-center items-center h-32">
+                                            <div className="w-6 h-6 border-2 border-gray-300 border-t-[var(--brand)] rounded-full animate-spin"></div>
+                                        </div>
+                                    ) : usersList.length === 0 ? (
+                                        <div className="text-center text-gray-500 py-12 bg-gray-50/50 rounded-xl border border-gray-100 border-dashed">
+                                            No users have performed this action yet.
+                                        </div>
+                                    ) : (
+                                        <div className="w-full text-sm">
+                                            <div className="grid grid-cols-[60px_1fr_1.5fr_160px] px-4 py-3 text-xs uppercase tracking-wider font-bold text-gray-500 bg-gray-50 border-y border-gray-100">
+                                                <div className="text-gray-400">S.No</div>
+                                                <div>User Name</div>
+                                                <div>Email</div>
+                                                <div>Last Performed</div>
+                                            </div>
+                                            
+                                            <div className="flex flex-col">
+                                                {usersList.map((user, idx) => (
+                                                    <div 
+                                                        key={user.id} 
+                                                        className={`grid grid-cols-[60px_1fr_1.5fr_160px] px-4 py-3 items-center border-b border-gray-100 hover:bg-blue-50/30 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}
+                                                    >
+                                                        <div className="text-gray-400 font-medium text-xs">{String(idx + 1).padStart(2, '0')}</div>
+                                                        <div className="font-semibold text-gray-800 pr-4 truncate" title={user.name}>{user.name}</div>
+                                                        <div className="text-gray-500 truncate pr-4" title={user.email}>{user.email}</div>
+                                                        <div className="text-gray-500 text-xs">
+                                                            {user.last_performed 
+                                                                ? new Date(user.last_performed).toLocaleString('en-US', {
+                                                                    year: 'numeric',
+                                                                    month: 'short',
+                                                                    day: 'numeric',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit'
+                                                                })
+                                                                : 'Never'}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
+                    <style>{`
+                        @keyframes slideUp {
+                            from { opacity: 0; transform: translateY(16px); }
+                            to   { opacity: 1; transform: translateY(0); }
+                        }
+                    `}</style>
                 </>
             )}
         </div>
