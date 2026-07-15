@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase/client';
+import { X } from "lucide-react";
 
 export default function GroupUsersPage() {
     const [rawGroups, setRawGroups] = useState([]);
@@ -16,6 +17,12 @@ export default function GroupUsersPage() {
     const [endDate, setEndDate] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    // Modal states
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [selectedGroup, setSelectedGroup] = useState(null);
+    const [userLoginList, setUserLoginList] = useState([]);
+    const [loadingModal, setLoadingModal] = useState(false);
 
     // 1. Fetch Raw Data Once
     useEffect(() => {
@@ -132,6 +139,77 @@ export default function GroupUsersPage() {
         URL.revokeObjectURL(url);
     };
 
+    // 5. Open Modal Logic
+    const handleOpenLoginModal = async (group) => {
+        if (group.loginCount === 0) return; // Optional: maybe we still open to show empty, but it's empty anyway
+        setSelectedGroup(group);
+        setShowLoginModal(true);
+        setLoadingModal(true);
+        setUserLoginList([]);
+
+        try {
+            // Apply Date Filters to rawLoginHistory
+            let history = rawLoginHistory;
+            if (startDate) {
+                const start = new Date(startDate).getTime();
+                history = history.filter(h => new Date(h.created_at).getTime() >= start);
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                history = history.filter(h => new Date(h.created_at).getTime() <= end.getTime());
+            }
+
+            // Get user IDs for this group
+            const groupUserIds = rawUserGroups
+                .filter(ug => ug.group_id === group.id)
+                .map(ug => ug.user_id);
+
+            if (groupUserIds.length === 0) {
+                setLoadingModal(false);
+                return;
+            }
+
+            // Fetch user details
+            const { data: usersData, error: usersError } = await supabase
+                .from('users')
+                .select('id, name, email')
+                .in('id', groupUserIds);
+
+            if (usersError) throw usersError;
+
+            const userMap = {};
+            (usersData || []).forEach(u => { userMap[u.id] = u; });
+
+            // Calculate counts and last login per user
+            const userCountMap = {};
+            const lastLoginMap = {};
+
+            history.forEach(log => {
+                if (groupUserIds.includes(log.user_id)) {
+                    userCountMap[log.user_id] = (userCountMap[log.user_id] || 0) + 1;
+                    if (!lastLoginMap[log.user_id] || new Date(log.created_at) > new Date(lastLoginMap[log.user_id])) {
+                        lastLoginMap[log.user_id] = log.created_at;
+                    }
+                }
+            });
+
+            const loginList = Object.entries(userCountMap)
+                .map(([uid, count]) => ({
+                    ...(userMap[uid] || { name: "Unknown", email: "" }),
+                    count,
+                    lastLogin: lastLoginMap[uid] || null,
+                }))
+                .sort((a, b) => b.count - a.count); // sort by count descending
+
+            setUserLoginList(loginList);
+        } catch (err) {
+            console.error("Failed to load login details:", err);
+        } finally {
+            setLoadingModal(false);
+        }
+    };
+
     return (
         <div className="p-8 bg-white min-h-full font-sans">
             {/* Header Section */}
@@ -211,7 +289,10 @@ export default function GroupUsersPage() {
                                 className={`grid grid-cols-2 px-4 py-3 border-b border-gray-100 ${index % 2 === 0 ? 'bg-gray-50/50' : 'bg-white'}`}
                             >
                                 <div className="text-gray-500">{group.name}</div>
-                                <div className="text-gray-600 underline cursor-pointer hover:text-gray-900 font-medium">
+                                <div 
+                                    className="text-gray-600 underline cursor-pointer hover:text-gray-900 font-medium"
+                                    onClick={() => handleOpenLoginModal(group)}
+                                >
                                     {group.loginCount}
                                 </div>
                             </div>
@@ -267,6 +348,101 @@ export default function GroupUsersPage() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Login Detail Modal ── */}
+            {showLoginModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+                    onClick={() => setShowLoginModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                        style={{ animation: "slideUp 0.2s ease" }}
+                    >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <div>
+                                <h2 className="text-[15px] font-bold text-gray-900">Logins</h2>
+                                <p className="text-[12px] text-gray-400 mt-0.5">
+                                    {selectedGroup?.name} &middot; {selectedGroup?.loginCount} total logins &middot; {userLoginList.length} users
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowLoginModal(false)}
+                                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+
+                        {/* Table */}
+                        <div className="overflow-y-auto flex-1 relative min-h-[200px]">
+                            {loadingModal ? (
+                                <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
+                                    <div className="w-6 h-6 border-2 border-gray-300 border-t-[var(--brand)] rounded-full animate-spin"></div>
+                                </div>
+                            ) : userLoginList.length === 0 ? (
+                                <p className="px-6 py-10 text-center text-[13px] text-gray-400">No login data found for this group</p>
+                            ) : (
+                                <table className="w-full">
+                                    <thead className="sticky top-0 bg-gray-50 border-b border-gray-100 z-10">
+                                        <tr>
+                                            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-8">#</th>
+                                            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Name</th>
+                                            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Last Login</th>
+                                            <th className="text-right px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {userLoginList.map((u, i) => (
+                                            <tr key={i} className="hover:bg-rose-50/30 transition-colors">
+                                                <td className="px-5 py-3 text-[12px] text-gray-400">{i + 1}</td>
+                                                <td className="px-5 py-3">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-7 h-7 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-[10px] font-bold uppercase shrink-0">
+                                                            {(u.name || u.email || "?")[0]}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[13px] font-medium text-gray-800 leading-tight">{u.name || "Unknown"}</p>
+                                                            <p className="text-[11px] text-gray-400 truncate max-w-[160px]">{u.email || ""}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3 text-[12px] text-gray-500 whitespace-nowrap">
+                                                    {u.lastLogin
+                                                        ? new Date(u.lastLogin).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
+                                                        : "—"}
+                                                </td>
+                                                <td className="px-5 py-3 text-right">
+                                                    <span className="inline-flex items-center justify-center min-w-[30px] h-6 px-2.5 bg-rose-50 text-rose-600 text-[12px] font-bold rounded-full">
+                                                        {u.count}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+                            <span className="text-[11px] text-gray-400">Sorted by highest login count</span>
+                            <span className="text-[11px] font-semibold text-rose-500">{selectedGroup?.loginCount || 0} total logins</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style>{`
+                @keyframes slideUp {
+                    from { opacity: 0; transform: translateY(16px); }
+                    to   { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
+
         </div>
     );
 }
