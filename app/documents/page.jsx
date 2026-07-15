@@ -1975,7 +1975,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect, Suspense } from 'react';
+import React, { useState, useMemo, useRef, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
 import fernet from 'fernet';
@@ -2010,6 +2010,10 @@ function UnifiedWorkspace() {
     const [bookmarkedIds, setBookmarkedIds] = useState(new Set());
     const [downloadedIds, setDownloadedIds] = useState(new Set());
     const [downloading, setDownloading] = useState({});
+
+    // Rebuild Index State
+    const [isRebuilding, setIsRebuilding] = useState(false);
+    const [isRebuildIndexModalOpen, setIsRebuildIndexModalOpen] = useState(false);
 
     const formatBytes = (bytes) => {
         if (typeof bytes !== 'number' || Number.isNaN(bytes)) return '--';
@@ -2157,7 +2161,8 @@ function UnifiedWorkspace() {
                         deletedAt: f.deleted_at ? new Date(f.deleted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '--',
                         is_bookmarked: f.is_bookmarked, is_deleted: f.is_deleted,
                         creator_id: f.created_by, // 🔥 Tracks the creator
-                        creator_revoked: f.creator_revoked // 🔥 Tracks the Kill Switch
+                        creator_revoked: f.creator_revoked, // 🔥 Tracks the Kill Switch
+                        version: parseInt(f.version) || 1
                     }));
 
                 // Docs Map
@@ -2183,7 +2188,8 @@ function UnifiedWorkspace() {
                         original_file_path: doc.original_file_path,
                         dek_ref: doc.dek_ref, mime_type: doc.mime_type,
                         creator_id: doc.uploaded_by, // 🔥 Tracks the creator
-                        creator_revoked: doc.creator_revoked // 🔥 Tracks the Kill Switch
+                        creator_revoked: doc.creator_revoked, // 🔥 Tracks the Kill Switch
+                        version: parseInt(doc.version) || 1
                     }));
 
                 // Add creator_id: f.created_by to mappedFolders
@@ -2293,28 +2299,20 @@ function UnifiedWorkspace() {
         return path;
     }, [currentFolderId, files]);
 
-    // ── STABLE INDEX MAP ─────────────────────────────────────────────────────
-    // Sequential 1,2,3 for root items; 1.1,1.2 for files inside folders.
-    // Computed once and used by ALL views so index never changes.
-    const stableIndexMap = useMemo(() => {
-        const map = new Map();
-        const byParent = {};
-        files.forEach(f => {
-            const pId = f.parentId || 'root';
-            if (!byParent[pId]) byParent[pId] = [];
-            byParent[pId].push(f);
-        });
-        Object.values(byParent).forEach(group => group.sort(sortItemsByIndex));
 
-        const assignIndex = (parentId, prefix) => {
-            (byParent[parentId] || []).forEach((child, idx) => {
-                const displayIndex = prefix ? `${prefix}.${idx + 1}` : `${idx + 1}`;
-                map.set(child.id, displayIndex);
-                if (child.type === 'folder') assignIndex(child.id, displayIndex);
-            });
-        };
-        assignIndex('root', '');
-        return map;
+    // ── ACTIVE DB INDEX (FOR FILES/BOOKMARKS/DOWNLOADS) ──────────────────────
+    const getActiveDisplayIndex = useCallback((f) => {
+        if (f.type !== 'folder') return f.index && f.index !== '99' ? f.index : '—';
+        const path = [];
+        let curr = f;
+        let depth = 0;
+        while (curr && depth < 10) {
+            path.unshift((curr.index || '1').toString().trim());
+            if (!curr.parentId || curr.parentId === 'root') break;
+            curr = files.find(x => x.id === curr.parentId);
+            depth++;
+        }
+        return path.join('.') || '—';
     }, [files]);
 
     const currentItems = useMemo(() => {
@@ -2324,13 +2322,26 @@ function UnifiedWorkspace() {
             if (currentView === 'downloads') return files.filter(f => downloadedIds.has(f.id) && !deletedIds.has(f.id));
             return files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
         })();
-        return raw.map(f => ({ ...f, displayIndex: stableIndexMap.get(f.id) || '—' }));
-    }, [currentFolderId, files, currentView, deletedIds, bookmarkedIds, downloadedIds, stableIndexMap]);
+        return raw.map(f => ({
+            ...f,
+            displayIndex: getActiveDisplayIndex(f)
+        }));
+    }, [currentFolderId, files, currentView, deletedIds, bookmarkedIds, downloadedIds, getActiveDisplayIndex]);
 
     const filteredItems = useMemo(() => {
         return currentItems
             .filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-            .sort(sortItemsByIndex);
+            .sort((a, b) => {
+                // Sort by displayIndex hierarchically
+                const aParts = (a.displayIndex || '999999').toString().split('.').map(Number);
+                const bParts = (b.displayIndex || '999999').toString().split('.').map(Number);
+                for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                    const av = aParts[i] === undefined ? 0 : (isNaN(aParts[i]) ? 999999 : aParts[i]);
+                    const bv = bParts[i] === undefined ? 0 : (isNaN(bParts[i]) ? 999999 : bParts[i]);
+                    if (av !== bv) return av - bv;
+                }
+                return 0;
+            });
     }, [currentItems, searchQuery]);
     const selectedItemsArray = files.filter(f => selectedIds.has(f.id));
 
@@ -2498,8 +2509,19 @@ function UnifiedWorkspace() {
         })));
         setIsUploadModalOpen(true);
 
+        let prefix = '';
+        if (currentFolderId) {
+            const parentFolder = files.find(f => f.id === currentFolderId);
+            if (parentFolder && parentFolder.index && parentFolder.index !== '99') {
+                prefix = `${parentFolder.index}.`;
+            }
+        }
+
         const peers = files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
-        let nextIndex = peers.reduce((m, it) => Math.max(m, parseInt(it.index) || 0), 0) + 1;
+        let nextIndex = peers.reduce((m, it) => {
+            const lastPart = it.index ? it.index.toString().split('.').pop() : '0';
+            return Math.max(m, parseInt(lastPart) || 0);
+        }, 0) + 1;
 
         for (let i = 0; i < chosenFiles.length; i++) {
             const file = chosenFiles[i];
@@ -2510,7 +2532,7 @@ function UnifiedWorkspace() {
                 formData.append('company_id', session.company_id);
                 formData.append('folder_id', currentFolderId || '');
                 formData.append('uploaded_by', session.id);
-                formData.append('index', nextIndex.toString());
+                formData.append('index', `${prefix}${nextIndex}`);
 
                 // 2. Send to Next.js Backend 
                 // 🔥 CRITICAL: Notice there are NO headers here!
@@ -2534,26 +2556,184 @@ function UnifiedWorkspace() {
         setTimeout(() => { setUploadQueue([]); setIsUploadModalOpen(false); window.location.reload(); }, 1500);
     };
 
+    // ── DRAG AND DROP REORDERING ──────────────────────────────────────────────
+    const handleDragStart = (e, item) => {
+        if (currentView !== 'files') return;
+        e.dataTransfer.setData('text/plain', item.id);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e) => {
+        if (currentView !== 'files') return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = async (e, targetItem) => {
+        if (currentView !== 'files') return;
+        e.preventDefault();
+        const sourceId = e.dataTransfer.getData('text/plain');
+        if (!sourceId || sourceId === targetItem.id) return;
+
+        const sourceItem = files.find(f => f.id === sourceId);
+        if (!sourceItem || sourceItem.parentId !== targetItem.parentId) return;
+
+        // Current siblings sorted by index
+        const siblings = files.filter(f => f.parentId === sourceItem.parentId && !deletedIds.has(f.id)).sort(sortItemsByIndex);
+        const sourceIdx = siblings.findIndex(f => f.id === sourceId);
+        const targetIdx = siblings.findIndex(f => f.id === targetItem.id);
+
+        if (sourceIdx === -1 || targetIdx === -1) return;
+
+        const newSiblings = [...siblings];
+        const [removed] = newSiblings.splice(sourceIdx, 1);
+        newSiblings.splice(targetIdx, 0, removed);
+
+        // Assign temporary index values just so executeRebuildIndex can sort them correctly
+        const updatedFiles = files.map(f => { return { ...f } });
+        let targetVersion = 1;
+
+        newSiblings.forEach((sib, i) => {
+            const fIdx = updatedFiles.findIndex(x => x.id === sib.id);
+            if (fIdx > -1) {
+                updatedFiles[fIdx].index = (i + 1).toString();
+                if (sib.id === sourceId) {
+                     updatedFiles[fIdx].version = (parseInt(updatedFiles[fIdx].version) || 1) + 1;
+                     targetVersion = updatedFiles[fIdx].version;
+                }
+            }
+        });
+
+        // Set locally for immediate UI update
+        setFiles(updatedFiles);
+
+        try {
+            // Update the version in Supabase for the dragged item
+            if (sourceItem.type === 'folder') {
+                await supabase.from('folders').update({ version: targetVersion }).eq('id', sourceId);
+            } else {
+                await supabase.from('documents').update({ version: targetVersion }).eq('id', sourceId);
+            }
+            
+            // Rebuild and save ALL indexes accurately without reloading the page
+            await executeRebuildIndex(updatedFiles, deletedIds, false);
+        } catch (err) {
+            console.error('Failed to update order', err);
+            alert("Failed to update order: " + err.message);
+        }
+    };
+
+    // ── REBUILD INDEX ─────────────────────────────────────────────────────────
+    const executeRebuildIndex = async (overrideFiles = null, overrideDeletedIds = null, shouldReload = true) => {
+        setIsRebuildIndexModalOpen(false);
+        setIsRebuilding(true);
+        try {
+            // Guard: only accept real arrays/Sets, never event objects
+            const currentFiles = Array.isArray(overrideFiles) ? overrideFiles : files;
+            const currentDeletedIds = overrideDeletedIds instanceof Set ? overrideDeletedIds : deletedIds;
+
+            // Only active (non-deleted) items
+            const activeItems = currentFiles.filter(f => !currentDeletedIds.has(f.id));
+
+            // Group by parent — mirrors stableIndexMap logic
+            const byParent = {};
+            activeItems.forEach(f => {
+                const pId = f.parentId || 'root';
+                if (!byParent[pId]) byParent[pId] = [];
+                byParent[pId].push(f);
+            });
+
+            // Sort each group: folders first, then by existing index number
+            Object.values(byParent).forEach(group => {
+                group.sort((a, b) => {
+                    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+                    const ai = parseFloat((a.index || '999999').toString().split('.')[0]) || 999999;
+                    const bi = parseFloat((b.index || '999999').toString().split('.')[0]) || 999999;
+                    if (ai !== bi) return ai - bi;
+                    return a.name.localeCompare(b.name);
+                });
+            });
+
+            const folderUpdates = [];
+            const docUpdates = [];
+            
+            // To update local state correctly when not reloading
+            const localUpdates = new Map();
+
+            // Recursively assign sequential indexes (identical to stableIndexMap)
+            const assignIndexes = (parentId, prefix) => {
+                const group = byParent[parentId] || [];
+                group.forEach((item, idx) => {
+                    const newIndex = prefix ? `${prefix}.${idx + 1}` : `${idx + 1}`;
+                    if (item.type === 'folder') {
+                        folderUpdates.push({ id: item.id, index_number: idx + 1 });
+                        localUpdates.set(item.id, (idx + 1).toString());
+                        assignIndexes(item.id, newIndex);
+                    } else {
+                        docUpdates.push({ id: item.id, index: newIndex });
+                        localUpdates.set(item.id, newIndex);
+                    }
+                });
+            };
+            assignIndexes('root', '');
+
+            // Bulk update Supabase
+            if (folderUpdates.length > 0) {
+                await Promise.all(folderUpdates.map(u =>
+                    supabase.from('folders').update({ index_number: u.index_number }).eq('id', u.id)
+                ));
+            }
+            if (docUpdates.length > 0) {
+                await Promise.all(docUpdates.map(u =>
+                    supabase.from('documents').update({ index: u.index }).eq('id', u.id)
+                ));
+            }
+
+            if (shouldReload) {
+                window.location.reload();
+            } else {
+                setFiles(prev => prev.map(f => {
+                    if (localUpdates.has(f.id)) {
+                        return { ...f, index: localUpdates.get(f.id) };
+                    }
+                    return f;
+                }));
+                setIsRebuilding(false);
+            }
+        } catch (err) {
+            console.error('Rebuild Index failed:', err);
+            alert("Failed to rebuild index: " + err.message);
+            setIsRebuilding(false);
+        }
+    };
+
     const handleCreateFolder = async (e) => {
         e.preventDefault();
         if (!newFolderName.trim()) return;
         try {
             const peers = files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
-            const newIndex = (peers.reduce((m, it) => Math.max(m, parseInt(it.index) || 0), 0) + 1).toString();
+            let newIndex = peers.reduce((m, it) => {
+                const lastPart = it.index ? it.index.toString().split('.').pop() : '0';
+                return Math.max(m, parseInt(lastPart) || 0);
+            }, 0) + 1;
 
             const { data: dbFolder, error } = await supabase.from('folders').insert({
                 company_id: session.company_id, parent_folder_id: currentFolderId,
                 name: newFolderName.trim(), index_number: parseInt(newIndex) || 1, created_by: session.id,
             }).select().single();
 
-            if (error) throw error; // Fails loudly if RLS blocks it!
+            if (error) throw error;
 
-            setFiles(prev => [...prev, {
+            const newFiles = [...files, {
                 id: dbFolder.id, parentId: dbFolder.parent_folder_id || null, index: newIndex.toString(),
                 name: dbFolder.name, type: 'folder', size: formatBytes(0), uploadedBy: session.name,
                 dateCreated: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-            }]);
+            }];
+            setFiles(newFiles);
             setNewFolderName(''); setIsNewFolderOpen(false);
+
+            // Auto-reindex after adding new folder
+            await executeRebuildIndex(newFiles, deletedIds);
         } catch (err) {
             alert("Failed to create folder: " + err.message);
         }
@@ -2567,12 +2747,13 @@ function UnifiedWorkspace() {
         if (!item) return;
 
         try {
+            const newVersion = (parseInt(item.version) || 1) + 1;
             if (item.type === 'folder') {
-                await supabase.from('folders').update({ name: renameValue.trim() }).eq('id', itemId);
+                await supabase.from('folders').update({ name: renameValue.trim(), version: newVersion }).eq('id', itemId);
             } else {
-                await supabase.from('documents').update({ name: renameValue.trim() }).eq('id', itemId);
+                await supabase.from('documents').update({ name: renameValue.trim(), version: newVersion }).eq('id', itemId);
             }
-            setFiles(prev => prev.map(f => f.id === itemId ? { ...f, name: renameValue.trim() } : f));
+            setFiles(prev => prev.map(f => f.id === itemId ? { ...f, name: renameValue.trim(), version: newVersion } : f));
             setIsRenameModalOpen(false);
             setSelectedIds(new Set());
         } catch (err) {
@@ -2792,9 +2973,13 @@ function UnifiedWorkspace() {
             // Move folders (update parent_folder_id)
             if (folderIds.length > 0) await supabase.from('folders').update({ parent_folder_id: movingToFolderId }).in('id', folderIds);
 
-            setFiles(prev => prev.map(f => selectedIds.has(f.id) ? { ...f, parentId: movingToFolderId } : f));
+            const newFiles = files.map(f => selectedIds.has(f.id) ? { ...f, parentId: movingToFolderId } : f);
+            setFiles(newFiles);
             setSelectedIds(new Set());
             setIsMoveModalOpen(false);
+
+            // Automatically trigger reindex
+            await executeRebuildIndex(newFiles, deletedIds);
         } catch (err) { alert('Move failed: ' + err.message); }
     };
     // const executeMoveToFolder = async () => {
@@ -2834,13 +3019,19 @@ function UnifiedWorkspace() {
 
             // Add to trash tracker
             const allDeleted = [...docIds, ...folderIds];
-            setDeletedIds(prev => { const n = new Set(prev); allDeleted.forEach(id => n.add(id)); return n; });
+            const newDeletedIds = new Set(deletedIds);
+            allDeleted.forEach(id => newDeletedIds.add(id));
+            setDeletedIds(newDeletedIds);
 
             // Update UI: Keep them in the files array, just mark them as deleted (don't filter them out!)
-            setFiles(prev => prev.map(f => selectedIds.has(f.id) ? { ...f, deletedBy: session.name, deletedAt: new Date().toLocaleDateString() } : f));
+            const newFiles = files.map(f => selectedIds.has(f.id) ? { ...f, deletedBy: session.name, deletedAt: new Date().toLocaleDateString() } : f);
+            setFiles(newFiles);
 
             setSelectedIds(new Set());
             setIsDeleteModalOpen(false);
+
+            // Automatically trigger reindex
+            await executeRebuildIndex(newFiles, newDeletedIds);
         } catch (err) {
             alert('Trash failed: ' + err.message);
             console.error('Trash failed', err);
@@ -2855,8 +3046,14 @@ function UnifiedWorkspace() {
             if (docIds.length > 0) await supabase.from('documents').update({ is_deleted: false, deleted_at: null, deleted_by: null }).in('id', docIds);
             if (folderIds.length > 0) await supabase.from('folders').update({ is_deleted: false, deleted_at: null, deleted_by: null }).in('id', folderIds);
 
-            setDeletedIds(prev => { const n = new Set(prev);[...docIds, ...folderIds].forEach(id => n.delete(id)); return n; });
+            const newDeletedIds = new Set(deletedIds);
+            [...docIds, ...folderIds].forEach(id => newDeletedIds.delete(id));
+            setDeletedIds(newDeletedIds);
+
             setSelectedIds(new Set());
+
+            // Automatically trigger reindex
+            await executeRebuildIndex(files, newDeletedIds);
         } catch (err) { alert('Recover failed: ' + err.message); }
     };
 
@@ -2868,11 +3065,18 @@ function UnifiedWorkspace() {
             if (docIds.length > 0) await supabase.from('documents').delete().in('id', docIds);
             if (folderIds.length > 0) await supabase.from('folders').delete().in('id', folderIds);
 
-            setFiles(prev => prev.filter(f => !selectedIds.has(f.id)));
-            setDeletedIds(prev => { const n = new Set(prev);[...docIds, ...folderIds].forEach(id => n.delete(id)); return n; });
+            const newFiles = files.filter(f => !selectedIds.has(f.id));
+            const newDeletedIds = new Set(deletedIds);
+            [...docIds, ...folderIds].forEach(id => newDeletedIds.delete(id));
+
+            setFiles(newFiles);
+            setDeletedIds(newDeletedIds);
 
             setSelectedIds(new Set());
             setIsPermDeleteModalOpen(false);
+
+            // Automatically trigger reindex
+            await executeRebuildIndex(newFiles, newDeletedIds);
         } catch (err) { alert('Permanent delete failed: ' + err.message); }
     };
     // const executeSoftDelete = async () => {
@@ -3054,6 +3258,7 @@ function UnifiedWorkspace() {
                                 </button>
                             </>
                         )}
+
                     </div>
                 </div>
 
@@ -3086,6 +3291,7 @@ function UnifiedWorkspace() {
                                     {currentView !== 'trash' && (
                                         <th className="py-4 px-3 w-16 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Q&amp;A</th>
                                     )}
+                                    <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Version</th>
                                     {currentView === 'trash' ? (
                                         <>
                                             <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deleted By</th>
@@ -3107,7 +3313,15 @@ function UnifiedWorkspace() {
                                     const isDL = downloading[item.id];
 
                                     return (
-                                        <tr key={item.id} className={`group transition-colors ${selectionEnabled ? 'cursor-pointer' : ''} ${isChecked ? 'bg-brand-soft' : 'hover:bg-brand-soft/50'}`} onClick={selectionEnabled ? () => handleItemClick(item) : undefined}>
+                                        <tr 
+                                            key={item.id} 
+                                            className={`group transition-colors ${selectionEnabled ? 'cursor-pointer' : ''} ${isChecked ? 'bg-brand-soft' : 'hover:bg-brand-soft/50'}`} 
+                                            onClick={selectionEnabled ? () => handleItemClick(item) : undefined}
+                                            draggable={currentView === 'files'}
+                                            onDragStart={(e) => handleDragStart(e, item)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDrop(e, item)}
+                                        >
                                             {selectionEnabled ? (
                                                 <td className="py-4 px-5" onClick={e => e.stopPropagation()}>
                                                     <input type="checkbox" checked={isChecked} onChange={e => handleToggleSelect(item.id, e)} className="w-4 h-4 rounded border-slate-300 accent-slate-900" />
@@ -3141,6 +3355,7 @@ function UnifiedWorkspace() {
                                                     </svg>
                                                 </td>
                                             )}
+                                            <td className="py-4 px-3 text-[12px] font-medium text-slate-500 text-center">V{item.version || 1}</td>
                                             {currentView === 'trash' ? (
                                                 <>
                                                     <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.deletedBy}</td>
@@ -3222,6 +3437,8 @@ function UnifiedWorkspace() {
 
 
             {/* Modals */}
+
+
             {isPermDeleteModalOpen && (
                 <Modal onClose={() => setIsPermDeleteModalOpen(false)}>
                     <h3 className="text-[16px] font-black text-slate-900 mb-2">Permanently Delete?</h3>
