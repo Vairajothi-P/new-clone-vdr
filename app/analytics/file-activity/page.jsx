@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase/client';
+import { X } from "lucide-react";
 
 export default function FileActivityPage() {
     // Raw Data States
@@ -20,6 +21,13 @@ export default function FileActivityPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false);
+
+    // Modal States
+    const [showModal, setShowModal] = useState(false);
+    const [modalType, setModalType] = useState(null); // 'view', 'download_original', 'download_pdf', 'total'
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [modalData, setModalData] = useState([]);
+    const [loadingModal, setLoadingModal] = useState(false);
 
     // 1. Fetch Raw Data Once
     useEffect(() => {
@@ -57,7 +65,7 @@ export default function FileActivityPage() {
                     // Fetch Access Logs (Views)
                     const { data: accessLogs, error: accessError } = await supabase
                         .from('document_access_logs')
-                        .select('document_id, opened_at')
+                        .select('document_id, opened_at, user_id')
                         .in('document_id', docIds);
                     if (accessError) throw accessError;
                     setRawAccessLogs(accessLogs || []);
@@ -65,7 +73,7 @@ export default function FileActivityPage() {
                     // Fetch Edit Logs (Downloads)
                     const { data: editLogs, error: editError } = await supabase
                         .from('document_edit_logs')
-                        .select('document_id, action_type, changed_at')
+                        .select('document_id, action_type, changed_at, user_id')
                         .in('document_id', docIds);
                     if (editError) throw editError;
                     setRawEditLogs(editLogs || []);
@@ -167,6 +175,103 @@ export default function FileActivityPage() {
         a.download = 'file_activity_analytics.csv';
         a.click();
         URL.revokeObjectURL(url);
+    };
+
+    // 5. Modal Logic
+    const handleOpenModal = async (file, type) => {
+        if (type === 'view' && file.viewCount === 0) return;
+        if (type === 'download_original' && file.downloadOriginalCount === 0) return;
+        if (type === 'download_pdf' && file.downloadPdfCount === 0) return;
+        if (type === 'total' && file.totalActivityCount === 0) return;
+
+        setSelectedFile(file);
+        setModalType(type);
+        setShowModal(true);
+        setLoadingModal(true);
+        setModalData([]);
+
+        try {
+            // Apply Date Filters for the specific file
+            let filteredViews = rawAccessLogs.filter(log => log.document_id === file.id);
+            let filteredEdits = rawEditLogs.filter(log => log.document_id === file.id);
+
+            if (startDate) {
+                const start = new Date(startDate).getTime();
+                filteredViews = filteredViews.filter(log => new Date(log.opened_at).getTime() >= start);
+                filteredEdits = filteredEdits.filter(log => new Date(log.changed_at).getTime() >= start);
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                filteredViews = filteredViews.filter(log => new Date(log.opened_at).getTime() <= end.getTime());
+                filteredEdits = filteredEdits.filter(log => new Date(log.changed_at).getTime() <= end.getTime());
+            }
+
+            let logsToShow = [];
+
+            if (type === 'view') {
+                logsToShow = filteredViews.map(log => ({ ...log, timestamp: log.opened_at, typeLabel: 'View' }));
+            } else if (type === 'download_original') {
+                logsToShow = filteredEdits
+                    .filter(log => log.action_type === 'DOWNLOAD_ORIGINAL' || log.action_type === 'DOWNLOAD')
+                    .map(log => ({ ...log, timestamp: log.changed_at, typeLabel: 'Download Original' }));
+            } else if (type === 'download_pdf') {
+                logsToShow = filteredEdits
+                    .filter(log => log.action_type === 'DOWNLOAD_PDF')
+                    .map(log => ({ ...log, timestamp: log.changed_at, typeLabel: 'Download PDF' }));
+            } else if (type === 'total') {
+                const views = filteredViews.map(log => ({ ...log, timestamp: log.opened_at, typeLabel: 'View' }));
+                const dlOrig = filteredEdits
+                    .filter(log => log.action_type === 'DOWNLOAD_ORIGINAL' || log.action_type === 'DOWNLOAD')
+                    .map(log => ({ ...log, timestamp: log.changed_at, typeLabel: 'Download Original' }));
+                const dlPdf = filteredEdits
+                    .filter(log => log.action_type === 'DOWNLOAD_PDF')
+                    .map(log => ({ ...log, timestamp: log.changed_at, typeLabel: 'Download PDF' }));
+                logsToShow = [...views, ...dlOrig, ...dlPdf];
+            }
+
+            // Sort chronologically descending (newest first)
+            logsToShow.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            // Fetch user details
+            const userIds = [...new Set(logsToShow.map(log => log.user_id).filter(Boolean))];
+            let userMap = {};
+            if (userIds.length > 0) {
+                const { data: usersData, error: usersError } = await supabase
+                    .from('users')
+                    .select('id, name, email')
+                    .in('id', userIds);
+                
+                if (usersError) throw usersError;
+                (usersData || []).forEach(u => { userMap[u.id] = u; });
+            }
+
+            const mappedData = logsToShow.map(log => ({
+                ...log,
+                user: userMap[log.user_id] || { name: 'Unknown', email: '' }
+            }));
+
+            setModalData(mappedData);
+        } catch (err) {
+            console.error("Error loading modal data:", err);
+        } finally {
+            setLoadingModal(false);
+        }
+    };
+
+    const getModalTitle = () => {
+        if (modalType === 'view') return 'View Activity';
+        if (modalType === 'download_original') return 'Download Original Activity';
+        if (modalType === 'download_pdf') return 'Download PDF Activity';
+        return 'Total Activity';
+    };
+
+    const getModalCount = () => {
+        if (!selectedFile) return 0;
+        if (modalType === 'view') return selectedFile.viewCount;
+        if (modalType === 'download_original') return selectedFile.downloadOriginalCount;
+        if (modalType === 'download_pdf') return selectedFile.downloadPdfCount;
+        return selectedFile.totalActivityCount;
     };
 
     return (
@@ -289,12 +394,30 @@ export default function FileActivityPage() {
                                 className={`grid grid-cols-5 gap-4 px-4 py-3 border-b border-gray-100 ${index % 2 === 0 ? 'bg-gray-50/50' : 'bg-white'}`}
                             >
                                 <div className="text-gray-500 truncate pr-4" title={file.name}>{file.name}</div>
-                                <div className="text-gray-600 underline cursor-pointer hover:text-gray-900 font-medium">
+                                <div 
+                                    className="text-gray-600 underline cursor-pointer hover:text-gray-900 font-medium"
+                                    onClick={() => handleOpenModal(file, 'view')}
+                                >
                                     {file.viewCount}
                                 </div>
-                                <div className="text-gray-500">{file.downloadOriginalCount}</div>
-                                <div className="text-gray-500">{file.downloadPdfCount}</div>
-                                <div className="text-gray-500 font-semibold">{file.totalActivityCount}</div>
+                                <div 
+                                    className="text-gray-600 underline cursor-pointer hover:text-gray-900 font-medium"
+                                    onClick={() => handleOpenModal(file, 'download_original')}
+                                >
+                                    {file.downloadOriginalCount}
+                                </div>
+                                <div 
+                                    className="text-gray-600 underline cursor-pointer hover:text-gray-900 font-medium"
+                                    onClick={() => handleOpenModal(file, 'download_pdf')}
+                                >
+                                    {file.downloadPdfCount}
+                                </div>
+                                <div 
+                                    className="text-gray-800 underline cursor-pointer hover:text-black font-semibold"
+                                    onClick={() => handleOpenModal(file, 'total')}
+                                >
+                                    {file.totalActivityCount}
+                                </div>
                             </div>
                         ))
                     ) : (
@@ -348,6 +471,105 @@ export default function FileActivityPage() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Activity Detail Modal ── */}
+            {showModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+                    onClick={() => setShowModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                        style={{ animation: "slideUp 0.2s ease" }}
+                    >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <div>
+                                <h2 className="text-[15px] font-bold text-gray-900">{getModalTitle()}</h2>
+                                <p className="text-[12px] text-gray-400 mt-0.5">
+                                    {selectedFile?.name} &middot; {getModalCount()} activities
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+
+                        {/* Table */}
+                        <div className="overflow-y-auto flex-1 relative min-h-[200px]">
+                            {loadingModal ? (
+                                <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
+                                    <div className="w-6 h-6 border-2 border-gray-300 border-t-[var(--brand)] rounded-full animate-spin"></div>
+                                </div>
+                            ) : modalData.length === 0 ? (
+                                <p className="px-6 py-10 text-center text-[13px] text-gray-400">No activity data found</p>
+                            ) : (
+                                <table className="w-full">
+                                    <thead className="sticky top-0 bg-gray-50 border-b border-gray-100 z-10">
+                                        <tr>
+                                            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-8">#</th>
+                                            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">User</th>
+                                            {(modalType === 'total' || modalType.includes('download')) && (
+                                                <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Action Type</th>
+                                            )}
+                                            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Date & Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {modalData.map((d, i) => (
+                                            <tr key={i} className="hover:bg-blue-50/30 transition-colors">
+                                                <td className="px-5 py-3 text-[12px] text-gray-400">{i + 1}</td>
+                                                <td className="px-5 py-3">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold uppercase shrink-0">
+                                                            {(d.user.name || d.user.email || "?")[0]}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[13px] font-medium text-gray-800 leading-tight">{d.user.name || "Unknown"}</p>
+                                                            <p className="text-[11px] text-gray-400 truncate max-w-[160px]">{d.user.email || ""}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                {(modalType === 'total' || modalType.includes('download')) && (
+                                                    <td className="px-5 py-3 text-[12px] text-gray-600">
+                                                        <span className="inline-flex items-center px-2 py-1 rounded bg-gray-100 text-gray-700 text-[10px] font-medium tracking-wide">
+                                                            {d.typeLabel}
+                                                        </span>
+                                                    </td>
+                                                )}
+                                                <td className="px-5 py-3 text-[12px] text-gray-500 whitespace-nowrap">
+                                                    {d.timestamp
+                                                        ? new Date(d.timestamp).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
+                                                        : "—"}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+                            <span className="text-[11px] text-gray-400">Chronological activity record</span>
+                            <span className="text-[11px] font-semibold text-blue-500">{getModalCount()} total activities</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style>{`
+                @keyframes slideUp {
+                    from { opacity: 0; transform: translateY(16px); }
+                    to   { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
+
         </div>
     );
 }
