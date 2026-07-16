@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { FaSpinner } from "react-icons/fa";
 
 import SelectionOverlay from "@/components/redaction/SelectionOverlay";
@@ -38,6 +38,7 @@ export default function PowerPointViewer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [slides, setSlides] = useState([]); // array of { blocks: [{text, isTitle}] }
+  const slideContainerRef = useRef(null);
 
   useEffect(() => {
     if (!url) return;
@@ -138,6 +139,53 @@ export default function PowerPointViewer({
     return { slideNum, blocks };
   }
 
+  // ── Semantic redaction detection ────────────────────────────────────────────
+  const slideIndex = Math.min(Math.max(0, currentPage), Math.max(0, slides.length - 1));
+  
+  const handleAddSelection = useCallback(
+    (rawSel) => {
+      const enriched = { ...rawSel };
+
+      try {
+        if (slideContainerRef.current) {
+          const wrapperRect = slideContainerRef.current.parentElement?.getBoundingClientRect();
+          
+          if (wrapperRect) {
+            const blocks = slideContainerRef.current.querySelectorAll("[data-block-index]");
+            const blockIndices = [];
+            const matchedTexts = [];
+
+            blocks.forEach((block) => {
+              const rect = block.getBoundingClientRect();
+              const rx = rect.left - wrapperRect.left;
+              const ry = rect.top - wrapperRect.top;
+
+              if (rectsOverlap({ x: rx, y: ry, w: rect.width, h: rect.height }, rawSel)) {
+                blockIndices.push(parseInt(block.getAttribute("data-block-index") || "0", 10));
+                matchedTexts.push(block.textContent || "");
+              }
+            });
+
+            if (blockIndices.length > 0) {
+              enriched.redactionTarget = {
+                type: "pptx",
+                slideIndex,
+                blockIndices,
+                matchedTexts,
+                replacement: "████████",
+              };
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("PowerPointViewer: redaction detection failed:", err);
+      }
+
+      onAddSelection(enriched);
+    },
+    [onAddSelection, slideIndex]
+  );
+
   // ── Render ───────────────────────────────────────────────
 
   if (!loading && fileExt === "ppt") {
@@ -162,7 +210,6 @@ export default function PowerPointViewer({
     return <FallbackDownload url={url} reason="No slides could be extracted from this file." />;
   }
 
-  const slideIndex = Math.min(Math.max(0, currentPage), slides.length - 1);
   const slide = slides[slideIndex];
   const query = searchQuery.trim().toLowerCase();
   const zoomRatio = scale / 1.5;
@@ -197,11 +244,12 @@ export default function PowerPointViewer({
         <SelectionOverlay
           tool={tool}
           selections={selections}
-          onAddSelection={onAddSelection}
+          onAddSelection={handleAddSelection}
           onRemoveSelection={onRemoveSelection}
           onUpdateSelection={onUpdateSelection}
         >
           <div
+            ref={slideContainerRef}
             style={{
               transform: `scale(${zoomRatio})`,
               transformOrigin: "top center",
@@ -232,11 +280,11 @@ export default function PowerPointViewer({
               </div>
               {slide.blocks.map(({ text, isTitle }, i) =>
                 isTitle ? (
-                  <h2 key={i} style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", margin: "0 0 16px" }}>
+                  <h2 key={i} data-block-index={i} style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", margin: "0 0 16px" }}>
                     {highlightText(text)}
                   </h2>
                 ) : (
-                  <p key={i} style={{ fontSize: 15, color: "#334155", margin: "0 0 10px", lineHeight: 1.6 }}>
+                  <p key={i} data-block-index={i} style={{ fontSize: 15, color: "#334155", margin: "0 0 10px", lineHeight: 1.6 }}>
                     {highlightText(text)}
                   </p>
                 )
@@ -287,4 +335,13 @@ function FallbackDownload({ url, reason }) {
 
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function rectsOverlap(a, b) {
+  return (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  );
 }

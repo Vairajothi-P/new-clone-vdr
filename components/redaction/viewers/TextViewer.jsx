@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { FaSpinner } from "react-icons/fa";
 
 import SelectionOverlay from "@/components/redaction/SelectionOverlay";
@@ -35,6 +35,12 @@ export default function TextViewer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [text, setText] = useState("");
+
+  /**
+   * Ref attached to the <pre> element — used as the coordinate anchor
+   * for semantic redaction detection (same pattern as WordViewer).
+   */
+  const preRef = useRef(null);
 
   useEffect(() => {
     if (!url) return;
@@ -80,6 +86,45 @@ export default function TextViewer({
     return text.split(re);
   }, [text, searchQuery]);
 
+  // ── Semantic redaction detection ────────────────────────────────────────────
+  /**
+   * Intercepts the raw {x,y,w,h} box, walks all text nodes inside the <pre>,
+   * finds those that visually overlap the drawn rectangle, and enriches the
+   * selection with `redactionTarget` before forwarding to the parent.
+   *
+   * Coordinate system: identical to WordViewer — preRef.current.parentElement
+   * is SelectionOverlay's relative wrapper, which equals the overlay's origin.
+   */
+  const handleAddSelection = useCallback(
+    (rawSel) => {
+      const enriched = { ...rawSel };
+
+      try {
+        if (preRef.current) {
+          // preRef is a direct child of SelectionOverlay's relative wrapper div.
+          const wrapperRect = preRef.current.parentElement?.getBoundingClientRect();
+
+          if (wrapperRect) {
+            const matchedText = collectTextNodesInBox(preRef.current, rawSel, wrapperRect);
+
+            if (matchedText) {
+              enriched.redactionTarget = {
+                type: "text",
+                matchedText,
+                replacement: "████████",
+              };
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("TextViewer: redaction detection failed:", err);
+      }
+
+      onAddSelection(enriched);
+    },
+    [onAddSelection]
+  );
+
   const fontSize = Math.round(13 * (scale / 1.5));
 
   if (loading) {
@@ -107,11 +152,12 @@ export default function TextViewer({
       <SelectionOverlay
         tool={tool}
         selections={selections}
-        onAddSelection={onAddSelection}
+        onAddSelection={handleAddSelection}
         onRemoveSelection={onRemoveSelection}
         onUpdateSelection={onUpdateSelection}
       >
         <pre
+          ref={preRef}
           style={{
             fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', 'Monaco', 'Courier New', monospace",
             fontSize,
@@ -147,6 +193,98 @@ export default function TextViewer({
       </SelectionOverlay>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DOM helpers for semantic redaction detection
+───────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Walk all non-empty text nodes inside `container`, find those whose visual
+ * bounding rect (relative to `wrapperRect`) overlaps `sel`, and return their
+ * concatenated text content.  Returns null when nothing is found.
+ */
+function collectTextNodesInBox(container, sel, wrapperRect) {
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      if (!node.nodeValue?.trim()) return NodeFilter.FILTER_SKIP;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+
+  const parts = [];
+  let node;
+
+  while ((node = walker.nextNode())) {
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const rects = range.getClientRects();
+      
+      let nodeOverlaps = false;
+      for (const r of rects) {
+        const rx = r.left - wrapperRect.left;
+        const ry = r.top - wrapperRect.top;
+        if (rectsOverlap({ x: rx, y: ry, w: r.width, h: r.height }, sel)) {
+          nodeOverlaps = true;
+          break;
+        }
+      }
+
+      if (nodeOverlaps) {
+        const text = node.nodeValue;
+        let minOffset = text.length;
+        let maxOffset = -1;
+        
+        // Character by character measurement for precise selection
+        for (let i = 0; i < text.length; i++) {
+          // Skip whitespace for bounding box checks to save time
+          if (/\s/.test(text[i])) continue;
+          
+          range.setStart(node, i);
+          range.setEnd(node, i + 1);
+          
+          const charRects = range.getClientRects();
+          let charOverlaps = false;
+          
+          for (let j = 0; j < charRects.length; j++) {
+            const cr = charRects[j];
+            const crx = cr.left - wrapperRect.left;
+            const cry = cr.top - wrapperRect.top;
+            
+            if (rectsOverlap({ x: crx, y: cry, w: cr.width, h: cr.height }, sel)) {
+              charOverlaps = true;
+              break;
+            }
+          }
+          
+          if (charOverlaps) {
+            if (i < minOffset) minOffset = i;
+            if (i > maxOffset) maxOffset = i;
+          }
+        }
+        
+        if (maxOffset >= minOffset) {
+          // We found the exact continuous range of characters that overlap!
+          parts.push(text.substring(minOffset, maxOffset + 1));
+        }
+      }
+    } catch {
+      // Ignore Range API errors on detached nodes
+    }
+  }
+
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
+/** True when rectangle a and rectangle b overlap (x,y = top-left origin). */
+function rectsOverlap(a, b) {
+  return (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
   );
 }
 

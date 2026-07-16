@@ -29,6 +29,7 @@ import ExcelViewer from "@/components/redaction/viewers/ExcelViewer";
 import PowerPointViewer from "@/components/redaction/viewers/PowerPointViewer";
 import TextViewer from "@/components/redaction/viewers/TextViewer";
 import ImageViewer from "@/components/redaction/viewers/ImageViewer";
+import { applyNativeRedactions } from "@/utils/redactionProcessor";
 
 /* ─────────────────────────────────────────────
    File-type detection helper
@@ -39,7 +40,7 @@ const getFileType = (filePath) => {
   const ext = filePath.split(".").pop().toLowerCase().trim();
   if (ext === "pdf")  return "pdf";
   if (ext === "doc" || ext === "docx") return "word";
-  if (ext === "xls" || ext === "xlsx" || ext === "csv") return "excel";
+  if (ext === "xls" || ext === "xlsx" || ext === "csv") return ext;
   if (ext === "ppt")  return "ppt";
   if (ext === "pptx") return "pptx";
   if (ext === "txt")  return "text";
@@ -476,46 +477,61 @@ function DocumentViewerContent() {
       r.arrayBuffer()
     );
 
-    // 2. Use pdf-lib to burn redaction rectangles
-    const { PDFDocument, rgb } = await import("pdf-lib");
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-    const pages = pdfDoc.getPages();
+    let redactedBytes;
 
-    for (const sel of selections) {
-      const pdfPage = pages[sel.page - 1];
-      if (!pdfPage) continue;
-      const { height: pageHeight } = pdfPage.getSize();
+    if (fileType === "pdf") {
+      // 2. Use pdf-lib to burn redaction rectangles
+      const { PDFDocument, rgb } = await import("pdf-lib");
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+      const pages = pdfDoc.getPages();
 
-      // Convert from screen-space (top-left origin) to PDF-space (bottom-left origin)
-      // Coordinates are at the current scale; convert back to PDF units
-      const pdfX = sel.x / scale;
-      const pdfY = pageHeight - (sel.y + sel.h) / scale;
-      const pdfW = sel.w / scale;
-      const pdfH = sel.h / scale;
+      for (const sel of selections) {
+        const pdfPage = pages[sel.page - 1];
+        if (!pdfPage) continue;
+        const { height: pageHeight } = pdfPage.getSize();
 
-      pdfPage.drawRectangle({
-        x: pdfX,
-        y: pdfY,
-        width: pdfW,
-        height: pdfH,
-        color: rgb(0, 0, 0),
-        opacity: 1,
-      });
+        // Convert from screen-space (top-left origin) to PDF-space (bottom-left origin)
+        // Coordinates are at the current scale; convert back to PDF units
+        const pdfX = sel.x / scale;
+        const pdfY = pageHeight - (sel.y + sel.h) / scale;
+        const pdfW = sel.w / scale;
+        const pdfH = sel.h / scale;
+
+        pdfPage.drawRectangle({
+          x: pdfX,
+          y: pdfY,
+          width: pdfW,
+          height: pdfH,
+          color: rgb(0, 0, 0),
+          opacity: 1,
+        });
+      }
+
+      redactedBytes = await pdfDoc.save();
+    } else {
+      // Non-PDF native redactions
+      redactedBytes = await applyNativeRedactions(pdfBytes, fileType, selections);
     }
 
-    const redactedBytes = await pdfDoc.save();
-
     // 3. Upload to redacted-files bucket
+    const ext = doc.file_path ? doc.file_path.split(".").pop().toLowerCase() : "pdf";
     const fileName = doc.file_path
-      ? doc.file_path.split("/").pop().replace(/\.pdf$/i, "") + "_redacted.pdf"
-      : `document_${docId}_redacted.pdf`;
+      ? doc.file_path.split("/").pop().replace(new RegExp(`\\.${ext}$`, "i"), "") + `_redacted.${ext}`
+      : `document_${docId}_redacted.${ext}`;
     const redactedPath = `users/${session.id}/${fileName}`;
+
+    // Default to application/octet-stream, then infer by extension
+    let contentType = "application/pdf";
+    if (ext === "txt") contentType = "text/plain";
+    if (ext === "docx") contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (ext === "xlsx") contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    if (ext === "pptx") contentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
     const { error: uploadError } = await supabase.storage
       .from("redacted-files")
-      .upload(redactedPath, new Blob([redactedBytes], { type: "application/pdf" }), {
+      .upload(redactedPath, new Blob([redactedBytes], { type: contentType }), {
         upsert: true,
-        contentType: "application/pdf",
+        contentType: contentType,
       });
     if (uploadError) throw uploadError;
 
@@ -577,39 +593,54 @@ function DocumentViewerContent() {
       r.arrayBuffer()
     );
 
-    // 2. Burn rectangles with pdf-lib
-    const { PDFDocument, rgb } = await import("pdf-lib");
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-    const pages = pdfDoc.getPages();
+    let redactedBytes;
+    
+    if (fileType === "pdf") {
+      // 2. Burn rectangles with pdf-lib
+      const { PDFDocument, rgb } = await import("pdf-lib");
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+      const pages = pdfDoc.getPages();
 
-    for (const sel of selections) {
-      const pdfPage = pages[sel.page - 1];
-      if (!pdfPage) continue;
-      const { height: pageHeight } = pdfPage.getSize();
-      const pdfX = sel.x / scale;
-      const pdfY = pageHeight - (sel.y + sel.h) / scale;
-      const pdfW = sel.w / scale;
-      const pdfH = sel.h / scale;
+      for (const sel of selections) {
+        const pdfPage = pages[sel.page - 1];
+        if (!pdfPage) continue;
+        const { height: pageHeight } = pdfPage.getSize();
+        const pdfX = sel.x / scale;
+        const pdfY = pageHeight - (sel.y + sel.h) / scale;
+        const pdfW = sel.w / scale;
+        const pdfH = sel.h / scale;
 
-      pdfPage.drawRectangle({
-        x: pdfX,
-        y: pdfY,
-        width: pdfW,
-        height: pdfH,
-        color: rgb(0, 0, 0),
-        opacity: 1,
-      });
+        pdfPage.drawRectangle({
+          x: pdfX,
+          y: pdfY,
+          width: pdfW,
+          height: pdfH,
+          color: rgb(0, 0, 0),
+          opacity: 1,
+        });
+      }
+
+      redactedBytes = await pdfDoc.save();
+    } else {
+      // Non-PDF native redactions
+      redactedBytes = await applyNativeRedactions(pdfBytes, fileType, selections);
     }
 
-    const redactedBytes = await pdfDoc.save();
+    // Default to application/octet-stream, then infer by extension
+    const ext = doc.file_path ? doc.file_path.split(".").pop().toLowerCase() : "pdf";
+    let contentType = "application/pdf";
+    if (ext === "txt") contentType = "text/plain";
+    if (ext === "docx") contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (ext === "xlsx") contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    if (ext === "pptx") contentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
     // 3. Upload back to original-files (overwrite)
     const { error: uploadError } = await supabase.storage
       .from("original-files")
       .upload(
         storagePath,
-        new Blob([redactedBytes], { type: "application/pdf" }),
-        { upsert: true, contentType: "application/pdf" }
+        new Blob([redactedBytes], { type: contentType }),
+        { upsert: true, contentType: contentType }
       );
     if (uploadError) throw uploadError;
 
@@ -713,7 +744,7 @@ function DocumentViewerContent() {
           const selectionDisabled = fileType !== "pdf";
 
           const pageLabel =
-            fileType === "excel" ? "Sheet" :
+            (fileType === "xls" || fileType === "xlsx" || fileType === "csv") ? "Sheet" :
             fileType === "pptx" || fileType === "ppt" ? "Slide" :
             "Page";
 
@@ -822,11 +853,12 @@ function DocumentViewerContent() {
                   setSaveMode(null);
                   setShowSaveDialog(true);
                 }}
+                disabled={selections.length === 0}
                 title="Save Redaction"
                 style={{
-                  ...toolbarBtnStyle(false),
-                  background: "#dc2626",
-                  color: "#fff",
+                  ...toolbarBtnStyle(false, selections.length === 0),
+                  background: selections.length === 0 ? "transparent" : "#dc2626",
+                  color: selections.length === 0 ? "#94a3b8" : "#fff",
                   fontWeight: 600,
                 }}
               >
@@ -1071,7 +1103,7 @@ function DocumentViewerContent() {
         )}
 
         {/* ── Excel viewer (XLS / XLSX / CSV) ── */}
-        {fileType === "excel" && fileUrl && (
+        {(fileType === "xls" || fileType === "xlsx" || fileType === "csv") && fileUrl && (
           <div style={{ width: "100%" }}>
             <ExcelViewer
               url={fileUrl}

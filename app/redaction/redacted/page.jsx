@@ -44,6 +44,21 @@ export default function RedactedFilesPage() {
   const handleView = async (file) => {
     try {
       const path = `users/${session.id}/${file.name}`;
+      const ext = file.name.split('.').pop().toLowerCase();
+      
+      if (ext !== 'pdf') {
+        const { data: rd } = await supabase
+          .from('redacted_documents')
+          .select('document_id')
+          .eq('redacted_path', path)
+          .maybeSingle();
+          
+        if (rd?.document_id) {
+          window.open(`/redaction/view?id=${rd.document_id}`, "_blank");
+          return;
+        }
+      }
+
       const { data, error } = await supabase.storage.from('redacted-files').createSignedUrl(path, 3600);
       if (error) throw error;
       window.open(data.signedUrl, '_blank');

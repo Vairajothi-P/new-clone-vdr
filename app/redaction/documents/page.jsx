@@ -266,6 +266,12 @@ const handleSaveConfig = async () => {
   const openPreview = async () => {
     if (!selectedDoc) return;
 
+    const ext = selectedDoc.file_path ? selectedDoc.file_path.split(".").pop().toLowerCase().trim() : "";
+    if (ext !== "pdf") {
+      window.open(`/redaction/view?id=${selectedDoc.id}`, "_blank");
+      return;
+    }
+
     setIsPreviewOpen(true);
     setPreviewLoading(true);
     setPreviewError(null);

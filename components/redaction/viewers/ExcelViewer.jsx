@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { FaSpinner } from "react-icons/fa";
 import SelectionOverlay from "@/components/redaction/SelectionOverlay";
 
@@ -37,6 +37,7 @@ export default function ExcelViewer({
   const [error, setError] = useState(null);
   const [sheets, setSheets] = useState([]); // [{ name, rows: string[][] }]
   const tableRef = useRef(null);
+  const wrapperRef = useRef(null);
 
   // ── Load workbook ────────────────────────────────────────
   useEffect(() => {
@@ -91,6 +92,64 @@ export default function ExcelViewer({
   const activeSheet = Math.min(Math.max(0, currentPage), Math.max(0, sheets.length - 1));
   const currentSheetData = sheets[activeSheet];
   const zoomRatio = scale / 1.5;
+
+  // ── Semantic redaction detection ────────────────────────────────────────────
+  const handleAddSelection = useCallback(
+    (rawSel) => {
+      const enriched = { ...rawSel };
+
+      try {
+        if (tableRef.current && wrapperRef.current) {
+          const wrapperRect = wrapperRef.current.getBoundingClientRect();
+          const targetCells = [];
+
+          // Find all cells (th/td) inside the table
+          const cells = tableRef.current.querySelectorAll("th, td");
+          cells.forEach((cell) => {
+            const rect = cell.getBoundingClientRect();
+            // Convert to relative coords
+            const rx = rect.left - wrapperRect.left;
+            const ry = rect.top - wrapperRect.top;
+
+            if (rectsOverlap({ x: rx, y: ry, w: rect.width, h: rect.height }, rawSel)) {
+              const row = parseInt(cell.getAttribute("data-row") || "0", 10);
+              const col = parseInt(cell.getAttribute("data-col") || "0", 10);
+              const val = cell.getAttribute("data-val") || "";
+
+              // Simple column index to letter conversion (e.g. 0 -> A, 25 -> Z, 26 -> AA)
+              let temp = col;
+              let letter = "";
+              while (temp >= 0) {
+                letter = String.fromCharCode((temp % 26) + 65) + letter;
+                temp = Math.floor(temp / 26) - 1;
+              }
+
+              targetCells.push({
+                sheet: currentSheetData?.name,
+                row,
+                col,
+                address: `${letter}${row + 1}`,
+                value: val,
+              });
+            }
+          });
+
+          if (targetCells.length > 0) {
+            enriched.redactionTarget = {
+              type: "excel",
+              cells: targetCells,
+              replacement: "REDACTED",
+            };
+          }
+        }
+      } catch (err) {
+        console.warn("ExcelViewer: redaction detection failed:", err);
+      }
+
+      onAddSelection(enriched);
+    },
+    [onAddSelection, currentSheetData]
+  );
 
   if (loading) {
     return (
@@ -158,7 +217,6 @@ export default function ExcelViewer({
 
       {/* Table container */}
       <div
-        ref={tableRef}
         style={{
           overflowX: "auto",
           padding: 16,
@@ -166,61 +224,78 @@ export default function ExcelViewer({
           position: "relative"
         }}
       >
-        <SelectionOverlay
-          tool={tool}
-          selections={selections}
-          onAddSelection={onAddSelection}
-          onRemoveSelection={onRemoveSelection}
-          onUpdateSelection={onUpdateSelection}
-        >
-          <div style={{ transform: `scale(${zoomRatio})`, transformOrigin: "top left", transition: "transform 0.15s ease" }}>
-            <table style={{ borderCollapse: "collapse", fontSize: 13, color: "#1e293b", width: "100%" }}>
-              <tbody>
-                {currentSheetData?.rows.map((row, rIdx) => (
-                  <tr key={rIdx}>
-                    {(row || []).map((cell, cIdx) => {
-                      const cellStr = String(cell ?? "");
-                      const isMatch = query && cellStr.toLowerCase().includes(query);
-                      return rIdx === 0 ? (
-                        <th
-                          key={cIdx}
-                          style={{
-                            border: "1px solid #e2e8f0",
-                            padding: "6px 10px",
-                            whiteSpace: "nowrap",
-                            textAlign: "left",
-                            background: isMatch ? "#fef08a" : "#f1f5f9",
-                            fontWeight: 700,
-                            color: "#334155",
-                            position: "sticky",
-                            top: 0,
-                          }}
-                        >
-                          {isMatch ? <mark style={{ background: "#fef08a", borderRadius: 2 }}>{cellStr}</mark> : cellStr}
-                        </th>
-                      ) : (
-                        <td
-                          key={cIdx}
-                          style={{
-                            border: "1px solid #e2e8f0",
-                            padding: "6px 10px",
-                            whiteSpace: "nowrap",
-                            background: isMatch ? "#fef08a" : rIdx % 2 === 0 ? "#f8fafc" : "#fff",
-                          }}
-                        >
-                          {isMatch ? <mark style={{ background: "#fef08a", borderRadius: 2 }}>{cellStr}</mark> : cellStr}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </SelectionOverlay>
+        <div ref={wrapperRef} style={{ position: "relative", width: "100%" }}>
+          <SelectionOverlay
+            tool={tool}
+            selections={selections}
+            onAddSelection={handleAddSelection}
+            onRemoveSelection={onRemoveSelection}
+            onUpdateSelection={onUpdateSelection}
+          >
+            <div style={{ transform: `scale(${zoomRatio})`, transformOrigin: "top left", transition: "transform 0.15s ease", minWidth: "100%" }}>
+              <table ref={tableRef} style={{ borderCollapse: "collapse", fontSize: 13, color: "#1e293b", width: "100%" }}>
+                <tbody>
+                  {currentSheetData?.rows.map((row, rIdx) => (
+                    <tr key={rIdx}>
+                      {(row || []).map((cell, cIdx) => {
+                        const cellStr = String(cell ?? "");
+                        const isMatch = query && cellStr.toLowerCase().includes(query);
+                        return rIdx === 0 ? (
+                          <th
+                            key={cIdx}
+                            data-row={rIdx}
+                            data-col={cIdx}
+                            data-val={cellStr}
+                            style={{
+                              border: "1px solid #e2e8f0",
+                              padding: "6px 10px",
+                              whiteSpace: "nowrap",
+                              textAlign: "left",
+                              background: isMatch ? "#fef08a" : "#f1f5f9",
+                              fontWeight: 700,
+                              color: "#334155",
+                              position: "sticky",
+                              top: 0,
+                            }}
+                          >
+                            {isMatch ? <mark style={{ background: "#fef08a", borderRadius: 2 }}>{cellStr}</mark> : cellStr}
+                          </th>
+                        ) : (
+                          <td
+                            key={cIdx}
+                            data-row={rIdx}
+                            data-col={cIdx}
+                            data-val={cellStr}
+                            style={{
+                              border: "1px solid #e2e8f0",
+                              padding: "6px 10px",
+                              whiteSpace: "nowrap",
+                              background: isMatch ? "#fef08a" : rIdx % 2 === 0 ? "#f8fafc" : "#fff",
+                            }}
+                          >
+                            {isMatch ? <mark style={{ background: "#fef08a", borderRadius: 2 }}>{cellStr}</mark> : cellStr}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </SelectionOverlay>
+        </div>
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
+  );
+}
+
+function rectsOverlap(a, b) {
+  return (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
   );
 }

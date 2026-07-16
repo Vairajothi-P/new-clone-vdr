@@ -1,0 +1,28 @@
+﻿Γû▓ Next.js 16.2.7 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+node.exe : 
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./app/redaction/documents/viewer/page.jsx:749:15
+Expected ';', '}' or <eof>
+  [90m747 |[0m           <[33mFaMinus[0m size={[35m13[0m} />
+  [90m748 |[0m         </button>
+[31m[1m>[0m [90m749 |[0m         <span style={zoomLabelStyle}>
+  [90m    |[0m               [31m[1m^^^^^[0m
+  [90m750 |[0m           {[33mMath[0m.round(scale * [35m100[0m)}%
+  [90m751 |[0m         </span>
+  [90m752 |[0m         <button onClick={() => setScale((s) => [33mMath[0m.min([35m3[0m, s + [35m0.2[0m))} 
+title=[32m"Zoom In"[0m sty...
+
+Parsing ecmascript source code failed
+
+
+    at <unknown> (./app/redaction/documents/viewer/page.jsx:749:15)

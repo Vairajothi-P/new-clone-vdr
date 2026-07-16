@@ -152,12 +152,51 @@ export default function SelectionOverlay({
               top: s.y,
               width: s.w,
               height: s.h,
-              background: "rgba(0,0,0,0.45)",
-              border: "2px solid rgba(220,38,38,0.8)",
+              background: "rgba(0,0,0,0.52)",
+              border: "2px solid rgba(220,38,38,0.85)",
               boxSizing: "border-box",
               pointerEvents: tool === "select" ? "auto" : "none",
             }}
           >
+            {/* ── Redaction preview label (shown when semantic target is known) ── */}
+            {s.redactionTarget && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  pointerEvents: "none",
+                  padding: "2px 6px",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 9,
+                    color: "#e2e8f0",
+                    fontFamily: "monospace",
+                    letterSpacing: s.redactionTarget.type === "excel" ? 0 : 2,
+                    background: "rgba(0,0,0,0.55)",
+                    padding: "1px 6px",
+                    borderRadius: 2,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    maxWidth: "100%",
+                    display: "block",
+                    textAlign: "center",
+                  }}
+                >
+                  {s.redactionTarget.type === "excel"
+                    ? `REDACTED: ${
+                        s.redactionTarget.cells?.map((c) => c.address).join(", ") || "—"
+                      }`
+                    : "████████"}
+                </span>
+              </div>
+            )}
+
             {tool === "select" && (
               <>
                 <button
