@@ -106,28 +106,7 @@ function LayoutContent({ children }) {
                     })}
                 </div>
 
-                {session && (
-                    <div className="p-4 border-t border-slate-100 bg-brand-soft/50">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-[12px] font-black text-white shrink-0 shadow-sm">
-                                    {session.name?.charAt(0).toUpperCase() || 'U'}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-[13px] font-bold text-slate-800 truncate">{session.name}</p>
-                                    <p className="text-[11px] font-semibold text-slate-400 truncate capitalize">{session.role.replace('_', ' ')}</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => { localStorage.removeItem('vdr_session'); window.location.href = '/login'; }}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-rose-100 hover:text-rose-600 transition-colors shrink-0"
-                                title="Log Out"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                            </button>
-                        </div>
-                    </div>
-                )}
+                {/* Removed session block as requested */}
             </nav>
             <main className="flex-1 min-w-0 h-full overflow-hidden flex flex-col relative">
                 {children}
