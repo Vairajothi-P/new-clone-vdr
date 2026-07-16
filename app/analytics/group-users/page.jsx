@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase/client';
-import { X } from "lucide-react";
+import { X, List, BarChart2 } from "lucide-react";
 
 export default function GroupUsersPage() {
     const [rawGroups, setRawGroups] = useState([]);
@@ -23,6 +23,7 @@ export default function GroupUsersPage() {
     const [selectedGroup, setSelectedGroup] = useState(null);
     const [userLoginList, setUserLoginList] = useState([]);
     const [loadingModal, setLoadingModal] = useState(false);
+    const [modalView, setModalView] = useState('table'); // 'table', 'chart'
 
     // 1. Fetch Raw Data Once
     useEffect(() => {
@@ -146,6 +147,7 @@ export default function GroupUsersPage() {
         setShowLoginModal(true);
         setLoadingModal(true);
         setUserLoginList([]);
+        setModalView('table');
 
         try {
             // Apply Date Filters to rawLoginHistory
@@ -377,15 +379,33 @@ export default function GroupUsersPage() {
                             </button>
                         </div>
 
-                        {/* Table */}
-                        <div className="overflow-y-auto flex-1 relative min-h-[200px]">
+                        <div className="px-6 pt-6">
+                            {/* Toggle Group */}
+                            <div className="flex bg-gray-100/80 rounded-md p-1 w-fit border border-gray-200/50 shadow-inner">
+                                <button 
+                                    className={`px-3 py-1.5 rounded-sm flex items-center justify-center transition-all ${modalView === 'table' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}
+                                    onClick={() => setModalView('table')}
+                                >
+                                    <List size={16} />
+                                </button>
+                                <button 
+                                    className={`px-3 py-1.5 rounded-sm flex items-center justify-center transition-all ${modalView === 'chart' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}
+                                    onClick={() => setModalView('chart')}
+                                >
+                                    <BarChart2 size={16} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="overflow-y-auto flex-1 relative min-h-[350px]">
                             {loadingModal ? (
                                 <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
                                     <div className="w-6 h-6 border-2 border-gray-300 border-t-[var(--brand)] rounded-full animate-spin"></div>
                                 </div>
                             ) : userLoginList.length === 0 ? (
                                 <p className="px-6 py-10 text-center text-[13px] text-gray-400">No login data found for this group</p>
-                            ) : (
+                            ) : modalView === 'table' ? (
                                 <table className="w-full">
                                     <thead className="sticky top-0 bg-gray-50 border-b border-gray-100 z-10">
                                         <tr>
@@ -424,6 +444,65 @@ export default function GroupUsersPage() {
                                         ))}
                                     </tbody>
                                 </table>
+                            ) : (
+                                (() => {
+                                    const maxCount = Math.max(...userLoginList.map(d => d.count), 1);
+                                    let tickStep = Math.ceil(maxCount / 5);
+                                    if (tickStep === 0) tickStep = 1;
+                                    const yTicks = Array.from({length: Math.ceil(maxCount / tickStep) + 1}, (_, i) => i * tickStep);
+                                    const chartMax = yTicks[yTicks.length - 1] || 1;
+
+                                    return (
+                                        <div className="w-full h-[350px] flex flex-col pt-4 px-6 pb-6">
+                                            <div className="flex justify-center items-center gap-2 mb-8 text-xs text-gray-500">
+                                                <div className="w-8 h-3 bg-rose-400 opacity-80 rounded-[1px]"></div>
+                                                <span>Total Logins</span>
+                                            </div>
+                                            <div className="flex-1 flex w-full relative pl-8">
+                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-90 text-[11px] text-gray-500 tracking-wider">
+                                                    Logins
+                                                </div>
+                                                
+                                                <div className="flex flex-col justify-between text-[11px] text-gray-400 w-8 items-end pr-3 pb-8 h-full z-10 bg-white absolute left-6 top-0 bottom-0">
+                                                    {yTicks.slice().reverse().map(tick => (
+                                                        <span key={tick} className="leading-none transform translate-y-[5px]">{tick}</span>
+                                                    ))}
+                                                </div>
+
+                                                <div className="flex-1 relative h-full flex flex-col ml-14 border-l border-gray-200">
+                                                    <div className="absolute inset-0 pb-8 flex flex-col justify-between z-0">
+                                                        {yTicks.map((_, i) => (
+                                                            <div key={i} className="w-full h-[1px] border-b border-dashed border-gray-200"></div>
+                                                        ))}
+                                                    </div>
+
+                                                    <div className="absolute inset-0 pb-8 flex items-end justify-around px-8 z-10 overflow-x-auto">
+                                                        {userLoginList.map((d, i) => (
+                                                            <div key={i} className="flex flex-col items-center group relative h-full justify-end w-20 shrink-0">
+                                                                <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-gray-800 text-white text-[11px] px-2 py-1 rounded transition-opacity whitespace-nowrap pointer-events-none z-20">
+                                                                    {d.name}: {d.count}
+                                                                </div>
+                                                                <div 
+                                                                    className="w-12 bg-rose-400/90 transition-all duration-500 ease-out hover:bg-rose-500 hover:scale-x-105 cursor-pointer rounded-t-[1px]" 
+                                                                    style={{ height: `${(d.count / chartMax) * 100}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    <div className="absolute bottom-0 left-0 right-0 h-8 flex items-center justify-around px-8 border-t border-gray-200 bg-white z-20">
+                                                        {userLoginList.map((d, i) => (
+                                                            <div key={i} className="text-[11px] text-gray-500 truncate w-20 text-center shrink-0" title={d.name}>
+                                                                {d.name.split(' ')[0]}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-center mt-3 text-sm text-gray-500 font-medium">Users</div>
+                                        </div>
+                                    );
+                                })()
                             )}
                         </div>
 
