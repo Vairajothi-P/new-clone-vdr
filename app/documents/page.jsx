@@ -2024,10 +2024,20 @@ function UnifiedWorkspace() {
     };
 
     const sortItemsByIndex = (a, b) => {
-        const aIndex = Number.isFinite(+a.index) ? +a.index : 999999;
-        const bIndex = Number.isFinite(+b.index) ? +b.index : 999999;
-        if (aIndex !== bIndex) return aIndex - bIndex;
         if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+        const compareIndexes = (idxA, idxB) => {
+            const partsA = (idxA || '999999').toString().split('.').map(n => parseInt(n, 10) || 0);
+            const partsB = (idxB || '999999').toString().split('.').map(n => parseInt(n, 10) || 0);
+            const len = Math.max(partsA.length, partsB.length);
+            for (let i = 0; i < len; i++) {
+                const numA = partsA[i] || 0;
+                const numB = partsB[i] || 0;
+                if (numA !== numB) return numA - numB;
+            }
+            return 0;
+        };
+        const idxCmp = compareIndexes(a.index, b.index);
+        if (idxCmp !== 0) return idxCmp;
         return a.name.localeCompare(b.name);
     };
 
@@ -2041,6 +2051,7 @@ function UnifiedWorkspace() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isPermDeleteModalOpen, setIsPermDeleteModalOpen] = useState(false);
     const [uploadQueue, setUploadQueue] = useState([]);
+    const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
 
     const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
     const [movingToFolderId, setMovingToFolderId] = useState(null);
@@ -2499,8 +2510,7 @@ function UnifiedWorkspace() {
     //     setTimeout(() => { setUploadQueue([]); setIsUploadModalOpen(false); e.target.value = ''; }, 1500);
     // };
 
-    const handleFileChange = async (e) => {
-        const chosenFiles = Array.from(e.target.files);
+    const processFilesForUpload = async (chosenFiles) => {
         if (chosenFiles.length === 0 || !session) return;
 
         setUploadQueue(chosenFiles.map((f, i) => ({
@@ -2520,13 +2530,12 @@ function UnifiedWorkspace() {
         const peers = files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
         let nextIndex = peers.reduce((m, it) => {
             const lastPart = it.index ? it.index.toString().split('.').pop() : '0';
-            return Math.max(m, parseInt(lastPart) || 0);
+            return Math.max(m, parseInt(lastPart, 10) || 0);
         }, 0) + 1;
 
         for (let i = 0; i < chosenFiles.length; i++) {
             const file = chosenFiles[i];
             try {
-                // 1. Pack the raw file into FormData
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('company_id', session.company_id);
@@ -2534,8 +2543,6 @@ function UnifiedWorkspace() {
                 formData.append('uploaded_by', session.id);
                 formData.append('index', `${prefix}${nextIndex}`);
 
-                // 2. Send to Next.js Backend 
-                // 🔥 CRITICAL: Notice there are NO headers here!
                 const res = await fetch('/api/documents/upload', {
                     method: 'POST',
                     body: formData
@@ -2552,8 +2559,37 @@ function UnifiedWorkspace() {
                 setUploadQueue(prev => prev.map((it, idx) => idx === i ? { ...it, status: 'error' } : it));
             }
         }
-        // Refresh the page automatically after a success
         setTimeout(() => { setUploadQueue([]); setIsUploadModalOpen(false); window.location.reload(); }, 1500);
+    };
+
+    const handleFileChange = async (e) => {
+        processFilesForUpload(Array.from(e.target.files));
+    };
+
+    const [isDraggingOverScreen, setIsDraggingOverScreen] = useState(false);
+
+    const handleWindowDragOver = (e) => {
+        e.preventDefault();
+        // Only allow dropping files, not other dragged items within the app
+        if (e.dataTransfer.types.includes('Files')) {
+            setIsDraggingOverScreen(true);
+            e.dataTransfer.dropEffect = 'copy';
+        }
+    };
+
+    const handleWindowDragLeave = (e) => {
+        e.preventDefault();
+        // Ignore events from child elements
+        if (e.currentTarget.contains(e.relatedTarget)) return;
+        setIsDraggingOverScreen(false);
+    };
+
+    const handleWindowDrop = (e) => {
+        e.preventDefault();
+        setIsDraggingOverScreen(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            processFilesForUpload(Array.from(e.dataTransfer.files));
+        }
     };
 
     // ── DRAG AND DROP REORDERING ──────────────────────────────────────────────
@@ -2569,6 +2605,42 @@ function UnifiedWorkspace() {
         e.dataTransfer.dropEffect = 'move';
     };
 
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    const handleDropToFolder = async (e, folderId) => {
+        if (currentView !== 'files') return;
+        e.preventDefault();
+        const sourceId = e.dataTransfer.getData('text/plain');
+        if (!sourceId) return;
+
+        const sourceItem = files.find(f => f.id === sourceId);
+        if (!sourceItem || sourceItem.parentId === folderId) return; // already in this folder
+
+        const updatedFiles = files.map(f => ({ ...f }));
+        const sourceIdxInUpdated = updatedFiles.findIndex(f => f.id === sourceId);
+
+        if (sourceIdxInUpdated > -1) {
+            updatedFiles[sourceIdxInUpdated].parentId = folderId;
+            updatedFiles[sourceIdxInUpdated].index = '999999';
+        }
+
+        setFiles(updatedFiles);
+
+        try {
+            const table = sourceItem.type === 'folder' ? 'folders' : 'documents';
+            await supabase.from(table).update({ folder_id: folderId === 'root' || folderId === null ? null : folderId }).eq('id', sourceId);
+
+            await executeRebuildIndex(updatedFiles, deletedIds, false);
+            showToast('Index updated successfully ✓');
+        } catch (err) {
+            console.error('Failed to move', err);
+            showToast('Failed to move: ' + err.message, 'error');
+        }
+    };
+
     const handleDrop = async (e, targetItem) => {
         if (currentView !== 'files') return;
         e.preventDefault();
@@ -2576,50 +2648,59 @@ function UnifiedWorkspace() {
         if (!sourceId || sourceId === targetItem.id) return;
 
         const sourceItem = files.find(f => f.id === sourceId);
-        if (!sourceItem || sourceItem.parentId !== targetItem.parentId) return;
+        if (!sourceItem) return;
 
-        // Current siblings sorted by index
-        const siblings = files.filter(f => f.parentId === sourceItem.parentId && !deletedIds.has(f.id)).sort(sortItemsByIndex);
-        const sourceIdx = siblings.findIndex(f => f.id === sourceId);
-        const targetIdx = siblings.findIndex(f => f.id === targetItem.id);
+        const updatedFiles = files.map(f => ({ ...f }));
+        const sourceIdxInUpdated = updatedFiles.findIndex(f => f.id === sourceId);
 
-        if (sourceIdx === -1 || targetIdx === -1) return;
+        let newParentId = targetItem.parentId;
+        let isMovingIntoFolder = false;
 
-        const newSiblings = [...siblings];
-        const [removed] = newSiblings.splice(sourceIdx, 1);
-        newSiblings.splice(targetIdx, 0, removed);
-
-        // Assign temporary index values just so executeRebuildIndex can sort them correctly
-        const updatedFiles = files.map(f => { return { ...f } });
-        let targetVersion = 1;
-
-        newSiblings.forEach((sib, i) => {
-            const fIdx = updatedFiles.findIndex(x => x.id === sib.id);
-            if (fIdx > -1) {
-                updatedFiles[fIdx].index = (i + 1).toString();
-                if (sib.id === sourceId) {
-                    updatedFiles[fIdx].version = (parseInt(updatedFiles[fIdx].version) || 1) + 1;
-                    targetVersion = updatedFiles[fIdx].version;
-                }
+        if (targetItem.type === 'folder') {
+            if (sourceItem.parentId === targetItem.id) {
+                return; // Already in this folder, no op on drop
             }
-        });
+            newParentId = targetItem.id;
+            isMovingIntoFolder = true;
+        }
 
-        // Set locally for immediate UI update
+        if (updatedFiles[sourceIdxInUpdated].parentId !== newParentId) {
+            updatedFiles[sourceIdxInUpdated].parentId = newParentId;
+            updatedFiles[sourceIdxInUpdated].index = '999999'; 
+        }
+
+        if (!isMovingIntoFolder) {
+            const siblings = updatedFiles.filter(f => f.parentId === newParentId && !deletedIds.has(f.id)).sort(sortItemsByIndex);
+            const sourceIdx = siblings.findIndex(f => f.id === sourceId);
+            const targetIdx = siblings.findIndex(f => f.id === targetItem.id);
+
+            if (sourceIdx !== -1 && targetIdx !== -1) {
+                const newSiblings = [...siblings];
+                const [removed] = newSiblings.splice(sourceIdx, 1);
+                newSiblings.splice(targetIdx, 0, removed);
+
+                newSiblings.forEach((sib, i) => {
+                    const fIdx = updatedFiles.findIndex(x => x.id === sib.id);
+                    if (fIdx > -1) {
+                        updatedFiles[fIdx].index = (i + 1).toString();
+                    }
+                });
+            }
+        }
+
         setFiles(updatedFiles);
 
         try {
-            // Update the version in Supabase for the dragged item
-            if (sourceItem.type === 'folder') {
-                await supabase.from('folders').update({ version: targetVersion }).eq('id', sourceId);
-            } else {
-                await supabase.from('documents').update({ version: targetVersion }).eq('id', sourceId);
+            if (sourceItem.parentId !== newParentId) {
+                const table = sourceItem.type === 'folder' ? 'folders' : 'documents';
+                await supabase.from(table).update({ folder_id: newParentId === 'root' ? null : newParentId }).eq('id', sourceId);
             }
 
-            // Rebuild and save ALL indexes accurately without reloading the page
             await executeRebuildIndex(updatedFiles, deletedIds, false);
+            showToast('Index updated successfully ✓');
         } catch (err) {
-            console.error('Failed to update order', err);
-            alert("Failed to update order: " + err.message);
+            console.error('Failed to update order or move', err);
+            showToast('Failed to update order: ' + err.message, 'error');
         }
     };
 
@@ -2645,13 +2726,7 @@ function UnifiedWorkspace() {
 
             // Sort each group: folders first, then by existing index number
             Object.values(byParent).forEach(group => {
-                group.sort((a, b) => {
-                    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-                    const ai = parseFloat((a.index || '999999').toString().split('.')[0]) || 999999;
-                    const bi = parseFloat((b.index || '999999').toString().split('.')[0]) || 999999;
-                    if (ai !== bi) return ai - bi;
-                    return a.name.localeCompare(b.name);
-                });
+                group.sort(sortItemsByIndex);
             });
 
             const folderUpdates = [];
@@ -3126,7 +3201,46 @@ function UnifiedWorkspace() {
     if (loading) return <div className="flex items-center justify-center w-full h-full bg-[#FAFBFD]"><div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" /></div>;
 
     return (
-        <div className="flex w-full h-full bg-[#F8F9FB] font-sans">
+        <div 
+            className="flex w-full h-full bg-[#F8F9FB] font-sans relative"
+            onDragOver={handleWindowDragOver}
+            onDragLeave={handleWindowDragLeave}
+            onDrop={handleWindowDrop}
+        >
+            {isDraggingOverScreen && (
+                <div className="absolute inset-0 z-[100] bg-brand-soft/80 border-4 border-dashed border-brand flex items-center justify-center pointer-events-none">
+                    <div className="bg-white p-8 rounded-2xl shadow-xl flex flex-col items-center gap-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" className="animate-bounce">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        <h2 className="text-2xl font-black text-slate-800">Drop files here to upload</h2>
+                    </div>
+                </div>
+            )}
+
+            {/* ── TOAST NOTIFICATION ── */}
+            {toast && (
+                <div style={{
+                    position: 'fixed', top: '24px', right: '24px', zIndex: 9999,
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '14px 20px', borderRadius: '12px',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
+                    background: toast.type === 'error' ? '#FEF2F2' : '#F0FDF4',
+                    border: `1.5px solid ${toast.type === 'error' ? '#FCA5A5' : '#86EFAC'}`,
+                    color: toast.type === 'error' ? '#DC2626' : '#16A34A',
+                    fontSize: '14px', fontWeight: '700',
+                    animation: 'slideInRight 0.3s ease', maxWidth: '340px',
+                }}>
+                    {toast.type === 'error'
+                        ? <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        : <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    }
+                    {toast.message}
+                </div>
+            )}
+            <style>{`@keyframes slideInRight { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:translateX(0); } }`}</style>
 
             {/* Hidden Inputs */}
             <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} className="hidden" />
@@ -3265,11 +3379,19 @@ function UnifiedWorkspace() {
                 {/* ── BREADCRUMBS & LIST ── */}
                 <div className="flex-1 flex flex-col p-6 overflow-hidden">
                     <div className="flex items-center gap-2 mb-4 px-2">
-                        <button onClick={() => setCurrentFolderId(null)} className={`text-[14px] font-black ${currentFolderId === null ? 'text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>home</button>
+                        <button 
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDropToFolder(e, null)}
+                            onClick={() => setCurrentFolderId(null)} 
+                            className={`text-[14px] font-black ${currentFolderId === null ? 'text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>home</button>
                         {breadcrumbPath.map(crumb => (
                             <React.Fragment key={crumb.id}>
                                 <span className="text-slate-300 font-black">&gt;</span>
-                                <button onClick={() => setCurrentFolderId(crumb.id)} className={`text-[14px] font-black ${currentFolderId === crumb.id ? 'text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>{crumb.name}</button>
+                                <button 
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDropToFolder(e, crumb.id)}
+                                    onClick={() => setCurrentFolderId(crumb.id)} 
+                                    className={`text-[14px] font-black ${currentFolderId === crumb.id ? 'text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>{crumb.name}</button>
                             </React.Fragment>
                         ))}
                     </div>
@@ -3372,7 +3494,7 @@ function UnifiedWorkspace() {
                                             </td>
 
 
-                                            
+
                                             {currentView !== 'trash' && (
                                                 <td className="py-4 px-2 text-center" onClick={e => handleToggleBookmark(item, e)}>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={bookmarkedIds.has(item.id) ? "#fbbf24" : "none"} stroke={bookmarkedIds.has(item.id) ? "#fbbf24" : "#cbd5e1"} strokeWidth="2.5" className="cursor-pointer transition-colors hover:stroke-amber-400 mx-auto">
