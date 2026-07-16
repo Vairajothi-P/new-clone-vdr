@@ -125,7 +125,7 @@ The app needs:
 4. Move heavy document processing off the browser and to backend workers
 5. Introduce proper API validation and error handling
 
-### Priority 2 - Required for scale
+### Priority 2 - Required for scale  dd
 6. Add file upload workflow using pre-signed URLs and object storage
 7. Add queue-based background jobs for redaction/processing
 8. Add caching for frequently accessed content
