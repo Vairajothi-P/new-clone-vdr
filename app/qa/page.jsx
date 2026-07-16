@@ -254,19 +254,23 @@ function QAPageContent() {
         attachmentStr = `|ATTACHMENT|${replyFile.name}|${uploadData.path}`;
       }
 
+      const isMyQuestion = selectedThread.askedBy === senderName;
+
       // 1. Insert Reply
       const { error: msgErr } = await supabase.from('qna_messages').insert([{
         thread_id: selectedThread.id,
         sender: senderName,
         text: replyText + attachmentStr,
-        is_user: false // Assuming reply from admin/assignee
+        is_user: isMyQuestion
       }]);
 
       if (msgErr) throw msgErr;
 
-      // 2. Update status if it was not Answered
-      if (selectedThread.status !== 'Answered') {
+      // 2. Update status
+      if (!isMyQuestion && selectedThread.status !== 'Answered') {
         await supabase.from('qna_threads').update({ status: 'Answered' }).eq('id', selectedThread.id);
+      } else if (isMyQuestion && selectedThread.status === 'Answered') {
+        await supabase.from('qna_threads').update({ status: 'Submitted' }).eq('id', selectedThread.id);
       }
 
       setReplyText("");
@@ -825,23 +829,7 @@ function QAPageContent() {
                   const isMyQuestion = selectedThread.askedBy === senderName;
                   const isAssignedToMe = selectedThread.assignee === "N/A" || selectedThread.assignee === senderName;
 
-                  if (isMyQuestion) {
-                    return (
-                      <div className="text-center text-sm text-amber-600 font-medium py-3 flex flex-col items-center">
-                        You cannot reply to your own question. You can only view the conversation.
-                        <div className="mt-3 w-full flex justify-end">
-                          <button 
-                            onClick={() => setSelectedThread(null)}
-                            className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
-                          >
-                            Close
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  if (!isAssignedToMe) {
+                  if (!isMyQuestion && !isAssignedToMe) {
                     return (
                       <div className="text-center text-sm text-slate-500 font-medium py-3 flex flex-col items-center">
                         This question is assigned to {selectedThread.assignee}. You can only view.
