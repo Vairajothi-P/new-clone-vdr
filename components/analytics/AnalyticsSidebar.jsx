@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const ANALYTICS_NAV_ITEMS = [
     { name: 'Group insights', href: '/analytics/group-insights' },
-    { name: 'Folder access', href: '/analytics/folder-access' },
+    { name: 'Folder activity', href: '/analytics/folder-activity' },
     { name: 'File activity', href: '/analytics/file-activity' },
     { name: 'Group & Users', href: '/analytics/group-users' },
 ];
@@ -28,8 +28,8 @@ export default function AnalyticsSidebar({ isOpen = true }) {
                                 key={item.href}
                                 href={item.href}
                                 className={`group flex items-center justify-between px-6 py-3 transition-all ${active
-                                        ? 'bg-[var(--brand-50)] border-r-2 border-[var(--brand)] text-[var(--brand)] font-bold'
-                                        : 'text-gray-600 hover:bg-gray-50'
+                                    ? 'bg-[var(--brand-50)] border-r-2 border-[var(--brand)] text-[var(--brand)] font-bold'
+                                    : 'text-gray-600 hover:bg-gray-50'
                                     }`}
                             >
                                 <span className="text-[14px] font-sans truncate">{item.name}</span>
