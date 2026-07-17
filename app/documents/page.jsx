@@ -2559,7 +2559,60 @@ function UnifiedWorkspace() {
                 setUploadQueue(prev => prev.map((it, idx) => idx === i ? { ...it, status: 'error' } : it));
             }
         }
-        setTimeout(() => { setUploadQueue([]); setIsUploadModalOpen(false); window.location.reload(); }, 1500);
+        // After all uploads: fetch fresh docs, rebuild index properly, then reload
+        setTimeout(async () => {
+            setUploadQueue([]);
+            setIsUploadModalOpen(false);
+            try {
+                // Fetch all fresh docs from Supabase (including newly uploaded ones)
+                const existingIds = new Set(files.map(f => f.id));
+                const { data: freshDocs } = await supabase
+                    .from('documents')
+                    .select('*')
+                    .eq('company_id', session.company_id)
+                    .eq('is_deleted', false);
+
+                const { data: usersData } = await supabase
+                    .from('users')
+                    .select('id, name')
+                    .eq('company_id', session.company_id);
+
+                const userMap = {};
+                (usersData || []).forEach(u => userMap[u.id] = u.name);
+
+                // Map new docs (not already in state) to our file shape
+                const newDocsMapped = (freshDocs || [])
+                    .filter(doc => !existingIds.has(doc.id))
+                    .map(doc => ({
+                        id: doc.id,
+                        parentId: doc.folder_id || null,
+                        index: doc.index ? doc.index.toString().replace('.0', '') : '99',
+                        name: doc.name,
+                        type: doc.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/gi, '') || 'file',
+                        size: formatBytes(doc.file_size_bytes),
+                        uploadedBy: userMap[doc.uploaded_by] || session.name,
+                        dateCreated: new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                        deletedBy: '', deletedAt: '--',
+                        is_bookmarked: doc.is_bookmarked,
+                        is_downloaded: doc.is_downloaded,
+                        is_deleted: doc.is_deleted,
+                        file_path: doc.file_path,
+                        original_file_path: doc.original_file_path,
+                        dek_ref: doc.dek_ref,
+                        mime_type: doc.mime_type,
+                        creator_id: doc.uploaded_by,
+                        creator_revoked: doc.creator_revoked,
+                        version: parseInt(doc.version) || 1
+                    }));
+
+                // Merge and trigger a full reindex → this will save correct indices to DB and reload
+                const mergedFiles = [...files, ...newDocsMapped];
+                await executeRebuildIndex(mergedFiles, deletedIds, true);
+            } catch (err) {
+                console.error('Post-upload reindex failed:', err);
+                window.location.reload();
+            }
+        }, 1500);
     };
 
     const handleFileChange = async (e) => {
