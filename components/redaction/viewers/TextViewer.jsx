@@ -31,6 +31,8 @@ export default function TextViewer({
   onAddSelection,
   onRemoveSelection,
   onUpdateSelection,
+  activeMatchIndex = -1,
+  onSearchResults,
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -41,6 +43,7 @@ export default function TextViewer({
    * for semantic redaction detection (same pattern as WordViewer).
    */
   const preRef = useRef(null);
+  const matchRefs = useRef([]);
 
   useEffect(() => {
     if (!url) return;
@@ -85,6 +88,27 @@ export default function TextViewer({
     const re = new RegExp(`(${escapeRegExp(query)})`, "gi");
     return text.split(re);
   }, [text, searchQuery]);
+
+  // Count search matches
+  const matchCount = useMemo(() => {
+    const q = searchQuery.trim();
+    if (!q || !text) return 0;
+    const re = new RegExp(escapeRegExp(q), "gi");
+    const m = text.match(re);
+    return m ? m.length : 0;
+  }, [text, searchQuery]);
+
+  // Report match count to parent
+  useEffect(() => {
+    onSearchResults?.(matchCount);
+  }, [matchCount, onSearchResults]);
+
+  // Scroll to active match
+  useEffect(() => {
+    if (activeMatchIndex >= 0 && activeMatchIndex < matchCount && matchRefs.current[activeMatchIndex]) {
+      matchRefs.current[activeMatchIndex].scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [activeMatchIndex, matchCount]);
 
   // ── Semantic redaction detection ────────────────────────────────────────────
   /**
@@ -177,15 +201,33 @@ export default function TextViewer({
           }}
         >
           {segments ? (
-            segments.map((part, i) =>
-              part.toLowerCase() === query ? (
-                <mark key={i} style={{ background: "#fef08a", borderRadius: 2, padding: "0 1px" }}>
-                  {part}
-                </mark>
-              ) : (
-                part
-              )
-            )
+            (() => {
+              let mIdx = -1;
+              matchRefs.current = [];
+              return segments.map((part, i) => {
+                if (part.toLowerCase() === query) {
+                  mIdx++;
+                  const idx = mIdx;
+                  const isActive = idx === activeMatchIndex;
+                  return (
+                    <mark
+                      key={i}
+                      ref={el => { matchRefs.current[idx] = el; }}
+                      style={{
+                        background: isActive ? "#f97316" : "#fef08a",
+                        color: isActive ? "#fff" : "inherit",
+                        borderRadius: 2,
+                        padding: "0 2px",
+                        transition: "background 0.15s ease",
+                      }}
+                    >
+                      {part}
+                    </mark>
+                  );
+                }
+                return part;
+              });
+            })()
           ) : (
             text || "(empty file)"
           )}

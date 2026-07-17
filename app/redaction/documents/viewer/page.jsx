@@ -129,6 +129,9 @@ function DocumentViewerContent() {
   const [tool, setTool] = useState("pointer"); // "pointer" | "select"
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const [totalMatches, setTotalMatches] = useState(0);
+  const [pdfRenderTrigger, setPdfRenderTrigger] = useState(0);
 
   /* ── text-region selections ── */
   const [selections, setSelections] = useState([]); // [{id, page, text, x, y, w, h}]
@@ -357,6 +360,7 @@ function DocumentViewerContent() {
         console.error("Error rendering page:", err);
       } finally {
         setPageLoading(false);
+        setPdfRenderTrigger((t) => t + 1);
       }
     };
 
@@ -369,7 +373,83 @@ function DocumentViewerContent() {
   const goToPage = (n) => {
     if (n < 1 || n > numPages) return;
     setCurrentPage(n);
+    setActiveMatchIndex(0);
+    setTotalMatches(0);
   };
+
+  /* ─────────────────────────────────────────
+     PDF Search Effect
+  ───────────────────────────────────────── */
+  useEffect(() => {
+    if (fileType !== "pdf" || !textLayerRef.current) return;
+
+    const spans = textLayerRef.current.querySelectorAll("span");
+    spans.forEach((span) => {
+      if (span.hasAttribute("data-original-text")) {
+        span.textContent = span.getAttribute("data-original-text");
+      }
+    });
+
+    if (!searchQuery) {
+      setTotalMatches(0);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    let matchCount = 0;
+
+    const escapeHtml = (unsafe) => {
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    };
+
+    spans.forEach((span) => {
+      if (!span.hasAttribute("data-original-text")) {
+        span.setAttribute("data-original-text", span.textContent);
+      }
+      const text = span.getAttribute("data-original-text");
+      if (!text) return;
+
+      const lowerText = text.toLowerCase();
+      let index = lowerText.indexOf(query);
+      if (index === -1) {
+        span.textContent = text;
+        return;
+      }
+
+      let newHtml = "";
+      let lastIndex = 0;
+      while (index !== -1) {
+        newHtml += escapeHtml(text.substring(lastIndex, index));
+        const isCurrentMatch = matchCount === activeMatchIndex;
+        const bgColor = isCurrentMatch ? "#f97316" : "#fef08a";
+        newHtml += `<mark style="background-color: ${bgColor}; color: inherit; padding: 0; border-radius: 2px;" ${
+          isCurrentMatch ? 'data-active-match="true"' : ""
+        }>${escapeHtml(text.substring(index, index + query.length))}</mark>`;
+
+        matchCount++;
+        lastIndex = index + query.length;
+        index = lowerText.indexOf(query, lastIndex);
+      }
+      newHtml += escapeHtml(text.substring(lastIndex));
+      span.innerHTML = newHtml;
+    });
+
+    setTotalMatches(matchCount);
+
+    if (matchCount > 0) {
+      const activeMark = textLayerRef.current.querySelector(
+        'mark[data-active-match="true"]'
+      );
+      if (activeMark) {
+        activeMark.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [searchQuery, activeMatchIndex, fileType, pdfRenderTrigger]);
 
   /* ─────────────────────────────────────────
      Zoom helpers
@@ -825,22 +905,53 @@ function DocumentViewerContent() {
               </button>
 
               {searchOpen && !searchDisabled && (
-                <input
-                  autoFocus
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search text…"
-                  style={{
-                    background: "#f8fafc",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "6px",
-                    color: "#0f172a",
-                    fontSize: "12px",
-                    padding: "4px 8px",
-                    outline: "none",
-                    width: "160px",
-                  }}
-                />
+                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <input
+                    autoFocus
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setActiveMatchIndex(0);
+                    }}
+                    placeholder="Search text…"
+                    style={{
+                      background: "#f8fafc",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "6px",
+                      color: "#0f172a",
+                      fontSize: "12px",
+                      padding: "4px 8px",
+                      outline: "none",
+                      width: "160px",
+                    }}
+                  />
+                  {searchQuery && totalMatches > 0 && (
+                    <>
+                      <span style={{ fontSize: "11px", color: "#64748b", margin: "0 4px", fontWeight: "500" }}>
+                        {activeMatchIndex + 1} / {totalMatches}
+                      </span>
+                      <button
+                        onClick={() => setActiveMatchIndex((prev) => (prev > 0 ? prev - 1 : totalMatches - 1))}
+                        style={{ ...toolbarBtnStyle(), padding: "4px 6px", border: "1px solid #e2e8f0" }}
+                        title="Previous Match"
+                      >
+                        <FaChevronLeft size={10} />
+                      </button>
+                      <button
+                        onClick={() => setActiveMatchIndex((prev) => (prev < totalMatches - 1 ? prev + 1 : 0))}
+                        style={{ ...toolbarBtnStyle(), padding: "4px 6px", border: "1px solid #e2e8f0" }}
+                        title="Next Match"
+                      >
+                        <FaChevronRight size={10} />
+                      </button>
+                    </>
+                  )}
+                  {searchQuery && totalMatches === 0 && (
+                    <span style={{ fontSize: "11px", color: "#ef4444", margin: "0 4px", fontWeight: "500" }}>
+                      0 / 0
+                    </span>
+                  )}
+                </div>
               )}
 
               <div style={toolbarDivider} />
@@ -1092,6 +1203,8 @@ function DocumentViewerContent() {
               url={fileUrl}
               scale={scale}
               searchQuery={searchQuery}
+              activeMatchIndex={activeMatchIndex}
+              onSearchResults={(count) => setTotalMatches(count)}
               onNumPages={(n) => setNumPages(n)}
               tool={tool}
               selections={selections}
@@ -1110,6 +1223,8 @@ function DocumentViewerContent() {
               currentPage={currentPage - 1}
               scale={scale}
               searchQuery={searchQuery}
+              activeMatchIndex={activeMatchIndex}
+              onSearchResults={(count) => setTotalMatches(count)}
               onNumPages={(n) => { setNumPages(n); setCurrentPage(1); }}
               tool={tool}
               selections={pageSelections}
@@ -1129,6 +1244,8 @@ function DocumentViewerContent() {
               currentPage={currentPage - 1}
               scale={scale}
               searchQuery={searchQuery}
+              activeMatchIndex={activeMatchIndex}
+              onSearchResults={(count) => setTotalMatches(count)}
               onNumPages={(n) => { setNumPages(n); setCurrentPage(1); }}
               tool={tool}
               selections={pageSelections}
@@ -1146,6 +1263,8 @@ function DocumentViewerContent() {
               url={fileUrl}
               scale={scale}
               searchQuery={searchQuery}
+              activeMatchIndex={activeMatchIndex}
+              onSearchResults={(count) => setTotalMatches(count)}
               onNumPages={(n) => setNumPages(n)}
               tool={tool}
               selections={pageSelections}

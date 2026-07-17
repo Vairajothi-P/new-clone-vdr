@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { FaSpinner } from "react-icons/fa";
 import SelectionOverlay from "@/components/redaction/SelectionOverlay";
 
@@ -32,12 +32,15 @@ export default function ExcelViewer({
   onAddSelection,
   onRemoveSelection,
   onUpdateSelection,
+  activeMatchIndex = -1,
+  onSearchResults,
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sheets, setSheets] = useState([]); // [{ name, rows: string[][] }]
   const tableRef = useRef(null);
   const wrapperRef = useRef(null);
+  const activeCellRef = useRef(null);
 
   // ── Load workbook ────────────────────────────────────────
   useEffect(() => {
@@ -92,6 +95,33 @@ export default function ExcelViewer({
   const activeSheet = Math.min(Math.max(0, currentPage), Math.max(0, sheets.length - 1));
   const currentSheetData = sheets[activeSheet];
   const zoomRatio = scale / 1.5;
+  const query = searchQuery.trim().toLowerCase();
+
+  // ── Search match tracking ──────────────────────────────────────────────────
+  const { matchingCells, matchMap } = useMemo(() => {
+    if (!query || !currentSheetData) return { matchingCells: [], matchMap: new Map() };
+    const cells = [];
+    const map = new Map();
+    currentSheetData.rows.forEach((row, rIdx) => {
+      (row || []).forEach((cell, cIdx) => {
+        if (String(cell ?? "").toLowerCase().includes(query)) {
+          map.set(`${rIdx}-${cIdx}`, cells.length);
+          cells.push({ rIdx, cIdx });
+        }
+      });
+    });
+    return { matchingCells: cells, matchMap: map };
+  }, [query, currentSheetData]);
+
+  useEffect(() => {
+    onSearchResults?.(matchingCells.length);
+  }, [matchingCells.length, onSearchResults]);
+
+  useEffect(() => {
+    if (activeCellRef.current) {
+      activeCellRef.current.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    }
+  }, [activeMatchIndex]);
 
   // ── Semantic redaction detection ────────────────────────────────────────────
   const handleAddSelection = useCallback(
@@ -177,8 +207,6 @@ export default function ExcelViewer({
     );
   }
 
-  const query = searchQuery.trim().toLowerCase();
-
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column" }}>
       {/* Sheet tab bar */}
@@ -239,10 +267,13 @@ export default function ExcelViewer({
                     <tr key={rIdx}>
                       {(row || []).map((cell, cIdx) => {
                         const cellStr = String(cell ?? "");
-                        const isMatch = query && cellStr.toLowerCase().includes(query);
+                        const matchIdx = matchMap.get(`${rIdx}-${cIdx}`);
+                        const isMatch = matchIdx !== undefined;
+                        const isActiveMatch = isMatch && matchIdx === activeMatchIndex;
                         return rIdx === 0 ? (
                           <th
                             key={cIdx}
+                            ref={isActiveMatch ? activeCellRef : undefined}
                             data-row={rIdx}
                             data-col={cIdx}
                             data-val={cellStr}
@@ -251,18 +282,20 @@ export default function ExcelViewer({
                               padding: "6px 10px",
                               whiteSpace: "nowrap",
                               textAlign: "left",
-                              background: isMatch ? "#fef08a" : "#f1f5f9",
+                              background: isActiveMatch ? "#f97316" : isMatch ? "#fef08a" : "#f1f5f9",
                               fontWeight: 700,
-                              color: "#334155",
+                              color: isActiveMatch ? "#fff" : "#334155",
                               position: "sticky",
                               top: 0,
+                              transition: "background 0.15s ease",
                             }}
                           >
-                            {isMatch ? <mark style={{ background: "#fef08a", borderRadius: 2 }}>{cellStr}</mark> : cellStr}
+                            {isMatch ? <mark style={{ background: isActiveMatch ? "#f97316" : "#fef08a", color: isActiveMatch ? "#fff" : "inherit", borderRadius: 2 }}>{cellStr}</mark> : cellStr}
                           </th>
                         ) : (
                           <td
                             key={cIdx}
+                            ref={isActiveMatch ? activeCellRef : undefined}
                             data-row={rIdx}
                             data-col={cIdx}
                             data-val={cellStr}
@@ -270,10 +303,12 @@ export default function ExcelViewer({
                               border: "1px solid #e2e8f0",
                               padding: "6px 10px",
                               whiteSpace: "nowrap",
-                              background: isMatch ? "#fef08a" : rIdx % 2 === 0 ? "#f8fafc" : "#fff",
+                              background: isActiveMatch ? "#f97316" : isMatch ? "#fef08a" : rIdx % 2 === 0 ? "#f8fafc" : "#fff",
+                              color: isActiveMatch ? "#fff" : "inherit",
+                              transition: "background 0.15s ease",
                             }}
                           >
-                            {isMatch ? <mark style={{ background: "#fef08a", borderRadius: 2 }}>{cellStr}</mark> : cellStr}
+                            {isMatch ? <mark style={{ background: isActiveMatch ? "#f97316" : "#fef08a", color: isActiveMatch ? "#fff" : "inherit", borderRadius: 2 }}>{cellStr}</mark> : cellStr}
                           </td>
                         );
                       })}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { FaSpinner } from "react-icons/fa";
 
 import SelectionOverlay from "@/components/redaction/SelectionOverlay";
@@ -34,6 +34,8 @@ export default function PowerPointViewer({
   onAddSelection,
   onRemoveSelection,
   onUpdateSelection,
+  activeMatchIndex = -1,
+  onSearchResults,
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -141,7 +143,44 @@ export default function PowerPointViewer({
 
   // ── Semantic redaction detection ────────────────────────────────────────────
   const slideIndex = Math.min(Math.max(0, currentPage), Math.max(0, slides.length - 1));
-  
+  const slideData = slides[slideIndex];
+  const searchQueryLower = searchQuery.trim().toLowerCase();
+  const matchRefs = useRef([]);
+
+  // ── Search match tracking ──────────────────────────────────────────────────
+  const matchCount = useMemo(() => {
+    if (!searchQueryLower || !slideData) return 0;
+    const re = new RegExp(escapeRegExp(searchQueryLower), "gi");
+    let total = 0;
+    slideData.blocks.forEach(block => {
+      const m = block.text.match(re);
+      if (m) total += m.length;
+    });
+    return total;
+  }, [searchQueryLower, slideData]);
+
+  const blockMatchOffsets = useMemo(() => {
+    if (!searchQueryLower || !slideData) return [];
+    const offsets = [];
+    let total = 0;
+    slideData.blocks.forEach(block => {
+      offsets.push(total);
+      const m = block.text.match(new RegExp(escapeRegExp(searchQueryLower), "gi"));
+      if (m) total += m.length;
+    });
+    return offsets;
+  }, [searchQueryLower, slideData]);
+
+  useEffect(() => {
+    onSearchResults?.(matchCount);
+  }, [matchCount, onSearchResults]);
+
+  useEffect(() => {
+    if (activeMatchIndex >= 0 && activeMatchIndex < matchCount && matchRefs.current[activeMatchIndex]) {
+      matchRefs.current[activeMatchIndex].scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [activeMatchIndex, matchCount]);
+
   const handleAddSelection = useCallback(
     (rawSel) => {
       const enriched = { ...rawSel };
@@ -210,20 +249,42 @@ export default function PowerPointViewer({
     return <FallbackDownload url={url} reason="No slides could be extracted from this file." />;
   }
 
-  const slide = slides[slideIndex];
-  const query = searchQuery.trim().toLowerCase();
+  const slide = slideData;
+  const query = searchQueryLower;
   const zoomRatio = scale / 1.5;
 
-  const highlightText = (text) => {
+  // Reset match refs for this render
+  matchRefs.current = [];
+
+  const renderHighlightedText = (text, blockIdx) => {
     if (!query || !text.toLowerCase().includes(query)) return text;
     const re = new RegExp(`(${escapeRegExp(query)})`, "gi");
-    return text.split(re).map((part, i) =>
-      re.test(part) ? (
-        <mark key={i} style={{ background: "#fef08a", borderRadius: 2, padding: "0 1px" }}>{part}</mark>
-      ) : (
-        part
-      )
-    );
+    const parts = text.split(re);
+    const baseIdx = blockMatchOffsets[blockIdx] || 0;
+    let localIdx = -1;
+    return parts.map((part, i) => {
+      if (i % 2 === 1) {
+        localIdx++;
+        const globalIdx = baseIdx + localIdx;
+        const isActive = globalIdx === activeMatchIndex;
+        return (
+          <mark
+            key={i}
+            ref={el => { if (el) matchRefs.current[globalIdx] = el; }}
+            style={{
+              background: isActive ? "#f97316" : "#fef08a",
+              color: isActive ? "#fff" : "inherit",
+              borderRadius: 2,
+              padding: "0 2px",
+              transition: "background 0.15s ease",
+            }}
+          >
+            {part}
+          </mark>
+        );
+      }
+      return part;
+    });
   };
 
   return (
@@ -281,11 +342,11 @@ export default function PowerPointViewer({
               {slide.blocks.map(({ text, isTitle }, i) =>
                 isTitle ? (
                   <h2 key={i} data-block-index={i} style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", margin: "0 0 16px" }}>
-                    {highlightText(text)}
+                    {renderHighlightedText(text, i)}
                   </h2>
                 ) : (
                   <p key={i} data-block-index={i} style={{ fontSize: 15, color: "#334155", margin: "0 0 10px", lineHeight: 1.6 }}>
-                    {highlightText(text)}
+                    {renderHighlightedText(text, i)}
                   </p>
                 )
               )}

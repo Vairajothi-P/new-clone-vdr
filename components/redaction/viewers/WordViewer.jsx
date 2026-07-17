@@ -30,6 +30,8 @@ export default function WordViewer({
   onAddSelection,
   onRemoveSelection,
   onUpdateSelection,
+  activeMatchIndex = -1,
+  onSearchResults,
 }) {
   const containerRef = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -120,10 +122,33 @@ export default function WordViewer({
     });
 
     const query = searchQuery.trim();
-    if (!query) return;
+    if (!query) {
+      onSearchResults?.(0);
+      return;
+    }
 
     highlightTextInContainer(containerRef.current, query);
-  }, [searchQuery, rendered]);
+
+    // Count and report matches
+    const marks = containerRef.current.querySelectorAll("mark.vdr-highlight");
+    onSearchResults?.(marks.length);
+  }, [searchQuery, rendered, onSearchResults]);
+
+  // ── Navigate active search match ─────────────────────────
+  useEffect(() => {
+    if (!containerRef.current || !rendered) return;
+    const marks = containerRef.current.querySelectorAll("mark.vdr-highlight");
+    marks.forEach((m, i) => {
+      if (i === activeMatchIndex) {
+        m.style.background = "#f97316";
+        m.style.color = "#fff";
+        m.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        m.style.background = "#fef08a";
+        m.style.color = "inherit";
+      }
+    });
+  }, [activeMatchIndex, searchQuery, rendered]);
 
   // ── Semantic redaction detection ────────────────────────────────────────────
   /**
