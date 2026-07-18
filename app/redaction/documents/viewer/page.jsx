@@ -32,6 +32,23 @@ import ImageViewer from "@/components/redaction/viewers/ImageViewer";
 import { applyNativeRedactions } from "@/utils/redactionProcessor";
 
 /* ─────────────────────────────────────────────
+   Color Helpers
+───────────────────────────────────────────── */
+const hexToRgba = (hex, alpha) => {
+  let c = (hex || "#000000").substring(1);
+  if (c.length === 3) c = c.split("").map((x) => x + x).join("");
+  const num = parseInt(c, 16);
+  return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+};
+
+const hexToPdfColor = (hex, rgb) => {
+  let c = (hex || "#000000").substring(1);
+  if (c.length === 3) c = c.split("").map((x) => x + x).join("");
+  const num = parseInt(c, 16);
+  return rgb(((num >> 16) & 255) / 255, ((num >> 8) & 255) / 255, (num & 255) / 255);
+};
+
+/* ─────────────────────────────────────────────
    File-type detection helper
    Returns: "pdf" | "word" | "excel" | "ppt" | "pptx" | "text" | "image" | "unknown"
 ───────────────────────────────────────────── */
@@ -127,6 +144,7 @@ function DocumentViewerContent() {
   /* ── new toolbar / tool state ── */
   const [scale, setScale] = useState(1.5);
   const [tool, setTool] = useState("pointer"); // "pointer" | "select"
+  const [redactionColor, setRedactionColor] = useState("#000000");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
@@ -173,6 +191,7 @@ function DocumentViewerContent() {
     const init = async () => {
       setLoading(true);
       setError(null);
+      setRedactionColor("#000000");
 
       try {
         const raw = localStorage.getItem("vdr_session");
@@ -523,7 +542,7 @@ function DocumentViewerContent() {
   const onAddSelection = (sel) => {
     setSelections((prev) => [
       ...prev,
-      { id: Date.now().toString(), page: currentPage, ...sel },
+      { id: Date.now().toString(), page: currentPage, color: redactionColor, ...sel },
     ]);
   };
 
@@ -582,7 +601,7 @@ function DocumentViewerContent() {
           y: pdfY,
           width: pdfW,
           height: pdfH,
-          color: rgb(0, 0, 0),
+          color: hexToPdfColor(sel.color, rgb),
           opacity: 1,
         });
       }
@@ -695,7 +714,7 @@ function DocumentViewerContent() {
           y: pdfY,
           width: pdfW,
           height: pdfH,
-          color: rgb(0, 0, 0),
+          color: hexToPdfColor(sel.color, rgb),
           opacity: 1,
         });
       }
@@ -880,6 +899,25 @@ function DocumentViewerContent() {
                 <span style={{ fontSize: "11px", marginLeft: "4px" }}>Selection</span>
               </button>
               
+              {/* Color Picker */}
+              <div style={{ position: "relative", display: "inline-block", marginLeft: "4px" }}>
+                <input
+                  type="color"
+                  value={redactionColor}
+                  onChange={(e) => setRedactionColor(e.target.value)}
+                  title="Redaction Color"
+                  style={{
+                    width: "24px",
+                    height: "24px",
+                    padding: "0",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    background: "none",
+                  }}
+                />
+              </div>
+
               {/* Undo Selection */}
               <button
                 onClick={() => setSelections(prev => prev.slice(0, -1))}
@@ -1137,7 +1175,7 @@ function DocumentViewerContent() {
                         top: s.y,
                         width: s.w,
                         height: s.h,
-                        background: "rgba(0,0,0,0.45)",
+                        background: hexToRgba(s.color, 0.45),
                         border: "2px solid rgba(220,38,38,0.8)",
                         boxSizing: "border-box",
                         cursor: "default",
