@@ -406,6 +406,10 @@ export default function GroupInsightsPage() {
     const [downloadList, setDownloadList] = useState([]);  // per-user+doc: name, documentName, count
     const [showDownloadModal, setShowDownloadModal] = useState(false);
 
+    const [totalQuestions, setTotalQuestions] = useState(0);
+    const [questionList, setQuestionList] = useState([]);  // per-user+doc: name, documentName, count
+    const [showQuestionsModal, setShowQuestionsModal] = useState(false);
+
     const [dateRange, setDateRange] = useState("");
     const [compDays, setCompDays] = useState("comparision days");
     const [showDatePicker, setShowDatePicker] = useState(false);
@@ -491,7 +495,7 @@ export default function GroupInsightsPage() {
                 .in("action_type", ["DOWNLOAD_PDF", "DOWNLOAD_ORIGINAL"]);
 
             if (dateFrom) dlQuery = dlQuery.gte("changed_at", dateFrom + "T00:00:00");
-            if (dateTo)   dlQuery = dlQuery.lte("changed_at", dateTo   + "T23:59:59");
+            if (dateTo) dlQuery = dlQuery.lte("changed_at", dateTo + "T23:59:59");
 
             const { data: dlData } = await dlQuery;
 
@@ -530,6 +534,66 @@ export default function GroupInsightsPage() {
             });
             // ─────────────────────────────────────────────────────────────────
 
+            // ── QnA Messages for this group's users ──────────────────────────
+            // sender is a name string in qna_messages, so match by user name
+            const userNames = Object.values(userMap).map(u => u.name).filter(Boolean);
+
+            let qnaList = [];
+            let qnaTotalCount = 0;
+            const qnaDateMap = {};
+
+            if (userNames.length > 0) {
+                let qnaQuery = supabase
+                    .from("qna_messages")
+                    .select("id, thread_id, sender, text, created_at, is_user")
+                    .eq("is_user", true)
+                    .in("sender", userNames);
+
+                if (dateFrom) qnaQuery = qnaQuery.gte("created_at", dateFrom + "T00:00:00");
+                if (dateTo)   qnaQuery = qnaQuery.lte("created_at", dateTo   + "T23:59:59");
+
+                const { data: qnaData } = await qnaQuery;
+                qnaTotalCount = (qnaData || []).length;
+
+                // Get unique thread_ids to fetch document names
+                const threadIds = [...new Set((qnaData || []).map(m => m.thread_id).filter(Boolean))];
+                const threadDocMap = {};
+                if (threadIds.length > 0) {
+                    const { data: threadsData } = await supabase
+                        .from("qna_threads")
+                        .select("id, documents(id, name)")
+                        .in("id", threadIds);
+                    (threadsData || []).forEach(t => {
+                        threadDocMap[t.id] = t.documents?.name || "General / Folder";
+                    });
+                }
+
+                // Group by sender + document (like Downloads: user + document + count)
+                const qnaGroupMap = {};
+                (qnaData || []).forEach(msg => {
+                    const docName = threadDocMap[msg.thread_id] || "General";
+                    const key = `${msg.sender}__${docName}`;
+                    if (!qnaGroupMap[key]) {
+                        qnaGroupMap[key] = {
+                            name: msg.sender,
+                            documentName: docName,
+                            count: 0,
+                            lastAsked: null,
+                        };
+                    }
+                    qnaGroupMap[key].count += 1;
+                    if (!qnaGroupMap[key].lastAsked || msg.created_at > qnaGroupMap[key].lastAsked) {
+                        qnaGroupMap[key].lastAsked = msg.created_at;
+                    }
+                    // per-date count for chart
+                    const date = (msg.created_at || "").slice(0, 10);
+                    if (date) qnaDateMap[date] = (qnaDateMap[date] || 0) + 1;
+                });
+
+                qnaList = Object.values(qnaGroupMap).sort((a, b) => b.count - a.count);
+            }
+            // ─────────────────────────────────────────────────────────────────
+
             // Step 4: Group by date + per-user count & last-login
             const dateMap = {};
             const userCountMap = {};   // user_id → total login count
@@ -560,6 +624,7 @@ export default function GroupInsightsPage() {
                     logins: dayData ? dayData.count : 0,
                     users,
                     downloads: downloadsDateMap[dateStr] || 0,
+                    questions: qnaDateMap[dateStr] || 0,
                 });
             }
 
@@ -577,6 +642,8 @@ export default function GroupInsightsPage() {
             setUserLoginList(loginList);
             setTotalDownloads((dlData || []).length);
             setDownloadList(dlList);
+            setTotalQuestions(qnaTotalCount);
+            setQuestionList(qnaList);
         } catch (err) {
             console.error("Error fetching login data:", err);
         } finally {
@@ -751,18 +818,103 @@ export default function GroupInsightsPage() {
 
                     <div className="w-px h-10 bg-gray-100 self-center" />
 
-                    <div className="flex items-center gap-3 group">
+                    <button
+                        onClick={() => setShowQuestionsModal(true)}
+                        className="flex items-center gap-3 group cursor-pointer text-left hover:opacity-75 transition-opacity"
+                    >
                         <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 group-hover:bg-blue-100 transition-colors">
                             <MessageCircleQuestion size={16} />
                         </div>
                         <div>
                             <p className="text-[11px] text-gray-400 font-medium">Questions Asked</p>
-                            <p className="text-[15px] font-bold text-gray-800">0</p>
+                            <p className="text-[15px] font-bold text-gray-800 underline decoration-dotted underline-offset-2">
+                                {loadingChart ? "..." : totalQuestions}
+                            </p>
                         </div>
-                    </div>
+                    </button>
 
                 </div>
             </div>
+
+            {/* ── Questions Asked Modal ── */}
+            {showQuestionsModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+                    onClick={() => setShowQuestionsModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                        style={{ animation: "slideUp 0.2s ease" }}
+                    >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <div>
+                                <h2 className="text-[15px] font-bold text-gray-900">Questions Asked</h2>
+                                <p className="text-[12px] text-gray-400 mt-0.5">
+                                    {selectedGroup?.name} &middot; {totalQuestions} total questions
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowQuestionsModal(false)}
+                                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+
+                        {/* Table */}
+                        <div className="overflow-y-auto flex-1">
+                            {questionList.length === 0 ? (
+                                <p className="px-6 py-10 text-center text-[13px] text-gray-400">
+                                    No questions found for this group
+                                </p>
+                            ) : (
+                                <table className="w-full">
+                                    <thead className="sticky top-0 bg-gray-50 border-b border-gray-100 z-10">
+                                        <tr>
+                                            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-8">#</th>
+                                            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">User</th>
+                                            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Document</th>
+                                            <th className="text-right px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {questionList.map((q, i) => (
+                                            <tr key={i} className="hover:bg-blue-50/30 transition-colors">
+                                                <td className="px-5 py-3 text-[12px] text-gray-400">{i + 1}</td>
+                                                <td className="px-5 py-3">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold uppercase shrink-0">
+                                                            {(q.name || "?")[0]}
+                                                        </div>
+                                                        <p className="text-[13px] font-medium text-gray-800 leading-tight">{q.name || "Unknown"}</p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3 text-[12px] text-gray-600 max-w-[150px] truncate" title={q.documentName}>
+                                                    {q.documentName}
+                                                </td>
+                                                <td className="px-5 py-3 text-right">
+                                                    <span className="inline-flex items-center justify-center min-w-[30px] h-6 px-2.5 bg-blue-50 text-blue-600 text-[12px] font-bold rounded-full">
+                                                        {q.count}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+                            <span className="text-[11px] text-gray-400">Sorted by highest question count</span>
+                            <span className="text-[11px] font-semibold text-blue-500">{totalQuestions} total questions</span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Download Detail Modal ── */}
             {showDownloadModal && (
