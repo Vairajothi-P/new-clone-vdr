@@ -410,6 +410,10 @@ export default function GroupInsightsPage() {
     const [questionList, setQuestionList] = useState([]);  // per-user+doc: name, documentName, count
     const [showQuestionsModal, setShowQuestionsModal] = useState(false);
 
+    const [totalDocViews, setTotalDocViews] = useState(0);
+    const [docViewList, setDocViewList] = useState([]);   // per-user+doc: name, documentName, count
+    const [showViewsModal, setShowViewsModal] = useState(false);
+
     const [dateRange, setDateRange] = useState("");
     const [compDays, setCompDays] = useState("comparision days");
     const [showDatePicker, setShowDatePicker] = useState(false);
@@ -534,6 +538,63 @@ export default function GroupInsightsPage() {
             });
             // ─────────────────────────────────────────────────────────────────
 
+            // ── Document Access Logs (Views) — group members only ─────────────
+            let viewQuery = supabase
+                .from("document_access_logs")
+                .select("user_id, document_id, opened_at")
+                .in("user_id", userIds);
+
+            if (dateFrom) viewQuery = viewQuery.gte("opened_at", dateFrom + "T00:00:00");
+            if (dateTo)   viewQuery = viewQuery.lte("opened_at", dateTo   + "T23:59:59");
+
+            const { data: viewData } = await viewQuery;
+
+            // Fetch document names for viewed docs
+            const viewedDocIds = [...new Set((viewData || []).map(v => v.document_id).filter(Boolean))];
+            const viewDocNameMap = {};
+            if (viewedDocIds.length > 0) {
+                const { data: viewDocsData } = await supabase
+                    .from("documents")
+                    .select("id, name")
+                    .in("id", viewedDocIds);
+                (viewDocsData || []).forEach(doc => { viewDocNameMap[doc.id] = doc.name; });
+            }
+
+            // Fetch user details fresh for all viewers (exactly like downloads)
+            const viewerUserIds = [...new Set((viewData || []).map(v => v.user_id).filter(Boolean))];
+            const viewUserMap = {};
+            if (viewerUserIds.length > 0) {
+                const { data: viewUsersData } = await supabase
+                    .from("users")
+                    .select("id, name, email")
+                    .in("id", viewerUserIds);
+                (viewUsersData || []).forEach(u => { viewUserMap[u.id] = u; });
+            }
+
+            // Group by user_id + document_id combination (exactly like downloads)
+            const viewMap = {};
+            (viewData || []).forEach(log => {
+                const key = `${log.user_id}_${log.document_id}`;
+                if (!viewMap[key]) {
+                    viewMap[key] = {
+                        ...(viewUserMap[log.user_id] || { name: "Unknown", email: "" }),
+                        documentName: viewDocNameMap[log.document_id] || "Unknown Document",
+                        count: 0,
+                    };
+                }
+                viewMap[key].count += 1;
+            });
+
+            const viewList = Object.values(viewMap).sort((a, b) => b.count - a.count);
+
+            // Build views-per-date map for chart
+            const viewsDateMap = {};
+            (viewData || []).forEach(log => {
+                const date = (log.opened_at || "").slice(0, 10);
+                if (date) viewsDateMap[date] = (viewsDateMap[date] || 0) + 1;
+            });
+            // ─────────────────────────────────────────────────────────────────
+
             // ── QnA Messages for this group's users ──────────────────────────
             // sender is a name string in qna_messages, so match by user name
             const userNames = Object.values(userMap).map(u => u.name).filter(Boolean);
@@ -550,7 +611,7 @@ export default function GroupInsightsPage() {
                     .in("sender", userNames);
 
                 if (dateFrom) qnaQuery = qnaQuery.gte("created_at", dateFrom + "T00:00:00");
-                if (dateTo)   qnaQuery = qnaQuery.lte("created_at", dateTo   + "T23:59:59");
+                if (dateTo) qnaQuery = qnaQuery.lte("created_at", dateTo + "T23:59:59");
 
                 const { data: qnaData } = await qnaQuery;
                 qnaTotalCount = (qnaData || []).length;
@@ -625,6 +686,7 @@ export default function GroupInsightsPage() {
                     users,
                     downloads: downloadsDateMap[dateStr] || 0,
                     questions: qnaDateMap[dateStr] || 0,
+                    docViews: viewsDateMap[dateStr] || 0,
                 });
             }
 
@@ -644,6 +706,8 @@ export default function GroupInsightsPage() {
             setDownloadList(dlList);
             setTotalQuestions(qnaTotalCount);
             setQuestionList(qnaList);
+            setTotalDocViews((viewData || []).length);
+            setDocViewList(viewList);
         } catch (err) {
             console.error("Error fetching login data:", err);
         } finally {
@@ -806,15 +870,20 @@ export default function GroupInsightsPage() {
 
                     <div className="w-px h-10 bg-gray-100 self-center" />
 
-                    <div className="flex items-center gap-3 group">
+                    <button
+                        onClick={() => setShowViewsModal(true)}
+                        className="flex items-center gap-3 group cursor-pointer text-left hover:opacity-75 transition-opacity"
+                    >
                         <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-100 transition-colors">
                             <Eye size={16} />
                         </div>
                         <div>
                             <p className="text-[11px] text-gray-400 font-medium">Doc Viewed</p>
-                            <p className="text-[15px] font-bold text-gray-800">0</p>
+                            <p className="text-[15px] font-bold text-gray-800 underline decoration-dotted underline-offset-2">
+                                {loadingChart ? "..." : totalDocViews}
+                            </p>
                         </div>
-                    </div>
+                    </button>
 
                     <div className="w-px h-10 bg-gray-100 self-center" />
 
@@ -835,6 +904,84 @@ export default function GroupInsightsPage() {
 
                 </div>
             </div>
+
+            {/* ── Doc Views Modal ── */}
+            {showViewsModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+                    onClick={() => setShowViewsModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                        style={{ animation: "slideUp 0.2s ease" }}
+                    >
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <div>
+                                <h2 className="text-[15px] font-bold text-gray-900">Document Views</h2>
+                                <p className="text-[12px] text-gray-400 mt-0.5">
+                                    {selectedGroup?.name} &middot; {totalDocViews} total views
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowViewsModal(false)}
+                                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                        <div className="overflow-y-auto flex-1">
+                            {docViewList.length === 0 ? (
+                                <p className="px-6 py-10 text-center text-[13px] text-gray-400">
+                                    No document views found for this group
+                                </p>
+                            ) : (
+                                <table className="w-full">
+                                    <thead className="sticky top-0 bg-gray-50 border-b border-gray-100 z-10">
+                                        <tr>
+                                            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-8">#</th>
+                                            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">User</th>
+                                            <th className="text-left px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Document</th>
+                                            <th className="text-right px-5 py-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Views</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {docViewList.map((v, i) => (
+                                            <tr key={i} className="hover:bg-emerald-50/30 transition-colors">
+                                                <td className="px-5 py-3 text-[12px] text-gray-400">{i + 1}</td>
+                                                <td className="px-5 py-3">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px] font-bold uppercase shrink-0">
+                                                            {(v.name || v.email || "?")[0]}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[13px] font-medium text-gray-800 leading-tight">{v.name || "Unknown"}</p>
+                                                            <p className="text-[11px] text-gray-400 truncate max-w-[100px]">{v.email || ""}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3 text-[12px] text-gray-600 max-w-[150px] truncate" title={v.documentName}>
+                                                    {v.documentName}
+                                                </td>
+                                                <td className="px-5 py-3 text-right">
+                                                    <span className="inline-flex items-center justify-center min-w-[30px] h-6 px-2.5 bg-emerald-50 text-emerald-600 text-[12px] font-bold rounded-full">
+                                                        {v.count}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                        <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+                            <span className="text-[11px] text-gray-400">Sorted by highest view count</span>
+                            <span className="text-[11px] font-semibold text-emerald-500">{totalDocViews} total views</span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Questions Asked Modal ── */}
             {showQuestionsModal && (
@@ -1092,3 +1239,4 @@ export default function GroupInsightsPage() {
         </div>
     );
 }
+

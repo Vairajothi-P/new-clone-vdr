@@ -96,6 +96,27 @@ export default function SecureViewer({ params }) {
             const fileExt = doc.name.split('.').pop().toLowerCase();
 
             setDocPayload({ ext: fileExt, bytes: bytes, text: utf8Text });
+
+            // ── Log this document view into document_access_logs ──────────
+            console.log('[VIEW DEBUG] Attempting insert:', {
+                user_id: session.id,
+                document_id: docId,
+            });
+            const { data: logData, error: logErr } = await supabase
+                .from('document_access_logs')
+                .insert({
+                    user_id: session.id,
+                    document_id: docId,
+                    opened_at: new Date().toISOString(),
+                })
+                .select();
+            if (logErr) {
+                console.error('[VIEW DEBUG] ❌ Insert FAILED:', logErr);
+            } else {
+                console.log('[VIEW DEBUG] ✅ Insert SUCCESS:', logData);
+            }
+            // ─────────────────────────────────────────────────────────────
+
             setLoading(false);
 
         } catch (err) {
