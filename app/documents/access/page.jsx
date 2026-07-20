@@ -40,6 +40,8 @@ function AccessPageContent() {
     const [currentFolderId, setCurrentFolderId] = useState(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
+
+
     // ── SESSION ──────────────────────────────────────────────────────────────
     useEffect(() => {
         const raw = localStorage.getItem('vdr_session');
@@ -140,7 +142,7 @@ function AccessPageContent() {
                 // supabase.from('documents').select('id, name, folder_id, index, uploaded_by, creator_revoked').eq('company_id', session.company_id).eq('is_deleted', false).order('created_at', { ascending: true }),
                 supabase.from('folders').select('*').eq('company_id', session.company_id).eq('is_deleted', false),
                 supabase.from('documents').select('id, name, folder_id, index, uploaded_by, creator_revoked').eq('company_id', session.company_id).eq('is_deleted', false).order('created_at', { ascending: true }),
-                supabase.from('permissions').select('id, document_id, folder_id, scope, group_id, can_view, can_edit, can_upload, can_download_secure, can_download_original, can_delete').eq('company_id', session.company_id),
+                supabase.from('permissions').select('id, document_id, folder_id, scope, group_id, can_view, can_edit, can_upload, can_download_secure, can_download_original, can_delete, can_redact').eq('company_id', session.company_id),
                 supabase.from('user_groups').select('user_id, group_id'),
                 supabase.from('users').select('id, name, email')
             ]);
@@ -222,8 +224,10 @@ function AccessPageContent() {
     const getFolderBulkState = (groupId, folderId, field) => {
         const desc = getDescendantDocs(folderId);
         if (desc.length === 0) return 'none';
+        
         const hasAll = desc.every(d => permissions[`${groupId}_doc_${d.id}`]?.[field]);
         const hasSome = desc.some(d => permissions[`${groupId}_doc_${d.id}`]?.[field]);
+        
         if (hasAll) return 'all';
         if (hasSome) return 'some';
         return 'none';
@@ -329,7 +333,7 @@ function AccessPageContent() {
         }
 
         const key = `${groupId}_${type}_${targetId}`;
-        const current = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false, can_delete: false, perm_id: null };
+        const current = permissions[key] || { can_view: false, can_edit: false, can_upload: false, can_download_secure: false, can_download_original: false, can_delete: false, can_redact: false, perm_id: null };
 
         let targetState = overrideTarget !== null ? overrideTarget : !current[field];
         let updated = { ...current, [field]: targetState };
@@ -353,6 +357,7 @@ function AccessPageContent() {
             [key]: { groupId, targetId, type, updatedState: updated }
         }));
     };
+
     // ── BATCH SAVE & RETURN (EXPLICIT DENY - NO DELETION) ────────────────────
     const handleSaveAndReturn = async () => {
         const changes = Object.values(pendingChanges);
@@ -366,45 +371,48 @@ function AccessPageContent() {
         setSaveMessage({ text: '', type: '' }); // Clear old messages
 
         try {
-            // 1. FETCH EXISTING PERMS
             const groupId = changes[0].groupId;
-            const { data: existingPerms, error: fetchErr } = await supabase
-                .from('permissions')
-                .select('id, scope, document_id, folder_id')
-                .eq('company_id', session.company_id)
-                .eq('group_id', groupId);
+            
+            let toUpsert = [];
+            if (changes.length > 0) {
+                // 1. FETCH EXISTING PERMS
+                const { data: existingPerms, error: fetchErr } = await supabase
+                    .from('permissions')
+                    .select('id, scope, document_id, folder_id')
+                    .eq('company_id', session.company_id)
+                    .eq('group_id', groupId);
 
-            if (fetchErr) throw fetchErr;
+                if (fetchErr) throw fetchErr;
 
-            // 2. BUILD UPSERT ARRAY (Everything gets explicitly updated)
-            const toUpsert = [];
+                // 2. BUILD UPSERT ARRAY (Everything gets explicitly updated)
+                for (const change of changes) {
+                    const { targetId, type, updatedState } = change;
 
-            for (const change of changes) {
-                const { targetId, type, updatedState } = change;
+                    const existing = (existingPerms || []).find(p =>
+                        p.scope === (type === 'doc' ? 'document' : 'folder') &&
+                        (type === 'doc' ? p.document_id === targetId : p.folder_id === targetId)
+                    );
 
-                const existing = (existingPerms || []).find(p =>
-                    p.scope === (type === 'doc' ? 'document' : 'folder') &&
-                    (type === 'doc' ? p.document_id === targetId : p.folder_id === targetId)
-                );
+                    // Create the payload with explicitly true/false values
+                    const payload = {
+                        company_id: session.company_id,
+                        group_id: groupId,
+                        scope: type === 'doc' ? 'document' : 'folder',
+                        document_id: type === 'doc' ? targetId : null,
+                        folder_id: type === 'fol' ? targetId : null,
+                        can_view: updatedState.can_view,
+                        can_edit: updatedState.can_edit,
+                        can_upload: updatedState.can_upload,
+                        can_download_secure: updatedState.can_download_secure,
+                        can_download_original: updatedState.can_download_original,
+                        can_delete: updatedState.can_delete,
+                        can_redact: updatedState.can_redact,
+                        updated_at: new Date().toISOString()
+                    };
 
-                // Create the payload with explicitly true/false values
-                const payload = {
-                    company_id: session.company_id,
-                    group_id: groupId,
-                    scope: type === 'doc' ? 'document' : 'folder',
-                    document_id: type === 'doc' ? targetId : null,
-                    folder_id: type === 'fol' ? targetId : null,
-                    can_view: updatedState.can_view,
-                    can_edit: updatedState.can_edit,
-                    can_upload: updatedState.can_upload,
-                    can_download_secure: updatedState.can_download_secure,
-                    can_download_original: updatedState.can_download_original,
-                    can_delete: updatedState.can_delete,
-                    updated_at: new Date().toISOString()
-                };
-
-                if (existing) payload.id = existing.id; // Update exact row
-                toUpsert.push(payload);
+                    if (existing) payload.id = existing.id; // Update exact row
+                    toUpsert.push(payload);
+                }
             }
 
             // 3. EXECUTE MASS UPSERT
@@ -611,7 +619,7 @@ function AccessPageContent() {
                                     <thead>
                                         <tr className="bg-slate-100/50 border-b border-slate-200">
                                             <th colSpan="2" className="py-2.5 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Apply to All Below →</th>
-                                            {['can_view', 'can_edit', 'can_upload', 'can_download_secure', 'can_download_original', 'can_delete'].map(field => {
+                                            {['can_view', 'can_edit', 'can_upload', 'can_download_secure', 'can_download_original', 'can_delete', 'can_redact'].map(field => {
                                                 const isAllChecked = field === 'can_upload'
                                                     ? (displayFolders.length > 0 && displayFolders.every(f => permissions[`${selectedGroup}_fol_${f.id}`]?.can_upload))
                                                     : (displayDocs.length > 0 && displayDocs.every(d => permissions[`${selectedGroup}_doc_${d.id}`]?.[field]));
@@ -697,6 +705,15 @@ function AccessPageContent() {
                                                     </div>
                                                 </div>
                                             </th>
+                                            <th className="py-3.5 px-3 w-24 text-center">
+                                                <div className="inline-block relative group cursor-pointer">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-slate-500 text-[16px] group-hover:text-slate-900 transition-colors"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                                    <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded py-1 px-2 pointer-events-none top-1/2 right-full -translate-y-1/2 mr-1.5 whitespace-nowrap z-50 shadow-sm font-medium tracking-wide">
+                                                        Redaction
+                                                        <div className="absolute top-1/2 left-full -translate-y-1/2 border-[3px] border-transparent border-l-slate-800"></div>
+                                                    </div>
+                                                </div>
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
@@ -707,6 +724,7 @@ function AccessPageContent() {
                                                 { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' },
                                                 { field: 'can_download_original', color: 'bg-orange-500' },
                                                 { field: 'can_delete', color: 'bg-red-600' },
+                                                { field: 'can_redact', color: 'bg-slate-800' },
                                             ];
 
                                             return (
@@ -765,7 +783,7 @@ function AccessPageContent() {
                                                         </div>
                                                     </td>
 
-                                                    {[{ field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand-dark' }, { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' }, { field: 'can_download_original', color: 'bg-orange-500' }, { field: 'can_delete', color: 'bg-red-600' },].map(({ field, color }) => {
+                                                    {[{ field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand-dark' }, { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' }, { field: 'can_download_original', color: 'bg-orange-500' }, { field: 'can_delete', color: 'bg-red-600' }, { field: 'can_redact', color: 'bg-slate-800' }].map(({ field, color }) => {
                                                         if (field === 'can_upload') {
                                                             return (
                                                                 <td key={field} className="py-3.5 px-3 text-center">

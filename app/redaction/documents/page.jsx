@@ -107,16 +107,75 @@ export default function RedactionDocumentsPage() {
         if (!raw) return;
         const session = JSON.parse(raw);
 
-        const { data: docsData, error } = await supabase
+        // 1. Fetch user's groups
+        const { data: userGroups, error: groupsError } = await supabase
+          .from("user_groups")
+          .select("group_id")
+          .eq("user_id", session.id);
+
+        if (groupsError) throw groupsError;
+
+        let groupIds = [];
+        if (userGroups) {
+          groupIds = userGroups.map(ug => ug.group_id);
+        }
+
+        // 2. Fetch redaction access for these groups
+        let redactedDocIds = [];
+        if (groupIds.length > 0) {
+            const { data: redactionData, error: redactionError } = await supabase
+              .from("permissions")
+              .select("document_id")
+              .in("group_id", groupIds)
+              .eq("company_id", session.company_id)
+              .eq("can_redact", true);
+            
+            if (redactionError) {
+                console.warn("permissions fetch failed for redaction:", redactionError.message);
+            } else if (redactionData) {
+                redactedDocIds = [...new Set(redactionData.map(r => r.document_id).filter(Boolean))];
+            }
+        }
+
+        // 3. Fetch documents safely
+        let docsData = [];
+
+        // 3a. Fetch user's uploaded docs
+        const { data: uploadedDocs, error: uploadErr } = await supabase
           .from("documents")
           .select("*")
           .eq("company_id", session.company_id)
-          .eq("uploaded_by", session.id)
           .eq("is_deleted", false)
+          .eq("uploaded_by", session.id)
           .order("created_at", { ascending: false });
 
-        if (error) throw error;
-        setDocuments(docsData || []);
+        if (uploadErr) throw uploadErr;
+        docsData = [...(uploadedDocs || [])];
+
+        // 3b. Fetch redacted docs if any
+        if (redactedDocIds.length > 0) {
+            // Filter out ones we already fetched
+            const existingIds = new Set(docsData.map(d => d.id));
+            const idsToFetch = redactedDocIds.filter(id => !existingIds.has(id));
+
+            if (idsToFetch.length > 0) {
+                const { data: redactedDocs, error: redactErr } = await supabase
+                  .from("documents")
+                  .select("*")
+                  .eq("company_id", session.company_id)
+                  .eq("is_deleted", false)
+                  .in("id", idsToFetch)
+                  .order("created_at", { ascending: false });
+
+                if (redactErr) throw redactErr;
+                docsData = [...docsData, ...(redactedDocs || [])];
+
+                // Re-sort the combined array
+                docsData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            }
+        }
+
+        setDocuments(docsData);
       } catch (err) {
         console.error("Error fetching predefined documents:", err);
       } finally {
