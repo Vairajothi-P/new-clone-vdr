@@ -1,1342 +1,285 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { FaLock, FaUser, FaShieldAlt, FaCheckCircle } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaCheckCircle } from "react-icons/fa";
+import { FiShield } from "react-icons/fi";
 
 function RegisterContent() {
-// export default function RegisterPage() {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const token = searchParams.get("token");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
 
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [errorMsg, setErrorMsg] = useState("");
-    const [isSuccess, setIsSuccess] = useState(false); // NEW: Success Screen State
+  // If token is passed in query string (?token=xyz), redirect to /register/[token]
+  useEffect(() => {
+    if (token) {
+      router.replace(`/register/${token}`);
+    }
+  }, [token, router]);
 
-    const [inviteData, setInviteData] = useState(null);
-    const [companyData, setCompanyData] = useState(null);
-    const [name, setName] = useState("");
-    const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    useEffect(() => {
-        if (!token) {
-            setErrorMsg("Invalid or missing invitation token.");
-            setLoading(false);
-            return;
-        }
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
 
-        const fetchInvite = async () => {
-            try {
-                const { data: invite, error: inviteErr } = await supabase
-                    .from("invitations")
-                    .select("*, groups(company_id)")
-                    .eq("token", token)
-                    .single();
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setError("");
 
-                if (inviteErr || !invite) throw new Error("Invitation not found or expired.");
-                if (invite.status !== "pending") throw new Error("This invitation has already been used.");
-
-                setInviteData(invite);
-
-                const { data: company } = await supabase
-                    .from("companies")
-                    .select("id, name")
-                    .eq("id", invite.groups.company_id)
-                    .single();
-
-                if (company) setCompanyData(company);
-            } catch (err) {
-                console.error(err);
-                setErrorMsg(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchInvite();
-    }, [token]);
-
-    const handleRegisterSubmit = async (e) => {
-        e.preventDefault();
-        setErrorMsg("");
-
-        if (!name.trim() || password.length < 6) {
-            setErrorMsg("Please enter your name and a password (min 6 characters).");
-            return;
-        }
-
-        setSubmitting(true);
-
-        try {
-            const { data: authData, error: authErr } = await supabase.auth.signUp({
-                email: inviteData.email,
-                password: password,
-            });
-            if (authErr) throw authErr;
-
-            const assignedNdaStatus = inviteData.requires_nda ? "pending" : "not_required";
-
-            const { error: userErr } = await supabase
-                .from("users")
-                .insert([{
-                    id: authData.user.id,
-                    company_id: companyData.id,
-                    name: name,
-                    email: inviteData.email,
-                    role: "user",
-                    status: "active",
-                    nda_status: assignedNdaStatus 
-                }]);
-            if (userErr) throw userErr;
-
-            await supabase
-                .from("invitations")
-                .update({ status: "accepted" })
-                .eq("id", inviteData.id);
-
-            // THE FORK IN THE ROAD
-            if (inviteData.requires_nda) {
-                // NDA is required! Keep session temporarily and pass the '?from=register' flag
-                localStorage.setItem('vdr_session', JSON.stringify({
-                    id: authData.user.id,
-                    company_id: companyData.id,
-                    name: name,
-                    email: inviteData.email,
-                    role: "user",
-                    nda_status: assignedNdaStatus
-                }));
-                router.push("/sign-nda?from=register"); // <-- Tells NDA page to show Login button at the end
-            } else {
-                // NDA is OFF. Wipe session and show the success screen with Login button.
-                localStorage.removeItem('vdr_session');
-                setIsSuccess(true); 
-            }
-
-        } catch (err) {
-            console.error(err);
-            setErrorMsg(err.message || "Failed to create account.");
-            setSubmitting(false);
-        }
-    };
-
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-medium">Validating Invitation...</div>;
-
-    // SUCCESS SCREEN (If no NDA is required)
-    if (isSuccess) {
-        return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-                <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center animate-in zoom-in-95 duration-500">
-                    <FaCheckCircle className="text-emerald-500 text-6xl mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Registration Complete!</h2>
-                    <p className="text-slate-500 text-sm mb-8">Your account has been successfully created and is ready to use.</p>
-                    <button onClick={() => router.push('/login')} className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-md">
-                        Go to Login
-                    </button>
-                </div>
-            </div>
-        );
+    if (!name.trim()) {
+      setError("Please enter your full name.");
+      return;
     }
 
-    // ERROR SCREEN
-    if (errorMsg && !inviteData) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
-                <div className="bg-white p-8 rounded-2xl shadow-sm border border-rose-100 max-w-md w-full text-center">
-                    <FaShieldAlt className="text-rose-500 text-4xl mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h2>
-                    <p className="text-slate-500 text-sm mb-6">{errorMsg}</p>
-                    <button onClick={() => router.push('/login')} className="w-full py-2.5 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-all">Go to Login</button>
-                </div>
-            </div>
-        );
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      return;
     }
 
-    // REGISTRATION FORM
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Check if user email already exists in users table
+      const { data: existingUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (existingUser) {
+        setError("An account with this email address already exists.");
+        setIsLoading(false);
+        return;
+      }
+
+      // 1. Sign up with Supabase Auth
+      const { data: authData, error: authErr } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+      });
+
+      // If Supabase Auth returns an error (or disabled), handle gracefully
+      let userId = authData?.user?.id || crypto.randomUUID();
+
+      // 2. Insert into users table
+      const { error: userErr } = await supabase.from("users").insert([
+        {
+          id: userId,
+          name: name.trim(),
+          email: email.trim(),
+          password_hash: password, // Store password for app's custom auth verification
+          role: "user",
+          status: "active",
+          nda_status: "not_required",
+        },
+      ]);
+
+      if (userErr) {
+        console.error("User database insert error:", userErr);
+        throw new Error(userErr.message || "Failed to create user account.");
+      }
+
+      setIsSuccess(true);
+    } catch (err) {
+      console.error("Registration error:", err);
+      setError(err.message || "Registration failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // SUCCESS SCREEN
+  if (isSuccess) {
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <div className="max-w-2xl w-full">
-                <div className="text-center mb-8">
-                    <h1 className="text-2xl font-bold text-slate-900">Join {companyData?.name || "Workspace"}</h1>
-                    <p className="text-slate-500 text-sm mt-1">Complete your registration to access the Virtual Data Room.</p>
-                </div>
+      <div className="min-h-screen bg-gradient-to-br from-[var(--brand)]/10 via-white to-[var(--brand-secondary)]/10 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border border-gray-100 animate-in zoom-in-95 duration-300">
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-500">
+            <FaCheckCircle className="text-4xl" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Registration Successful!</h2>
+          <p className="text-gray-600 text-sm mb-6">Your account has been created. You can now log in to access the Virtual Data Room.</p>
+          <button
+            onClick={() => router.push("/login")}
+            className="w-full py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-[var(--brand)]/20"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-                <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-                    {errorMsg && <div className="m-6 p-4 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-sm font-medium">{errorMsg}</div>}
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[var(--brand)]/10 via-white to-[var(--brand-secondary)]/10 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-96 h-96 bg-[var(--brand)]/10 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-[var(--brand-secondary)]/10 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
 
-                    <form onSubmit={handleRegisterSubmit} className="p-8 animate-in fade-in duration-300">
-                        <div className="space-y-5">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
-                                <input type="email" value={inviteData.email} disabled className="w-full bg-slate-50 border border-slate-200 text-slate-500 px-4 py-3 rounded-xl text-sm font-medium cursor-not-allowed" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
-                                <div className="relative">
-                                    <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="John Doe" required className="w-full border border-slate-200 px-10 py-3 rounded-xl text-sm font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Create Password</label>
-                                <div className="relative">
-                                    <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} className="w-full border border-slate-200 px-10 py-3 rounded-xl text-sm font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" />
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <button type="submit" disabled={submitting} className="w-full mt-8 bg-blue-600 text-white py-3.5 rounded-xl text-sm font-bold shadow-md shadow-blue-500/20 hover:bg-blue-700 hover:shadow-lg transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed">
-                            {submitting ? "Processing..." : (inviteData.requires_nda ? "Next: Review Security Terms" : "Complete Registration")}
-                        </button>
-                    </form>
-                </div>
-            </div>
+      <div className="relative w-full max-w-md">
+        {/* Header */}
+        <div className="flex flex-col items-center justify-center gap-3 mb-8 text-center">
+          <div className="w-12 h-12 rounded-xl brand-gradient flex items-center justify-center shadow-md shadow-[var(--brand)]/20">
+            <FiShield className="text-white text-2xl" strokeWidth={2.8} />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold text-slate-900">Create Account</h1>
+            <p className="text-gray-600 text-sm mt-1">Register for Virtual Data Room Access</p>
+          </div>
         </div>
 
-    );
+        {/* Form Card */}
+        <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 backdrop-blur-sm border border-gray-100">
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+              <span className="text-red-500 mt-0.5">⚠️</span>
+              <div>
+                <p className="text-red-800 font-medium text-sm">Registration Error</p>
+                <p className="text-red-700 text-xs mt-0.5">{error}</p>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleRegister} className="space-y-4">
+            {/* Full Name */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Full Name
+              </label>
+              <div className="relative">
+                <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
+                <input
+                  type="text"
+                  placeholder="John Doe"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={isLoading}
+                  required
+                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Email Address
+              </label>
+              <div className="relative">
+                <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
+                <input
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                  required
+                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Password
+              </label>
+              <div className="relative">
+                <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Minimum 6 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  required
+                  minLength={6}
+                  className="w-full pl-11 pr-11 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Re-enter password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isLoading}
+                  required
+                  minLength={6}
+                  className="w-full pl-11 pr-11 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                >
+                  {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full mt-2 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[var(--brand)]/20"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Creating Account...</span>
+                </>
+              ) : (
+                <span>Register</span>
+              )}
+            </button>
+          </form>
+
+          {/* Login Link */}
+          <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+            <p className="text-sm text-gray-600">
+              Already have an account?{" "}
+              <Link href="/login" className="text-[var(--brand)] font-semibold hover:underline">
+                Log In
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function RegisterPage() {
-    return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-medium">Loading Registration...</div>}>
-            <RegisterContent />
-        </Suspense>
-    );
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-medium">Loading Registration...</div>}>
+      <RegisterContent />
+    </Suspense>
+  );
 }
-
-
-
-
-
-
-
-
-
-// "use client";
-
-// import React, { useState, useEffect } from "react";
-// import { useRouter, useSearchParams } from "next/navigation";
-// import { supabase } from "@/utils/supabase/client";
-// import { FaLock, FaUser, FaShieldAlt } from "react-icons/fa";
-
-// export default function RegisterPage() {
-//     const router = useRouter();
-//     const searchParams = useSearchParams();
-//     const token = searchParams.get("token");
-
-//     // UI States
-//     const [loading, setLoading] = useState(true);
-//     const [submitting, setSubmitting] = useState(false);
-//     const [errorMsg, setErrorMsg] = useState("");
-
-//     // Data States
-//     const [inviteData, setInviteData] = useState(null);
-//     const [companyData, setCompanyData] = useState(null);
-    
-//     // Form States
-//     const [name, setName] = useState("");
-//     const [password, setPassword] = useState("");
-
-//     // 1. Validate Token and Fetch Data on Load
-//     useEffect(() => {
-//         if (!token) {
-//             setErrorMsg("Invalid or missing invitation token.");
-//             setLoading(false);
-//             return;
-//         }
-
-//         const fetchInvite = async () => {
-//             try {
-//                 // Fetch invitation and join with groups to get company_id
-//                 const { data: invite, error: inviteErr } = await supabase
-//                     .from("invitations")
-//                     .select("*, groups(company_id)")
-//                     .eq("token", token)
-//                     .single();
-
-//                 if (inviteErr || !invite) throw new Error("Invitation not found or expired.");
-//                 if (invite.status !== "pending") throw new Error("This invitation has already been used.");
-
-//                 setInviteData(invite);
-
-//                 // Fetch the company data
-//                 const { data: company, error: compErr } = await supabase
-//                     .from("companies")
-//                     .select("id, name")
-//                     .eq("id", invite.groups.company_id)
-//                     .single();
-
-//                 if (company) setCompanyData(company);
-
-//             } catch (err) {
-//                 console.error(err);
-//                 setErrorMsg(err.message);
-//             } finally {
-//                 setLoading(false);
-//             }
-//         };
-
-//         fetchInvite();
-//     }, [token]);
-
-//     // 2. Handle Final Submission (DB Creation)
-//     const handleRegisterSubmit = async (e) => {
-//         e.preventDefault();
-//         setErrorMsg("");
-
-//         if (!name.trim() || password.length < 6) {
-//             setErrorMsg("Please enter your name and a password (min 6 characters).");
-//             return;
-//         }
-
-//         setSubmitting(true);
-
-//         try {
-//             // A. Create User Auth
-//             const { data: authData, error: authErr } = await supabase.auth.signUp({
-//                 email: inviteData.email,
-//                 password: password,
-//             });
-//             if (authErr) throw authErr;
-
-//             // B. Determine NDA Status
-//             const assignedNdaStatus = inviteData.requires_nda ? "pending" : "not_required";
-
-//             // C. Insert into public.users table
-//             const { error: userErr } = await supabase
-//                 .from("users")
-//                 .insert([{
-//                     id: authData.user.id,
-//                     company_id: companyData.id,
-//                     name: name,
-//                     email: inviteData.email,
-//                     role: "user",
-//                     status: "active",
-//                     nda_status: assignedNdaStatus 
-//                 }]);
-//             if (userErr) throw userErr;
-
-//             // D. Mark invitation as accepted
-//             await supabase
-//                 .from("invitations")
-//                 .update({ status: "accepted" })
-//                 .eq("id", inviteData.id);
-
-//             // E. THE TRUE FORK IN THE ROAD
-//             if (inviteData.requires_nda) {
-//                 // NDA is ON: Keep them logged in and push STRAIGHT to the NDA page
-//                 localStorage.setItem('vdr_session', JSON.stringify({
-//                     id: authData.user.id,
-//                     company_id: companyData.id,
-//                     name: name,
-//                     email: inviteData.email,
-//                     role: "user",
-//                     nda_status: assignedNdaStatus
-//                 }));
-//                 router.push("/sign-nda"); 
-//             } else {
-//                 // NDA is OFF: Clear session and force them to type their password at Login
-//                 localStorage.removeItem('vdr_session');
-//                 router.push("/login"); 
-//             }
-
-//         } catch (err) {
-//             console.error(err);
-//             setErrorMsg(err.message || "Failed to create account.");
-//             setSubmitting(false);
-//         }
-//     };
-
-//     if (loading) {
-//         return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-medium">Validating Invitation...</div>;
-//     }
-
-//     if (errorMsg && !inviteData) {
-//         return (
-//             <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-//                 <div className="bg-white p-8 rounded-2xl shadow-sm border border-rose-100 max-w-md w-full text-center">
-//                     <div className="w-12 h-12 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
-//                         <FaShieldAlt size={20} />
-//                     </div>
-//                     <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
-//                     <p className="text-gray-500 text-sm mb-6">{errorMsg}</p>
-//                     <button onClick={() => router.push('/login')} className="w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 transition-all">Go to Login</button>
-//                 </div>
-//             </div>
-//         );
-//     }
-
-//     return (
-//         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-//             <div className="max-w-2xl w-full">
-                
-//                 <div className="text-center mb-8">
-//                     <h1 className="text-2xl font-bold text-slate-900">Join {companyData?.name || "Workspace"}</h1>
-//                     <p className="text-slate-500 text-sm mt-1">Complete your registration to access the Virtual Data Room.</p>
-//                 </div>
-
-//                 <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-                    
-//                     {errorMsg && (
-//                         <div className="m-6 p-4 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-sm font-medium">
-//                             {errorMsg}
-//                         </div>
-//                     )}
-
-//                     {/* ONLY ONE STEP NOW: Account Setup */}
-//                     <form onSubmit={handleRegisterSubmit} className="p-8 animate-in fade-in duration-300">
-//                         <div className="space-y-5">
-//                             <div>
-//                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
-//                                 <input 
-//                                     type="email" 
-//                                     value={inviteData.email} 
-//                                     disabled 
-//                                     className="w-full bg-slate-50 border border-slate-200 text-slate-500 px-4 py-3 rounded-xl text-sm font-medium cursor-not-allowed"
-//                                 />
-//                             </div>
-//                             <div>
-//                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
-//                                 <div className="relative">
-//                                     <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-//                                     <input 
-//                                         type="text" 
-//                                         value={name}
-//                                         onChange={(e) => setName(e.target.value)}
-//                                         placeholder="John Doe"
-//                                         required
-//                                         className="w-full border border-slate-200 px-10 py-3 rounded-xl text-sm font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-//                                     />
-//                                 </div>
-//                             </div>
-//                             <div>
-//                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Create Password</label>
-//                                 <div className="relative">
-//                                     <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-//                                     <input 
-//                                         type="password" 
-//                                         value={password}
-//                                         onChange={(e) => setPassword(e.target.value)}
-//                                         placeholder="••••••••"
-//                                         required
-//                                         minLength={6}
-//                                         className="w-full border border-slate-200 px-10 py-3 rounded-xl text-sm font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-//                                     />
-//                                 </div>
-//                             </div>
-//                         </div>
-                        
-//                         <button 
-//                             type="submit" 
-//                             disabled={submitting}
-//                             className="w-full mt-8 bg-blue-600 text-white py-3.5 rounded-xl text-sm font-bold shadow-md shadow-blue-500/20 hover:bg-blue-700 hover:shadow-lg transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
-//                         >
-//                             {submitting ? "Creating Account..." : (inviteData.requires_nda ? "Next: Review Security Terms" : "Complete Registration")}
-//                         </button>
-//                     </form>
-
-//                 </div>
-//             </div>
-//         </div>
-//     );
-// }
-
-
-
-
-
-
-
-
-// "use client";
-
-// import { useState, useEffect, Suspense } from "react";
-// import Link from "next/link";
-// import { useSearchParams } from "next/navigation";
-// import { supabase } from "@/utils/supabase/client";
-// import {
-//   FaUser,
-//   FaEnvelope,
-//   FaPhone,
-//   FaLock,
-//   FaEye,
-//   FaEyeSlash,
-//   FaCheckCircle,
-// } from "react-icons/fa";
-// import { FiShield } from "react-icons/fi";
-
-// function RegisterContent() {
-//   const searchParams = useSearchParams();
-//   const token = searchParams.get("token");
-
-//   const [step, setStep] = useState(1);
-//   const [showPassword, setShowPassword] = useState(false);
-//   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-//   const [loadingInvite, setLoadingInvite] = useState(false);
-
-//   // Invitation Details Storage
-//   const [invitationDetails, setInvitationDetails] = useState(null);
-
-//   const [formData, setFormData] = useState({
-//     companyName: "",
-//     name: "",
-//     email: "",
-//     mobile: "",
-//     password: "",
-//     confirmPassword: "",
-//   });
-
-//   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-//   const [isSendingOtp, setIsSendingOtp] = useState(false);
-//   const [emailError, setEmailError] = useState("");
-//   const [mobileError, setMobileError] = useState("");
-//   const [passwordError, setPasswordError] = useState("");
-
-//   // Debounced Email Check
-//   useEffect(() => {
-//     const checkEmail = async () => {
-//       // Don't check if empty or if using a token (token emails are already validated/invited)
-//       if (!formData.email || !!token) return;
-      
-//       const { data } = await supabase
-//         .from("users")
-//         .select("id")
-//         .eq("email", formData.email)
-//         .maybeSingle();
-
-//       if (data) {
-//         setEmailError("This email already exists");
-//       } else {
-//         setEmailError("");
-//       }
-//     };
-
-//     const timeoutId = setTimeout(checkEmail, 500);
-//     return () => clearTimeout(timeoutId);
-//   }, [formData.email, token]);
-
-//   // Debounced Mobile Check
-//   useEffect(() => {
-//     const checkMobile = async () => {
-//       if (!formData.mobile) return;
-//       const { data } = await supabase
-//         .from("users")
-//         .select("id")
-//         .eq("phone_number", formData.mobile)
-//         .maybeSingle();
-
-//       if (data) {
-//         setMobileError("This mobile number already exists");
-//       } else {
-//         setMobileError("");
-//       }
-//     };
-
-//     const timeoutId = setTimeout(checkMobile, 500);
-//     return () => clearTimeout(timeoutId);
-//   }, [formData.mobile]);
-
-//   // Password Match Check
-//   useEffect(() => {
-//     if (formData.confirmPassword && formData.password !== formData.confirmPassword) {
-//       setPasswordError("Passwords do not match");
-//     } else {
-//       setPasswordError("");
-//     }
-//   }, [formData.password, formData.confirmPassword]);
-
-//   // 1. Fetch Invitation Details if token exists in URL
-//   useEffect(() => {
-//     const checkInvitation = async () => {
-//       if (!token) return;
-
-//       setLoadingInvite(true);
-//       try {
-//         // Fetch invitation joined with groups table to get the target role (group name)
-//         const { data, error } = await supabase
-//           .from("invitations")
-//           .select("*, groups(name, company_id)")
-//           .eq("token", token)
-//           .eq("status", "pending")
-//           .single();
-
-//         if (error || !data) {
-//           alert("Invitation link is invalid, expired, or has already been accepted.");
-//           return;
-//         }
-
-//         // Check if expired
-//         if (new Date(data.expires_at) < new Date()) {
-//           alert("This invitation link has expired.");
-//           return;
-//         }
-
-//         // Autofill email and lock it
-//         setInvitationDetails(data);
-//         setFormData((prev) => ({
-//           ...prev,
-//           email: data.email,
-//         }));
-//       } catch (err) {
-//         console.error("Check invitation error:", err);
-//       } finally {
-//         setLoadingInvite(false);
-//       }
-//     };
-
-//     checkInvitation();
-//   }, [token]);
-
-//   const handleChange = (e) => {
-//     setFormData({ ...formData, [e.target.name]: e.target.value });
-//   };
-
-//   const handleOtpChange = (value, index) => {
-//     const updatedOtp = [...otp];
-//     updatedOtp[index] = value;
-//     setOtp(updatedOtp);
-
-//     if (value && index < 5) {
-//       const nextInput = document.getElementById(`otp-${index + 1}`);
-//       if (nextInput) nextInput.focus();
-//     }
-//   };
-
-//   const handleOtpKeyDown = (e, index) => {
-//     if (e.key === "Backspace" && !otp[index] && index > 0) {
-//       const prevInput = document.getElementById(`otp-${index - 1}`);
-//       if (prevInput) prevInput.focus();
-//     }
-//   };
-//   const sendOtp = async () => {
-//     try {
-//       setIsSendingOtp(true);
-
-//       const generatedOtp = Math.floor(
-//         100000 + Math.random() * 900000
-//       ).toString();
-
-//       // SAVE OTP TO DATABASE
-//       const { data, error } = await supabase
-//         .from("email_otps")
-//         .insert({
-//           email: formData.email,
-//           otp: generatedOtp,
-//           expires_at: new Date(
-//             Date.now() + 5 * 60 * 1000
-//           ).toISOString(),
-//           verified: false,
-//         })
-//         .select();
-
-//       console.log("OTP DATA:", data);
-//       console.log("OTP ERROR:", error);
-
-//       if (error) {
-//         throw error;
-//       }
-//       const response = await fetch("/api/send-otp", {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//         },
-//         body: JSON.stringify({
-//           email: formData.email,
-//           otp: generatedOtp,
-//         }),
-//       });
-
-//       const result = await response.json();
-
-//       if (!result.success) {
-//         throw new Error(result.message);
-//       }
-
-//       alert("OTP sent successfully!");
-//       setStep(2);
-
-//     } catch (error) {
-//       alert(error.message);
-//     } finally {
-//       setIsSendingOtp(false);
-//     }
-//   };
-
-//   // 2. Perform database user registration and complete invitation status update
-//   const handleFinalSubmit = async () => {
-//     if (formData.password !== formData.confirmPassword) {
-//       alert("Passwords do not match.");
-//       return;
-//     }
-
-//     try {
-//       const enteredOtp = otp.join("");
-
-//       if (!token) {
-//         const { data: otpRecord } =
-//           await supabase
-//             .from("email_otps")
-//             .select("*")
-//             .eq("email", formData.email)
-//             .eq("otp", enteredOtp)
-//             .eq("verified", false)
-//             .order("created_at", {
-//               ascending: false,
-//             })
-//             .limit(1)
-//             .single();
-
-//         if (!otpRecord) {
-//           alert("Invalid OTP");
-//           return;
-//         }
-
-//         if (
-//           new Date(
-//             otpRecord.expires_at
-//           ) < new Date()
-//         ) {
-//           alert("OTP Expired");
-//           return;
-//         }
-
-//         await supabase
-//           .from("email_otps")
-//           .update({
-//             verified: true,
-//           })
-//           .eq("id", otpRecord.id);
-//       }
-
-//       const { data: existingUser } =
-//         await supabase
-//           .from("users")
-//           .select("id")
-//           .eq("email", formData.email)
-//           .maybeSingle();
-
-//       if (existingUser) {
-//         alert("Email already registered");
-//         return;
-//       }
-//       // Create Company First
-//       const {
-//         data: companyData,
-//         error: companyError,
-//       } = await supabase
-//         .from("companies")
-//         .insert({
-//           name: formData.companyName,
-//           email: formData.email,
-//           status: "pending",
-//         })
-//         .select()
-//         .single();
-
-//       if (companyError) {
-//         throw companyError;
-//       }
-
-//       const companyId = companyData.id;
-
-//       // Create User
-//       const {
-//         data: newUser,
-//         error: userError,
-//       } = await supabase
-//         .from("users")
-//         .insert({
-//           company_id: companyId,
-//           company_name: formData.companyName,
-
-//           name: formData.name,
-//           email: formData.email,
-//           phone_number: formData.mobile,
-
-//           password_hash: formData.password,
-
-//           role: "super_admin",
-//           status: "active",
-//         })
-//         .select()
-//         .single();
-
-//       if (userError) {
-//         throw userError;
-//       }
-
-//       if (userError) {
-//         throw new Error(userError.message);
-//       }
-
-//       // If registered using an invite token, mark invitation status to 'accepted'
-//       if (token) {
-//         await supabase
-//           .from("invitations")
-//           .update({ status: "accepted" })
-//           .eq("token", token);
-//       }
-
-//       // Proceed to success page
-//       setStep(token ? 2 : 3);
-//     }
-//     catch (err) {
-//       console.error("Registration Error:", err);
-//       alert("Failed to complete registration: " + err.message);
-//     }
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
-//       <div className="absolute top-0 left-0 w-96 h-96 bg-brand-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
-//       <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
-
-//       <div className="relative w-full max-w-md">
-//         <div className="flex flex-col items-center gap-3 mb-6 text-center">
-//           <div className="w-12 h-12 rounded-xl brand-gradient flex items-center justify-center shadow-md shadow-[var(--brand)]/20">
-//             <FiShield className="text-white text-2xl" />
-//           </div>
-
-//           <h1 className="text-4xl font-bold text-slate-900">
-//             {step === 1
-//               ? "Create Account"
-//               : step === 2
-//                 ? "Verify OTP"
-//                 : "Success"}
-//           </h1>
-
-//           <p className="text-gray-600 text-sm">
-//             {invitationDetails ? `Accepting Invitation for sector @${invitationDetails.groups.name}` : "Secure VDR Registration"}
-//           </p>
-//         </div>
-
-//         <div className="flex justify-center mb-6">
-//           <div className="flex items-center gap-4">
-//             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-brand text-white" : "bg-gray-200 text-gray-500"}`}>
-//               1
-//             </div>
-
-//             <div className="w-16 h-1 bg-gray-300 rounded"></div>
-
-//             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${(token ? step >= 2 : step >= 3) ? "bg-brand text-white" : "bg-gray-200 text-gray-500"}`}>
-//               <FaCheckCircle className={(token ? step >= 2 : step >= 3) ? "text-white" : "text-gray-400"} />
-//             </div>
-//           </div>
-//         </div>
-
-//         <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8">
-//           {loadingInvite ? (
-//             <div className="text-center py-12 text-slate-500 font-semibold animate-pulse">
-//               Verifying invitation token...
-//             </div>
-//           ) : (
-//             <>
-//               {step === 1 && (
-//                 <div className="space-y-5">
-//                   <div>
-//                     <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                       Company Name
-//                     </label>
-
-//                     <div className="relative">
-//                       <input
-//                         type="text"
-//                         name="companyName"
-//                         value={formData.companyName}
-//                         onChange={handleChange}
-//                         placeholder="Enter company name"
-//                         className="w-full px-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
-//                         required
-//                       />
-//                     </div>
-//                   </div>
-//                   <div>
-//                     <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                       Full Name
-//                     </label>
-//                     <div className="relative">
-//                       <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-//                       <input
-//                         type="text"
-//                         name="name"
-//                         value={formData.name}
-//                         onChange={handleChange}
-//                         placeholder="Enter your full name"
-//                         className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
-//                         required
-//                       />
-//                     </div>
-//                   </div>
-
-//                   <div>
-//                     <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                       Email Address
-//                     </label>
-//                     <div className="relative">
-//                       <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-//                       <input
-//                         type="email"
-//                         name="email"
-//                         value={formData.email}
-//                         onChange={handleChange}
-//                         disabled={!!invitationDetails} // Read-only if using invitation token
-//                         placeholder="Enter your email address"
-//                         className={`w-full pl-12 pr-4 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand disabled:bg-gray-100 disabled:text-slate-500 ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
-//                         required
-//                       />
-//                     </div>
-//                     {emailError && (
-//                       <p className="text-red-500 text-xs mt-1 font-semibold">{emailError}</p>
-//                     )}
-//                   </div>
-
-//                   <div>
-//                     <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                       Mobile Number
-//                     </label>
-//                     <div className="relative">
-//                       <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-//                       <input
-//                         type="tel"
-//                         name="mobile"
-//                         value={formData.mobile}
-//                         onChange={handleChange}
-//                         placeholder="Enter your mobile number"
-//                         className={`w-full pl-12 pr-4 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand ${mobileError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
-//                         required
-//                       />
-//                     </div>
-//                     {mobileError && (
-//                       <p className="text-red-500 text-xs mt-1 font-semibold">{mobileError}</p>
-//                     )}
-//                   </div>
-
-//                   <div>
-//                     <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                       Password
-//                     </label>
-//                     <div className="relative">
-//                       <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-//                       <input
-//                         type={showPassword ? "text" : "password"}
-//                         name="password"
-//                         value={formData.password}
-//                         onChange={handleChange}
-//                         placeholder="Create password"
-//                         className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
-//                         required
-//                       />
-//                       <button
-//                         type="button"
-//                         onClick={() => setShowPassword(!showPassword)}
-//                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
-//                       >
-//                         {showPassword ? <FaEyeSlash /> : <FaEye />}
-//                       </button>
-//                     </div>
-//                   </div>
-
-//                   <div>
-//                     <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                       Confirm Password
-//                     </label>
-//                     <div className="relative">
-//                       <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-//                       <input
-//                         type={showConfirmPassword ? "text" : "password"}
-//                         name="confirmPassword"
-//                         value={formData.confirmPassword}
-//                         onChange={handleChange}
-//                         placeholder="Confirm password"
-//                         className={`w-full pl-12 pr-12 py-3 border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand ${passwordError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
-//                         required
-//                       />
-//                       <button
-//                         type="button"
-//                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-//                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
-//                       >
-//                         {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-//                       </button>
-//                     </div>
-//                     {passwordError && (
-//                       <p className="text-red-500 text-xs mt-1 font-semibold">{passwordError}</p>
-//                     )}
-//                   </div>
-
-//                   <button
-//                     onClick={async () => {
-//                       if (
-//                         !formData.companyName ||
-//                         !formData.name ||
-//                         !formData.email ||
-//                         !formData.mobile ||
-//                         !formData.password
-//                       ) {
-//                         alert("Please fill all required fields.");
-//                         return;
-//                       }
-
-//                       if (emailError || mobileError) {
-//                         alert("Please resolve the errors before continuing.");
-//                         return;
-//                       }
-
-//                       if (passwordError || formData.password !== formData.confirmPassword) {
-//                         alert("Passwords do not match.");
-//                         return;
-//                       }
-
-//                       if (token) {
-//                         await handleFinalSubmit();
-//                       } else {
-//                         await sendOtp();
-//                       }
-//                     }}
-//                     disabled={isSendingOtp}
-//                     className="w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold transition flex items-center justify-center shadow-lg shadow-[var(--brand)]/20 disabled:opacity-70"
-//                   >
-//                     {isSendingOtp ? "Sending OTP..." : token ? "Verify & Create Account" : "Continue"}
-//                   </button>
-//                 </div>
-//               )}
-
-//               {step === 2 && (
-//                 <div className="space-y-6">
-//                   <div className="text-center">
-//                     <h2 className="text-xl font-bold text-slate-900">
-//                       Email Verification
-//                     </h2>
-//                     <p className="text-gray-600 mt-2">
-//                       Enter the 6-digit OTP sent to your email address
-//                     </p>
-//                   </div>
-
-//                   <div className="flex justify-center gap-2 sm:gap-3">
-//                     {otp.map((digit, index) => (
-//                       <input
-//                         id={`otp-${index}`}
-//                         key={index}
-//                         maxLength={1}
-//                         value={digit}
-//                         onChange={(e) => handleOtpChange(e.target.value, index)}
-//                         onKeyDown={(e) => handleOtpKeyDown(e, index)}
-//                         className="w-10 h-10 sm:w-12 sm:h-12 border border-gray-300 rounded-xl text-center text-lg sm:text-xl font-bold text-slate-900"
-//                       />
-//                     ))}
-//                   </div>
-
-//                   <button
-//                     onClick={handleFinalSubmit}
-//                     className="w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold shadow-lg shadow-[var(--brand)]/20"
-//                   >
-//                     Verify OTP & Create Account
-//                   </button>
-//                 </div>
-//               )}
-
-//               {step === (token ? 2 : 3) && (
-//                 <div className="text-center py-6">
-//                   <FaCheckCircle className="text-green-500 text-7xl mx-auto" />
-//                   <h2 className="text-3xl font-bold mt-4 text-slate-900">
-//                     Registration Successful
-//                   </h2>
-//                   <p className="text-gray-600 mt-2">
-//                     Your account has been created successfully.
-//                   </p>
-//                   <Link
-//                     href="/login"
-//                     className="block mt-6 w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-xl shadow-lg shadow-[var(--brand)]/20 font-semibold"
-//                   >
-//                     Go To Login
-//                   </Link>
-//                 </div>
-//               )}
-//             </>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// export default function RegisterPage() {
-//   return (
-//     <Suspense fallback={
-//       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-//         <p className="text-slate-500 font-semibold">Loading registration form...</p>
-//       </div>
-//     }>
-//       <RegisterContent />
-//     </Suspense>
-//   );
-// }
-
-
-
-
-//too old
-// "use client";
-
-// import { useState } from "react";
-// import Link from "next/link";
-// import {
-//   FaUser,
-//   FaEnvelope,
-//   FaPhone,
-//   FaLock,
-//   FaEye,
-//   FaEyeSlash,
-//   FaCheckCircle,
-// } from "react-icons/fa";
-// import { FiShield } from "react-icons/fi";
-
-// export default function RegisterPage() {
-//   const [step, setStep] = useState(1);
-//   const [showPassword, setShowPassword] = useState(false);
-//   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-//   const [formData, setFormData] = useState({
-//     name: "",
-//     email: "",
-//     mobile: "",
-//     password: "",
-//     confirmPassword: "",
-//   });
-
-//   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-
-//   const handleChange = (e) => {
-//     setFormData({ ...formData, [e.target.name]: e.target.value });
-//   };
-
-//   const handleOtpChange = (value, index) => {
-//     const updatedOtp = [...otp];
-//     updatedOtp[index] = value;
-//     setOtp(updatedOtp);
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
-//       <div className="absolute top-0 left-0 w-96 h-96 bg-brand-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
-//       <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-100 rounded-full blur-3xl opacity-20 animate-pulse"></div>
-
-//       <div className="relative w-full max-w-md">
-//         <div className="flex flex-col items-center gap-3 mb-6 text-center">
-//           <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-gray-900 to-slate-800 flex items-center justify-center shadow-md">
-//             <FiShield className="text-white text-2xl" />
-//           </div>
-
-//           <h1 className="text-4xl font-bold text-slate-900">
-//             {step === 1
-//               ? "Create Account"
-//               : step === 2
-//               ? "Verify OTP"
-//               : "Success"}
-//           </h1>
-
-//           <p className="text-gray-600 text-sm">
-//             Secure VDR Registration
-//           </p>
-//         </div>
-
-//         <div className="flex justify-center mb-6">
-//           <div className="flex items-center gap-4">
-//             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-brand text-white" : "bg-gray-200 text-gray-500"}`}>
-//               1
-//             </div>
-//
-//             <div className="w-16 h-1 bg-gray-300 rounded"></div>
-//
-//             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? "bg-brand text-white" : "bg-gray-200 text-gray-500"}`}>
-//               2
-//             </div>
-//           </div>
-//         </div>
-
-//         <div className="bg-white rounded-3xl shadow-2xl p-8">
-
-//           {step === 1 && (
-//             <div className="space-y-5">
-
-//               <div>
-//                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                   Full Name
-//                 </label>
-
-//                 <div className="relative">
-//                   <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-
-//                   <input
-//                     type="text"
-//                     name="name"
-//                     value={formData.name}
-//                     onChange={handleChange}
-//                     placeholder="Enter your full name"
-//                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
-//                   />
-//                 </div>
-//               </div>
-
-//               <div>
-//                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                   Email Address
-//                 </label>
-
-//                 <div className="relative">
-//                   <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-
-//                   <input
-//                     type="email"
-//                     name="email"
-//                     value={formData.email}
-//                     onChange={handleChange}
-//                     placeholder="Enter your email address"
-//                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
-//                   />
-//                 </div>
-//               </div>
-
-//               <div>
-//                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                   Mobile Number
-//                 </label>
-
-//                 <div className="relative">
-//                   <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-
-//                   <input
-//                     type="tel"
-//                     name="mobile"
-//                     value={formData.mobile}
-//                     onChange={handleChange}
-//                     placeholder="Enter your mobile number"
-//                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
-//                   />
-//                 </div>
-//               </div>
-
-//               <div>
-//                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                   Password
-//                 </label>
-
-//                 <div className="relative">
-//                   <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-
-//                   <input
-//                     type={showPassword ? "text" : "password"}
-//                     name="password"
-//                     value={formData.password}
-//                     onChange={handleChange}
-//                     placeholder="Create password"
-//                     className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
-//                   />
-
-//                   <button
-//                     type="button"
-//                     onClick={() => setShowPassword(!showPassword)}
-//                     className="absolute right-4 top-1/2 -translate-y-1/2"
-//                   >
-//                     {showPassword ? <FaEyeSlash /> : <FaEye />}
-//                   </button>
-//                 </div>
-//               </div>
-
-//               <div>
-//                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-//                   Confirm Password
-//                 </label>
-
-//                 <div className="relative">
-//                   <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-
-//                   <input
-//                     type={showConfirmPassword ? "text" : "password"}
-//                     name="confirmPassword"
-//                     value={formData.confirmPassword}
-//                     onChange={handleChange}
-//                     placeholder="Confirm password"
-//                     className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand"
-//                   />
-
-//                   <button
-//                     type="button"
-//                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-//                     className="absolute right-4 top-1/2 -translate-y-1/2"
-//                   >
-//                     {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-//                   </button>
-//                 </div>
-//               </div>
-
-//               <button
-//                 onClick={() => setStep(2)}
-//                 className="w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold transition"
-//               >
-//                 Continue
-//               </button>
-//             </div>
-//           )}
-
-//           {step === 2 && (
-//             <div className="space-y-6">
-//               <div className="text-center">
-//                 <h2 className="text-xl font-bold text-slate-900">
-//                   Email Verification
-//                 </h2>
-
-//                 <p className="text-gray-600 mt-2">
-//                   Enter the 6-digit OTP sent to your email address
-//                 </p>
-//               </div>
-
-//               <div className="flex justify-center gap-3">
-//                 {otp.map((digit, index) => (
-//                   <input
-//                     key={index}
-//                     maxLength={1}
-//                     value={digit}
-//                     onChange={(e) => handleOtpChange(e.target.value, index)}
-//                     className="w-12 h-12 border border-gray-300 rounded-xl text-center text-xl font-bold"
-//                   />
-//                 ))}
-//               </div>
-
-//               <button
-//                 onClick={() => setStep(3)}
-//                 className="w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold"
-//               >
-//                 Verify OTP
-//               </button>
-//             </div>
-//           )}
-
-//           {step === 3 && (
-//             <div className="text-center py-6">
-//               <FaCheckCircle className="text-green-500 text-7xl mx-auto" />
-
-//               <h2 className="text-3xl font-bold mt-4 text-slate-900">
-//                 Registration Successful
-//               </h2>
-
-//               <p className="text-gray-600 mt-2">
-//                 Your account has been created successfully.
-//               </p>
-
-//               <Link
-//                 href="/login"
-//                 className="block mt-6 w-full py-3 bg-brand text-white rounded-xl"
-//               >
-//                 Go To Login
-//               </Link>
-//             </div>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
