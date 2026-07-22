@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaCheckCircle } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaCheckCircle, FaShieldAlt } from "react-icons/fa";
 import { FiShield } from "react-icons/fi";
 
 function RegisterContent() {
@@ -12,12 +12,13 @@ function RegisterContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
-  // If token is passed in query string (?token=xyz), redirect to /register/[token]
-  useEffect(() => {
-    if (token) {
-      router.replace(`/register/${token}`);
-    }
-  }, [token, router]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const [inviteData, setInviteData] = useState(null);
+  const [companyData, setCompanyData] = useState(null);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,64 +27,89 @@ function RegisterContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [isSuccess, setIsSuccess] = useState(false);
+  useEffect(() => {
+    if (!token) {
+        setErrorMsg("Invalid or missing invitation token.");
+        setLoading(false);
+        return;
+    }
+
+    const fetchInvite = async () => {
+        try {
+            const { data: invite, error: inviteErr } = await supabase
+                .from("invitations")
+                .select("*, groups(company_id)")
+                .eq("token", token)
+                .single();
+
+            if (inviteErr || !invite) throw new Error("Invitation not found or expired.");
+            if (invite.status !== "pending") throw new Error("This invitation has already been used.");
+
+            setInviteData(invite);
+            setEmail(invite.email);
+
+            const { data: company } = await supabase
+                .from("companies")
+                .select("id, name")
+                .eq("id", invite.groups.company_id)
+                .single();
+
+            if (company) setCompanyData(company);
+        } catch (err) {
+            console.error(err);
+            setErrorMsg(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchInvite();
+  }, [token]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setError("");
+    setErrorMsg("");
 
     if (!name.trim()) {
-      setError("Please enter your full name.");
+      setErrorMsg("Please enter your full name.");
       return;
     }
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+      setErrorMsg("Password must be at least 6 characters long.");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setErrorMsg("Passwords do not match.");
       return;
     }
 
-    setIsLoading(true);
+    setSubmitting(true);
 
     try {
-      // Check if user email already exists in users table
-      const { data: existingUser } = await supabase
-        .from("users")
-        .select("id")
-        .eq("email", email)
-        .maybeSingle();
-
-      if (existingUser) {
-        setError("An account with this email address already exists.");
-        setIsLoading(false);
-        return;
-      }
-
       // 1. Sign up with Supabase Auth
       const { data: authData, error: authErr } = await supabase.auth.signUp({
-        email: email,
+        email: inviteData.email,
         password: password,
       });
 
-      // If Supabase Auth returns an error (or disabled), handle gracefully
+      if (authErr) throw authErr;
+
+      const assignedNdaStatus = inviteData.requires_nda ? "pending" : "not_required";
       let userId = authData?.user?.id || crypto.randomUUID();
 
       // 2. Insert into users table
       const { error: userErr } = await supabase.from("users").insert([
         {
           id: userId,
+          company_id: companyData.id,
           name: name.trim(),
-          email: email.trim(),
-          password_hash: password, // Store password for app's custom auth verification
+          email: inviteData.email,
+          password_hash: password, 
           role: "user",
           status: "active",
-          nda_status: "not_required",
+          nda_status: assignedNdaStatus,
         },
       ]);
 
@@ -92,14 +118,37 @@ function RegisterContent() {
         throw new Error(userErr.message || "Failed to create user account.");
       }
 
-      setIsSuccess(true);
+      await supabase
+          .from("invitations")
+          .update({ status: "accepted" })
+          .eq("id", inviteData.id);
+
+      // THE FORK IN THE ROAD
+      if (inviteData.requires_nda) {
+          // NDA is required! Keep session temporarily and pass the '?from=register' flag
+          localStorage.setItem('vdr_session', JSON.stringify({
+              id: userId,
+              company_id: companyData.id,
+              name: name,
+              email: inviteData.email,
+              role: "user",
+              nda_status: assignedNdaStatus
+          }));
+          router.push("/sign-nda?from=register"); // <-- Tells NDA page to show Login button at the end
+      } else {
+          // NDA is OFF. Wipe session and show the success screen with Login button.
+          localStorage.removeItem('vdr_session');
+          setIsSuccess(true); 
+      }
+
     } catch (err) {
       console.error("Registration error:", err);
-      setError(err.message || "Registration failed. Please try again.");
-    } finally {
-      setIsLoading(false);
+      setErrorMsg(err.message || "Registration failed. Please try again.");
+      setSubmitting(false);
     }
   };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-medium">Validating Invitation...</div>;
 
   // SUCCESS SCREEN
   if (isSuccess) {
@@ -122,6 +171,20 @@ function RegisterContent() {
     );
   }
 
+  // ERROR SCREEN
+  if (errorMsg && !inviteData) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-rose-100 max-w-md w-full text-center">
+                  <FaShieldAlt className="text-rose-500 text-4xl mx-auto mb-4" />
+                  <h2 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h2>
+                  <p className="text-slate-500 text-sm mb-6">{errorMsg}</p>
+                  <button onClick={() => router.push('/login')} className="w-full py-2.5 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-all">Go to Login</button>
+              </div>
+          </div>
+      );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[var(--brand)]/10 via-white to-[var(--brand-secondary)]/10 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-96 h-96 bg-[var(--brand)]/10 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
@@ -134,19 +197,19 @@ function RegisterContent() {
             <FiShield className="text-white text-2xl" strokeWidth={2.8} />
           </div>
           <div>
-            <h1 className="text-4xl font-bold text-slate-900">Create Account</h1>
+            <h1 className="text-4xl font-bold text-slate-900">Join {companyData?.name || "Workspace"}</h1>
             <p className="text-gray-600 text-sm mt-1">Register for Virtual Data Room Access</p>
           </div>
         </div>
 
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 backdrop-blur-sm border border-gray-100">
-          {error && (
+          {errorMsg && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
               <span className="text-red-500 mt-0.5">⚠️</span>
               <div>
                 <p className="text-red-800 font-medium text-sm">Registration Error</p>
-                <p className="text-red-700 text-xs mt-0.5">{error}</p>
+                <p className="text-red-700 text-xs mt-0.5">{errorMsg}</p>
               </div>
             </div>
           )}
@@ -164,7 +227,7 @@ function RegisterContent() {
                   placeholder="John Doe"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  disabled={isLoading}
+                  disabled={submitting}
                   required
                   className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900 text-sm"
                 />
@@ -182,10 +245,9 @@ function RegisterContent() {
                   type="email"
                   placeholder="name@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
+                  disabled={true}
                   required
-                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900 text-sm"
+                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900 text-sm cursor-not-allowed"
                 />
               </div>
             </div>
@@ -202,7 +264,7 @@ function RegisterContent() {
                   placeholder="Minimum 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
+                  disabled={submitting}
                   required
                   minLength={6}
                   className="w-full pl-11 pr-11 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900 text-sm"
@@ -229,7 +291,7 @@ function RegisterContent() {
                   placeholder="Re-enter password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={isLoading}
+                  disabled={submitting}
                   required
                   minLength={6}
                   className="w-full pl-11 pr-11 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition disabled:bg-gray-100 placeholder-gray-400 text-gray-900 text-sm"
@@ -247,16 +309,16 @@ function RegisterContent() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={submitting}
               className="w-full mt-2 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[var(--brand)]/20"
             >
-              {isLoading ? (
+              {submitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Creating Account...</span>
+                  <span>Processing...</span>
                 </>
               ) : (
-                <span>Register</span>
+                <span>{inviteData?.requires_nda ? "Next: Review Security Terms" : "Complete Registration"}</span>
               )}
             </button>
           </form>
@@ -283,3 +345,4 @@ export default function RegisterPage() {
     </Suspense>
   );
 }
+
