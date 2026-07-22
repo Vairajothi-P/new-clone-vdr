@@ -48,6 +48,12 @@ export default function SecureViewer({ params }) {
     const shiftSRef    = useRef(false);
     const devtoolsRef  = useRef(false);
     const shieldDivRef = useRef(null); // direct DOM ref — synchronous, no React delay
+    
+    const userInfoRef  = useRef(userInfo);
+    const clientIpRef  = useRef(clientIp);
+
+    useEffect(() => { userInfoRef.current = userInfo; }, [userInfo]);
+    useEffect(() => { clientIpRef.current = clientIp; }, [clientIp]);
     // ─────────────────────────────────────────────────────────────────────────
 
     // ── Load user info & IP for watermark ─────────────────────────────────────
@@ -333,6 +339,50 @@ export default function SecureViewer({ params }) {
         document.head.appendChild(s);
     });
 
+    const appendWatermarkToElement = (element, info, ip) => {
+        if (!element) return;
+        element.style.position = 'relative';
+
+        const overlay = document.createElement('div');
+        overlay.className = 'page-watermark-overlay';
+        overlay.style.position = 'absolute';
+        overlay.style.inset = '0';
+        overlay.style.pointerEvents = 'none';
+        overlay.style.zIndex = '10';
+        overlay.style.overflow = 'hidden';
+
+        const timeStr = new Date().toLocaleString('en-IN');
+        const name = info?.name || 'CONFIDENTIAL';
+        const email = info?.email || '';
+        const sid = info?.sessionId || '';
+
+        const mark = document.createElement('div');
+        mark.style.position = 'absolute';
+        mark.style.top = '50%';
+        mark.style.left = '50%';
+        mark.style.transform = 'translate(-50%, -50%) rotate(-30deg)';
+        mark.style.opacity = '0.38';
+        mark.style.whiteSpace = 'nowrap';
+        mark.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+        mark.style.fontSize = '22px';
+        mark.style.lineHeight = '1.7';
+        mark.style.color = '#334155';
+        mark.style.textShadow = '0 0 3px rgba(255,255,255,0.95)';
+        mark.style.userSelect = 'none';
+        mark.style.webkitUserSelect = 'none';
+        mark.style.textAlign = 'center';
+
+        mark.innerHTML = `
+            <div style="font-weight: 900; font-size: 28px; color: #0f172a; margin-bottom: 4px; letter-spacing: 0.5px;">${name}</div>
+            <div>${email}</div>
+            <div>IP: ${ip}</div>
+            <div>${timeStr}</div>
+            <div>SID: ${sid}</div>
+        `;
+        overlay.appendChild(mark);
+        element.appendChild(overlay);
+    };
+
     const renderDocument = async (ext, bytes, utf8Text) => {
         const container = containerRef.current;
         if (!container) return;
@@ -359,6 +409,10 @@ export default function SecureViewer({ params }) {
                         window.luckysheet.create({ ...opts, data: json.sheets, title: docName });
                     });
                 }
+                setTimeout(() => {
+                    const luckysheetBox = container.querySelector('#luckysheet-container');
+                    if (luckysheetBox) appendWatermarkToElement(luckysheetBox, userInfoRef.current, clientIpRef.current);
+                }, 500);
             } else if (ext === 'pdf') {
                 if (!window['pdfjs-dist/build/pdf']) {
                     await loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.min.js');
@@ -370,7 +424,7 @@ export default function SecureViewer({ params }) {
                     const page     = await pdf.getPage(i);
                     const viewport = page.getViewport({ scale: 1.5 });
                     const wrapper  = document.createElement('div');
-                    wrapper.className  = 'pdf-page-wrapper shadow-lg mb-8 bg-white';
+                    wrapper.className  = 'pdf-page-wrapper shadow-lg mb-8 bg-white relative overflow-hidden';
                     wrapper.style.width  = viewport.width  + 'px';
                     wrapper.style.height = viewport.height + 'px';
                     const canvas = document.createElement('canvas');
@@ -378,6 +432,7 @@ export default function SecureViewer({ params }) {
                     wrapper.appendChild(canvas);
                     container.appendChild(wrapper);
                     await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                    appendWatermarkToElement(wrapper, userInfoRef.current, clientIpRef.current);
                 }
             } else if (['docx', 'doc'].includes(ext)) {
                 if (!window.docx) {
@@ -389,6 +444,11 @@ export default function SecureViewer({ params }) {
                 container.appendChild(docContainer);
                 window.docx.renderAsync(bytes.buffer, docContainer, null, {
                     className: 'docx', inWrapper: true, ignoreWidth: false, ignoreHeight: false, breakPages: true,
+                }).then(() => {
+                    const sections = docContainer.querySelectorAll('section.docx');
+                    sections.forEach(sec => {
+                        appendWatermarkToElement(sec, userInfoRef.current, clientIpRef.current);
+                    });
                 }).catch(err => {
                     container.innerHTML = `<p style="color:red;">Error parsing DOCX: ${err.message}</p>`;
                 });
@@ -397,9 +457,13 @@ export default function SecureViewer({ params }) {
                 const LPP   = 40;
                 let html    = '';
                 for (let i = 0; i < lines.length; i += LPP) {
-                    html += `<div class="txt-page-wrapper"><pre class="txt-view">${lines.slice(i, i + LPP).join('\n')}</pre></div>`;
+                    html += `<div class="txt-page-wrapper relative overflow-hidden"><pre class="txt-view">${lines.slice(i, i + LPP).join('\n')}</pre></div>`;
                 }
                 container.innerHTML = html;
+                const txtPages = container.querySelectorAll('.txt-page-wrapper');
+                txtPages.forEach(p => {
+                    appendWatermarkToElement(p, userInfoRef.current, clientIpRef.current);
+                });
             } else {
                 container.innerHTML = '<div class="text-white text-center mt-20 font-bold text-xl">Unsupported Format</div>';
             }
@@ -441,8 +505,8 @@ export default function SecureViewer({ params }) {
                 * { user-select: none !important; -webkit-user-select: none !important; }
                 body { margin: 0; padding: 0; background-color: #1a1a1a; }
                 .docx-wrapper { background: transparent !important; padding: 0 !important; display: flex; flex-direction: column; align-items: center; width: 100%; }
-                .docx-wrapper > section.docx { background: #ffffff !important; box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important; margin-bottom: 30px !important; min-height: 297mm !important; width: 210mm !important; }
-                .txt-page-wrapper { background: #fff !important; width: 210mm; min-height: 297mm; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 25mm; box-sizing: border-box; }
+                .docx-wrapper > section.docx { background: #ffffff !important; box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important; margin-bottom: 30px !important; min-height: 297mm !important; width: 210mm !important; position: relative !important; }
+                .txt-page-wrapper { background: #fff !important; width: 210mm; min-height: 297mm; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 25mm; box-sizing: border-box; position: relative !important; }
                 .txt-view { white-space: pre-wrap; font-family: monospace; font-size: 14px; margin: 0; word-wrap: break-word; color: #000 !important; width: 100%; }
             ` }} />
 
@@ -506,16 +570,16 @@ export default function SecureViewer({ params }) {
                 </div>
             )}
 
-            {/* ── DYNAMIC WATERMARK ────────────────────────────────────────── */}
-            <div style={{ position: 'fixed', inset: 0, zIndex: 100, pointerEvents: 'none', overflow: 'hidden' }}>
+            {/* ── DYNAMIC BACKGROUND WATERMARK GRID ────────────────────────── */}
+            <div style={{ position: 'fixed', inset: 0, zIndex: 50, pointerEvents: 'none', overflow: 'hidden' }}>
                 {Array.from({ length: 6 }).map((_, row) =>
-                    Array.from({ length: 4 }).map((__, col) => (
+                    Array.from({ length: 5 }).map((__, col) => (
                         <div
                             key={`${row}-${col}`}
                             style={{
                                 position: 'absolute',
-                                top:  `${row * 220 + 60}px`,
-                                left: `${col * 300 - 60}px`,
+                                top:  `${row * 220 + 30}px`,
+                                left: `${col * 280 - 40}px`,
                                 transform: 'rotate(-30deg)',
                                 opacity: 0.15,
                                 whiteSpace: 'nowrap',
@@ -524,6 +588,7 @@ export default function SecureViewer({ params }) {
                                 color: '#ffffff',
                                 lineHeight: 1.6,
                                 userSelect: 'none',
+                                textAlign: 'center',
                             }}
                         >
                             <div style={{ fontWeight: 700 }}>{userInfo.name || 'CONFIDENTIAL'}</div>
