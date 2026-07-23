@@ -1,466 +1,334 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { applyBrandTheme, DEFAULT_BRAND } from '@/lib/theme';
-import { supabase } from '@/utils/supabase/client';
-
-// ← Replace with your actual company_id (or fetch from auth context)
-const COMPANY_ID = '11111111-1111-1111-1111-111111111111';
-
-const PRESET_COLORS = [
-  '#1C7F9F', // PiBi Default Cyan
-  '#3B82F6', // Ocean Blue
-  '#6366F1', // Indigo
-  '#8B5CF6', // Royal Purple
-  '#EC4899', // Bright Pink
-  '#EF4444', // Coral Red
-  '#F59E0B', // Amber Gold
-  '#10B981', // Emerald Green
-];
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function BrandingPage() {
+  const router = useRouter();
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [recordId, setRecordId] = useState(null);
 
-  const [activeTheme, setActiveTheme] = useState(DEFAULT_BRAND);
-  const [brandName, setBrandName] = useState('');
-  const [logoUrl, setLogoUrl] = useState(null);
+  const [companyName, setCompanyName] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#1c7f9f');
+  const [logoUrl, setLogoUrl] = useState('');
+
+  const logoFileRef = useRef(null);
   const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState('');
 
-  // User Profile States
-  const [adminName, setAdminName] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPhone, setAdminPhone] = useState('');
-
-  // Modal control & temporary inputs
-  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-  const [tempName, setTempName] = useState('');
-  const [tempEmail, setTempEmail] = useState('');
-  const [tempPhone, setTempPhone] = useState('');
-
-  // ─── Fetch from DB on mount ───────────────────────────────────
   useEffect(() => {
+    const raw = localStorage.getItem("vdr_session");
+    if (!raw) { router.push('/login'); return; }
+    setSession(JSON.parse(raw));
+  }, [router]);
+
+  useEffect(() => {
+    if (!session) return;
     const fetchBranding = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('workspace_settings')
-        .select('*')
-        .eq('company_id', COMPANY_ID)
-        .limit(1)
-        .single();
+      try {
+        const res = await fetch('/api/settings/branding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'fetch', session })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching workspace settings:', error);
+        setCompanyName(data.branding.name || '');
+        setPrimaryColor(data.branding.primary_color || '#1c7f9f');
+        setLogoUrl(data.branding.logo_url || '');
+      } catch (err) {
+        console.error("Failed to load branding:", err);
+      } finally {
+        setLoading(false);
       }
-
-      if (data) {
-        setRecordId(data.id);
-        setBrandName(data.brand_name ?? '');
-        setLogoUrl(data.logo_url ?? null);
-        setActiveTheme(data.active_theme ?? DEFAULT_BRAND);
-        setAdminName(data.admin_name ?? '');
-        setAdminEmail(data.admin_email ?? '');
-        setAdminPhone(data.admin_phone ?? '');
-      }
-      setLoading(false);
     };
-
     fetchBranding();
-  }, []);
+  }, [session]);
 
-  // ─── Logo Helper Functions ────────────────────────────────────
-  const getLogoDisplayUrl = (pathOrBase64) => {
-    if (!pathOrBase64) return null;
-    if (pathOrBase64.startsWith('data:image')) return pathOrBase64;
-    if (pathOrBase64.startsWith('http')) return pathOrBase64;
-    const { data } = supabase.storage.from('vdr-logos').getPublicUrl(pathOrBase64);
-    return data?.publicUrl || null;
-  };
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = error => reject(error);
+  });
 
-  const uploadLogoIfNew = async () => {
-    if (!logoFile) return logoUrl;
-    const ext = logoFile.name.split('.').pop();
-    const fileName = `brand_${COMPANY_ID}_${Date.now()}.${ext}`;
-    const { error: uploadErr } = await supabase.storage
-      .from('vdr-logos')
-      .upload(fileName, logoFile, { contentType: logoFile.type });
-    if (uploadErr) throw uploadErr;
-    return fileName;
-  };
-
-  // ─── Save / Publish to DB ─────────────────────────────────────
-  const handlePublish = async () => {
+  const handleSave = async (e) => {
+    e.preventDefault();
     setSaving(true);
-    let finalLogoPath = logoUrl;
     try {
-      finalLogoPath = await uploadLogoIfNew();
-    } catch (err) {
-      setSaving(false);
-      alert('Failed to upload logo: ' + err.message);
-      return;
-    }
+      let logoBase64 = null;
+      let logoMime = null;
+      let logoName = null;
 
-    const payload = {
-      company_id:   COMPANY_ID,
-      brand_name:   brandName,
-      logo_url:     finalLogoPath,
-      active_theme: activeTheme,
-      admin_name:   adminName,
-      admin_email:  adminEmail,
-      admin_phone:  adminPhone,
-    };
-
-    let error;
-    if (recordId) {
-      ({ error } = await supabase
-        .from('workspace_settings')
-        .update(payload)
-        .eq('id', recordId));
-    } else {
-      const { data, error: insertError } = await supabase
-        .from('workspace_settings')
-        .insert(payload)
-        .select()
-        .single();
-      error = insertError;
-      if (data) setRecordId(data.id);
-    }
-
-    setSaving(false);
-    if (error) {
-      alert('Failed to save: ' + error.message);
-    } else {
-      alert('Branding settings published successfully!');
-    }
-  };
-
-  // ─── Logo upload (preview only) ─────────────────────────────
-  const handleLogoChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('Logo size must be less than 2MB');
-        return;
+      if (logoFile) {
+        logoBase64 = await fileToBase64(logoFile);
+        logoMime = logoFile.type;
+        logoName = logoFile.name;
       }
-      setLogoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setLogoUrl(reader.result);
-      reader.readAsDataURL(file);
+
+      const res = await fetch('/api/settings/branding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save',
+          session,
+          payload: { name: companyName, primary_color: primaryColor, logo_url: logoUrl, logoBase64, logoMime, logoName }
+        })
+      });
+
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      if (data.logo_url) setLogoUrl(data.logo_url);
+      setLogoFile(null);
+      setLogoPreview('');
+      alert("Branding settings saved securely!");
+    } catch (err) {
+      alert("Failed to save branding: " + err.message);
+    } finally {
+      setSaving(false);
     }
   };
-
-  // ─── Profile Modal ────────────────────────────────────────────
-  const handleEditProfileClick = () => {
-    setTempName(adminName);
-    setTempEmail(adminEmail);
-    setTempPhone(adminPhone);
-    setIsEditProfileOpen(true);
-  };
-
-  const handleSaveProfile = async () => {
-    if (!tempName.trim()) {
-      alert('Name cannot be empty.');
-      return;
-    }
-    setSaving(true);
-    const payload = {
-      company_id:  COMPANY_ID,
-      admin_name:  tempName,
-      admin_email: tempEmail,
-      admin_phone: tempPhone,
-    };
-
-    let error;
-    if (recordId) {
-      ({ error } = await supabase
-        .from('workspace_settings')
-        .update(payload)
-        .eq('id', recordId));
-    } else {
-      const { data, error: insertError } = await supabase
-        .from('workspace_settings')
-        .insert({ ...payload, brand_name: brandName, active_theme: activeTheme })
-        .select()
-        .single();
-      error = insertError;
-      if (data) setRecordId(data.id);
-    }
-
-    setSaving(false);
-    if (error) {
-      alert('Failed to save profile: ' + error.message);
-    } else {
-      setAdminName(tempName);
-      setAdminEmail(tempEmail);
-      setAdminPhone(tempPhone);
-      setIsEditProfileOpen(false);
-    }
-  };
-
-  const getInitials = (name) => {
-    return name.split(' ').map(p => p.charAt(0)).join('').toUpperCase().substring(0, 2) || 'AD';
-  };
-
-  // Ensure currentColor is always a string (guard against numeric DB values)
-  const currentColor = (typeof activeTheme === 'string' && activeTheme.length > 0) ? activeTheme : DEFAULT_BRAND;
-
-  useEffect(() => {
-    applyBrandTheme(currentColor);
-  }, [currentColor]);
 
   if (loading) {
     return (
-      <div className="relative min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 rounded-full border-4 border-[var(--brand)] border-t-transparent animate-spin" />
-          <p className="text-gray-500 text-sm font-medium">Loading branding settings…</p>
-        </div>
+      <div className="flex items-center justify-center h-full w-full bg-[#F8FAFC]">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-[var(--brand)] rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen bg-[#F8FAFC]">
-      <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-brand-50 to-transparent pointer-events-none transition-colors duration-500"></div>
-      
-      <div className="relative p-4 md:p-6 max-w-5xl mx-auto w-full space-y-5 animate-in slide-in-from-bottom-4 fade-in duration-700">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Branding &amp; Identity</h1>
-            <p className="text-gray-500 mt-2 text-[15px]">Design a workspace that feels native to your clients and partners.</p>
-          </div>
-          <button 
-            onClick={handlePublish}
-            disabled={saving}
-            className="px-6 py-2.5 brand-button text-white text-sm font-medium rounded-xl hover:shadow-lg hover:-translate-y-0.5 focus:ring-4 focus:ring-gray-200 transition-all duration-500 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {saving ? (
-              <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Saving…</>
-            ) : 'Publish Changes'}
-          </button>
-        </div>
-
-        {/* User Profile Card */}
-        <div className="relative overflow-hidden bg-white/80 backdrop-blur-xl border border-gray-200/80 rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group hover:border-gray-300 transition-all duration-500">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-brand-soft rounded-full blur-3xl -z-10 group-hover:scale-110 transition-transform duration-700"></div>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className={`w-16 h-16 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-800 text-xl font-bold shadow-sm ring-4 ring-white overflow-hidden transition-colors duration-500`}>
-                {logoUrl ? <img src={getLogoDisplayUrl(logoUrl)} alt="Logo" className="w-full h-full object-contain p-1" /> : <span className="text-brand">{getInitials(adminName)}</span>}
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm">
-                <div className="w-4 h-4 brand-bg rounded-full transition-colors duration-500"></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-gray-900 tracking-tight">{brandName || 'My Workspace'}</h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-brand-soft text-brand rounded-md border border-gray-200/50 uppercase tracking-wider transition-colors duration-500">Workspace</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[14px] text-gray-500 mt-1.5 font-medium">
-                <span className="flex items-center gap-2 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-brand"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  {adminName || '—'}
-                </span>
-                <span className="flex items-center gap-2 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-brand"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                  {adminEmail || '—'}
-                </span>
-                <span className="flex items-center gap-2 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-brand"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                  {adminPhone || '—'}
-                </span>
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={handleEditProfileClick}
-            className="px-5 py-2.5 bg-white border border-gray-200 text-brand text-sm font-semibold rounded-xl hover:bg-brand-50 hover:border-gray-300 focus:ring-brand focus:border-brand transition-all shadow-sm cursor-pointer"
-          >
-            Edit Profile
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          
-          {/* Brand Assets Card */}
-          <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 overflow-hidden flex flex-col">
-            <div className="px-6 py-4 border-b border-gray-100/60 bg-gradient-to-r from-gray-50/50 to-white">
-              <h3 className="text-lg font-bold text-gray-900">Brand Assets</h3>
-              <p className="text-[13px] text-gray-500 mt-1">Configure your main workspace identifiers.</p>
-            </div>
-            <div className="p-6 space-y-5 flex-1">
-              <div>
-                <label className="block text-[14px] font-bold text-gray-800 mb-3">Workspace Logo</label>
-                <div className="flex items-start gap-4">
-                  <div className="relative group cursor-pointer">
-                    <input type="file" accept="image/png, image/svg+xml, image/jpeg" onChange={handleLogoChange} className="hidden" id="logo-upload-input" />
-                    <label htmlFor="logo-upload-input" className="cursor-pointer block">
-                      <div className="absolute inset-0 bg-gradient-to-tr from-brand to-brand/20 opacity-0 group-hover:opacity-20 rounded-2xl blur-md transition-opacity duration-500"></div>
-                      <div className="relative w-20 h-20 rounded-2xl border-2 border-dashed border-gray-300 bg-white/50 backdrop-blur-sm flex flex-col items-center justify-center text-gray-400 border-brand-soft hover:bg-brand-50 transition-all duration-300 overflow-hidden">
-                        {logoUrl ? (
-                          <img src={getLogoDisplayUrl(logoUrl)} alt="Logo" className="w-full h-full object-contain p-1.5" />
-                        ) : (
-                          <>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand transition-colors mb-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-                            <span className="text-[10px] font-bold tracking-wider uppercase text-brand transition-colors">Upload</span>
-                          </>
-                        )}
-                      </div>
-                    </label>
-                  </div>
-                  <div className="flex-1 pt-2">
-                    <p className="text-[14px] text-gray-600 leading-relaxed">This logo will be featured on your login screen, shared links, and all outgoing email notifications.</p>
-                    <div className="flex items-center gap-4 mt-3">
-                      <p className="text-[12px] font-medium text-gray-400 flex items-center gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                        SVG or PNG • 512x512px • Max 2MB
-                      </p>
-                      {logoUrl && (
-                        <button type="button" onClick={() => { setLogoUrl(null); setLogoFile(null); }} className="text-[12px] font-bold text-red-500 hover:text-red-700 transition-colors cursor-pointer">Remove Logo</button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <label htmlFor="brandName" className="block text-[14px] font-bold text-gray-800 mb-2 flex items-center justify-between">
-                  Display Name
-                  <span className="text-[11px] font-normal text-gray-400 uppercase tracking-wider">Required</span>
-                </label>
-                <div className="relative">
-                  <input 
-                    id="brandName"
-                    type="text" 
-                    value={brandName}
-                    onChange={(e) => setBrandName(e.target.value)}
-                    className="w-full pl-4 pr-10 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-brand focus:border-brand transition-all placeholder-gray-400 shadow-inner"
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 bg-green-50 p-1 rounded-md transition-opacity" style={{ opacity: brandName.length > 0 ? 1 : 0 }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Theme Card */}
-          <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 overflow-hidden flex flex-col">
-            <div className="px-6 py-4 border-b border-gray-100/60 bg-gradient-to-r from-gray-50/50 to-white flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Workspace Theme</h3>
-                <p className="text-[13px] text-gray-500 mt-0.5">Choose a color that defines your brand.</p>
-              </div>
-              {/* Live Preview Chip */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-brand bg-brand-soft">
-                <div className="w-3 h-3 rounded-full shadow-sm bg-brand" />
-                <span className="text-[12px] font-mono font-semibold text-brand">{currentColor.toUpperCase()}</span>
-              </div>
-            </div>
-
-            <div className="p-6 flex-1 flex flex-col gap-6">
-              <div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Workspace Theme Color</p>
-                <div className="grid grid-cols-5 gap-3.5 max-w-xs">
-                  {PRESET_COLORS.map((color) => {
-                    const isSelected = currentColor.toUpperCase() === color.toUpperCase();
-                    return (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setActiveTheme(color)}
-                        className="relative w-11 h-11 rounded-full cursor-pointer transition-all duration-300 hover:scale-110 flex items-center justify-center border border-black/5 shadow-sm"
-                        style={{ 
-                          backgroundColor: color,
-                          boxShadow: isSelected ? `0 0 0 3px white, 0 0 0 5px ${color}` : 'none'
-                        }}
-                      >
-                        {isSelected && (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
-                      </button>
-                    );
-                  })}
-                  
-                  {/* Custom Color Picker */}
-                  <div 
-                    className="relative w-11 h-11 rounded-full cursor-pointer transition-all duration-300 hover:scale-110 flex items-center justify-center overflow-hidden border border-gray-200 shadow-sm"
-                    style={{ 
-                      background: !PRESET_COLORS.includes(currentColor.toUpperCase()) 
-                        ? currentColor 
-                        : 'linear-gradient(135deg, #ff0000 0%, #00ff00 50%, #0000ff 100%)',
-                      boxShadow: !PRESET_COLORS.includes(currentColor.toUpperCase())
-                        ? `0 0 0 3px white, 0 0 0 5px ${currentColor}`
-                        : 'none'
-                    }}
-                  >
-                    <input 
-                      type="color" 
-                      value={currentColor.startsWith('#') ? currentColor : '#1C7F9F'}
-                      onChange={(e) => setActiveTheme(e.target.value)}
-                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                    />
-                    {!PRESET_COLORS.includes(currentColor.toUpperCase()) ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-sm">
-                        <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-                      </svg>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-gray-200 bg-white/80 p-5">
-                <p className="text-sm text-gray-700">This workspace uses the selected theme color for primary buttons, sidebar links, highlights, and accent states. Click "Publish Changes" above to save the selected theme.</p>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="p-8 max-w-4xl mx-auto font-sans">
+      <div className="mb-8 border-b border-gray-200 pb-4">
+        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Branding & Identity</h1>
+        <p className="text-sm text-gray-500 mt-1">Customize your workspace name, primary accent color, and brand logo.</p>
       </div>
 
-      {/* Edit Profile Modal */}
-      {isEditProfileOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-md overflow-hidden animate-in scale-in duration-300">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">Edit Profile</h3>
-              <button onClick={() => setIsEditProfileOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-[13px] font-bold text-gray-700 mb-1.5">Full Name</label>
-                <input type="text" value={tempName} onChange={(e) => setTempName(e.target.value)} className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-brand focus:border-brand transition-all" />
-              </div>
-              <div>
-                <label className="block text-[13px] font-bold text-gray-700 mb-1.5">Email Address</label>
-                <input type="email" value={tempEmail} onChange={(e) => setTempEmail(e.target.value)} className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-brand focus:border-brand transition-all" />
-              </div>
-              <div>
-                <label className="block text-[13px] font-bold text-gray-700 mb-1.5">Phone Number</label>
-                <input type="text" value={tempPhone} onChange={(e) => setTempPhone(e.target.value)} className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-brand focus:border-brand transition-all" />
-              </div>
-            </div>
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
-              <button onClick={() => setIsEditProfileOpen(false)} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors cursor-pointer">Cancel</button>
-              <button onClick={handleSaveProfile} disabled={saving} className="px-5 py-2 brand-button text-white text-sm font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
-                {saving ? <><div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />Saving…</> : 'Save Changes'}
-              </button>
-            </div>
+      <form onSubmit={handleSave} className="space-y-6 bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Workspace / Company Name</label>
+          <input
+            type="text"
+            value={companyName}
+            onChange={e => setCompanyName(e.target.value)}
+            className="w-full px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:border-brand"
+            placeholder="Enter company name..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Primary Brand Color</label>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={primaryColor}
+              onChange={e => setPrimaryColor(e.target.value)}
+              className="w-12 h-12 border-0 rounded-xl cursor-pointer bg-transparent"
+            />
+            <span className="text-sm font-mono font-bold text-gray-700 bg-gray-50 border border-gray-200 px-4 py-2 rounded-xl">{primaryColor.toUpperCase()}</span>
           </div>
         </div>
-      )}
+
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Company Logo</label>
+          <input ref={logoFileRef} type="file" accept="image/*" hidden onChange={e => {
+            const file = e.target.files?.[0];
+            if (file) {
+              setLogoFile(file);
+              const reader = new FileReader();
+              reader.onload = () => setLogoPreview(reader.result);
+              reader.readAsDataURL(file);
+            }
+          }} />
+          <div className="flex items-center gap-4">
+            <button type="button" onClick={() => logoFileRef.current?.click()} className="px-5 py-2.5 border border-gray-200 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-50 transition-colors">
+              Upload Logo
+            </button>
+            {(logoPreview || logoUrl) && (
+              <img src={logoPreview || logoUrl} alt="Logo preview" className="h-12 w-auto object-contain border border-gray-100 rounded-lg p-1 bg-gray-50" />
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-4 border-t border-gray-100">
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-8 py-3 bg-[var(--brand)] text-white text-sm font-bold rounded-xl shadow-md hover:opacity-90 transition-all disabled:opacity-50 cursor-pointer"
+          >
+            {saving ? "Saving Changes..." : "Save Branding"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
 
+
+
+
+
+
+// "use client";
+
+// import { useEffect, useState } from 'react';
+// import { useRouter, usePathname } from 'next/navigation';
+// import Link from 'next/link';
+// import { supabase } from '@/utils/supabase/client';
+// import MainSidebar from '@/components/MainSidebar';
+
+// export default function SettingsLayout({ children }) {
+//   const router = useRouter();
+//   const pathname = usePathname();
+//   const [loading, setLoading] = useState(true);
+//   const [perms, setPerms] = useState({ settings: false, branding: false, watermark: false, nda: false });
+
+//   useEffect(() => {
+//     const verifyAccess = async () => {
+//       const raw = localStorage.getItem("vdr_session");
+//       if (!raw) { router.push('/login'); return; }
+//       const session = JSON.parse(raw);
+
+//       // ONLY Super Admin gets automatic access to all settings
+//       if (session.role === 'super_admin') {
+//         setPerms({ settings: true, branding: true, watermark: true, nda: true });
+//         setLoading(false);
+//         return;
+//       }
+
+//       const { data: ugRows } = await supabase.from('user_groups').select('group_id').eq('user_id', session.id);
+//       const groupIds = ugRows?.map(r => r.group_id) || [];
+
+//       if (groupIds.length > 0) {
+//         const { data: dbPerms } = await supabase
+//           .from('permissions')
+//           .select('can_access_settings, can_access_branding, can_access_watermarks')
+//           .eq('scope', 'workspace')
+//           .in('group_id', groupIds);
+
+//         const hasSettings = dbPerms?.some(p => p.can_access_settings);
+//         const hasBranding = dbPerms?.some(p => p.can_access_branding);
+//         const hasWatermark = dbPerms?.some(p => p.can_access_watermarks);
+
+//         // If they don't even have basic settings access, kick out completely
+//         if (!hasSettings) {
+//           router.push('/documents');
+//           return;
+//         }
+
+//         // If they try to type a blocked URL, gently push them to the blank settings page
+//         if (pathname.includes('/branding') && !hasBranding) {
+//           router.push('/settings');
+//           return;
+//         }
+//         if (pathname.includes('/watermark') && !hasWatermark) {
+//           router.push('/settings');
+//           return;
+//         }
+
+//         setPerms({ settings: !!hasSettings, branding: !!hasBranding, watermark: !!hasWatermark, nda: !!hasSettings });
+//       } else {
+//         router.push('/documents');
+//         return;
+//       }
+
+//       setLoading(false);
+//     };
+
+//     verifyAccess();
+//   }, [pathname, router]);
+
+//   if (loading) {
+//     return (
+//       <div className="flex h-screen w-full bg-[#F8FAFC]">
+//         <MainSidebar />
+//         <div className="flex-1 flex items-center justify-center">
+//           <div className="flex flex-col items-center gap-3">
+//             <div className="w-10 h-10 border-4 border-[var(--brand)]/20 border-t-[var(--brand)] rounded-full animate-spin"></div>
+//             <p className="text-sm text-slate-400 font-medium">Loading settings…</p>
+//           </div>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   if (!perms.settings) return null;
+
+//   return (
+//     <div className="h-screen w-full bg-[#F8FAFC] flex overflow-hidden font-sans relative">
+//       {/* Top gradient overlay */}
+//       <div className="absolute top-0 left-0 w-full h-80 bg-gradient-to-b from-[var(--brand)]/8 to-transparent pointer-events-none z-0"></div>
+
+//       <MainSidebar />
+
+//       {/* VERTICAL SETTINGS SIDEBAR */}
+//       <div className="w-64 bg-white/90 backdrop-blur-xl border-r border-gray-200/80 flex flex-col shrink-0 z-10 shadow-[4px_0_24px_rgba(28,127,159,0.06)]">
+//         {/* Sidebar Header with PiBi accent */}
+//         <div className="p-6 border-b border-gray-100/80">
+//           <div className="flex items-center gap-3 mb-1">
+//             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--brand)] to-[var(--brand-secondary)] flex items-center justify-center shadow-sm">
+//               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+//             </div>
+//             <div>
+//               <h1 className="text-[15px] font-extrabold text-gray-900 tracking-tight">Settings</h1>
+//               <p className="text-[11px] text-gray-400 font-medium">Workspace config</p>
+//             </div>
+//           </div>
+//         </div>
+
+//         <div className="flex flex-col p-3 gap-1 mt-1">
+//           {perms.branding && (
+//             <Link href="/settings/branding"
+//               className={`px-4 py-3 rounded-xl text-[13px] font-semibold transition-all duration-300 flex items-center gap-3 group ${
+//                 pathname.includes('/branding')
+//                   ? 'bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white shadow-md shadow-[0_8px_30px_rgba(var(--brand-rgb),0.14)]'
+//                   : 'text-gray-600 hover:bg-[var(--brand)]/8 hover:text-[var(--brand)]'
+//               }`}>
+//               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
+//               Branding & Identity
+//             </Link>
+//           )}
+
+//           {perms.watermark && (
+//             <Link href="/settings/watermark"
+//               className={`px-4 py-3 rounded-xl text-[13px] font-semibold transition-all duration-300 flex items-center gap-3 group ${
+//                 pathname.includes('/watermark')
+//                   ? 'bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white shadow-md shadow-[0_8px_30px_rgba(var(--brand-rgb),0.14)]'
+//                   : 'text-gray-600 hover:bg-[var(--brand)]/8 hover:text-[var(--brand)]'
+//               }`}>
+//               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><path d="M3 9h18" /><path d="M9 21V9" /></svg>
+//               Document Watermarks
+//             </Link>
+//           )}
+
+//           {perms.nda && (
+//             <Link href="/settings/nda"
+//               className={`px-4 py-3 rounded-xl text-[13px] font-semibold transition-all duration-300 flex items-center gap-3 group ${
+//                 pathname.includes('/nda')
+//                   ? 'bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white shadow-md shadow-[0_8px_30px_rgba(var(--brand-rgb),0.14)]'
+//                   : 'text-gray-600 hover:bg-[var(--brand)]/8 hover:text-[var(--brand)]'
+//               }`}>
+//               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+//               NDA
+//             </Link>
+//           )}
+
+//           {!perms.branding && !perms.watermark && !perms.nda && (
+//             <div className="px-4 py-6 text-center text-xs text-gray-400 font-medium border-2 border-dashed border-gray-100 rounded-xl">
+//               No menu options assigned
+//             </div>
+//           )}
+//         </div>
+//       </div>
+
+//       {/* ACTUAL PAGE CONTENT */}
+//       <div className="flex-1 overflow-y-auto relative z-10">
+//         {children}
+//       </div>
+//     </div>
+//   );
+// }
