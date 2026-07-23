@@ -32,6 +32,8 @@ function ViewOnlyContent() {
 
   const [fileType, setFileType] = useState("unknown");
   const [fileUrl, setFileUrl] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [numPages, setNumPages] = useState(0);
 
   useEffect(() => {
     if (!docId) {
@@ -117,6 +119,13 @@ function ViewOnlyContent() {
     );
   }
 
+  const goToPage = (n) => {
+    if (n < 1 || (numPages > 0 && n > numPages)) return;
+    setCurrentPage(n);
+  };
+
+  const isMultiPage = numPages > 1;
+
   return (
     <div className="fixed inset-0 z-[100] bg-[#FAFBFD] flex flex-col overflow-hidden">
       {/* Header */}
@@ -133,67 +142,98 @@ function ViewOnlyContent() {
         </button>
       </div>
 
+      {/* Toolbar (Pagination) */}
+      {isMultiPage && (fileType === "xls" || fileType === "xlsx" || fileType === "csv" || fileType === "ppt" || fileType === "pptx") && (
+        <div className="w-full bg-white border-b border-slate-200 px-6 py-2 flex items-center justify-center gap-4 shadow-sm flex-shrink-0">
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage <= 1}
+            className="p-1.5 rounded-lg border border-slate-300 text-slate-600 disabled:opacity-30 hover:bg-slate-100 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <span className="text-xs font-semibold text-slate-600 w-24 text-center">
+            {fileType === "ppt" || fileType === "pptx" ? "Slide" : "Sheet"} {currentPage} / {numPages}
+          </span>
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage >= numPages}
+            className="p-1.5 rounded-lg border border-slate-300 text-slate-600 disabled:opacity-30 hover:bg-slate-100 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 w-full overflow-auto flex items-start justify-center p-6 bg-slate-50">
         <div className="w-full max-w-5xl bg-white border border-slate-200 rounded-xl shadow-sm min-h-[500px] flex overflow-hidden">
           
           {fileType === "word" && fileUrl && (
-            <WordViewer
-              url={fileUrl}
-              scale={1.5}
-              searchQuery=""
-              onNumPages={() => {}}
-              tool="pointer"
-              selections={[]}
-              onAddSelection={() => {}}
-              onRemoveSelection={() => {}}
-              onUpdateSelection={() => {}}
-            />
+            <div className="w-full relative">
+              <WordViewer
+                url={fileUrl}
+                scale={1.5}
+                searchQuery=""
+                onNumPages={(n) => setNumPages(n)}
+                tool="pointer"
+                selections={[]}
+                onAddSelection={() => {}}
+                onRemoveSelection={() => {}}
+                onUpdateSelection={() => {}}
+              />
+            </div>
           )}
 
           {(fileType === "xls" || fileType === "xlsx" || fileType === "csv") && fileUrl && (
-            <ExcelViewer
-              url={fileUrl}
-              currentPage={0}
-              scale={1.5}
-              searchQuery=""
-              onNumPages={() => {}}
-              tool="pointer"
-              selections={[]}
-              onAddSelection={() => {}}
-              onRemoveSelection={() => {}}
-              onUpdateSelection={() => {}}
-            />
+            <div className="w-full relative">
+              <ExcelViewer
+                url={fileUrl}
+                currentPage={currentPage - 1}
+                scale={1.5}
+                searchQuery=""
+                onNumPages={(n) => { setNumPages(n); setCurrentPage(1); }}
+                tool="pointer"
+                selections={[]}
+                onAddSelection={() => {}}
+                onRemoveSelection={() => {}}
+                onUpdateSelection={() => {}}
+              />
+            </div>
           )}
 
           {(fileType === "ppt" || fileType === "pptx") && fileUrl && (
-            <PowerPointViewer
-              url={fileUrl}
-              fileExt={fileType}
-              currentPage={0}
-              scale={1.5}
-              searchQuery=""
-              onNumPages={() => {}}
-              tool="pointer"
-              selections={[]}
-              onAddSelection={() => {}}
-              onRemoveSelection={() => {}}
-              onUpdateSelection={() => {}}
-            />
+            <div className="w-full relative">
+              <PowerPointViewer
+                url={fileUrl}
+                fileExt={fileType}
+                currentPage={currentPage - 1}
+                scale={1.5}
+                searchQuery=""
+                onNumPages={(n) => { setNumPages(n); setCurrentPage(1); }}
+                tool="pointer"
+                selections={[]}
+                onAddSelection={() => {}}
+                onRemoveSelection={() => {}}
+                onUpdateSelection={() => {}}
+              />
+            </div>
           )}
 
           {fileType === "text" && fileUrl && (
-            <TextViewer
-              url={fileUrl}
-              scale={1.5}
-              searchQuery=""
-              onNumPages={() => {}}
-              tool="pointer"
-              selections={[]}
-              onAddSelection={() => {}}
-              onRemoveSelection={() => {}}
-              onUpdateSelection={() => {}}
-            />
+            <div className="w-full relative">
+              <TextViewer
+                url={fileUrl}
+                scale={1.5}
+                searchQuery=""
+                onNumPages={(n) => setNumPages(n)}
+                tool="pointer"
+                selections={[]}
+                onAddSelection={() => {}}
+                onRemoveSelection={() => {}}
+                onUpdateSelection={() => {}}
+              />
+            </div>
           )}
 
           {fileType === "pdf" && fileUrl && (
