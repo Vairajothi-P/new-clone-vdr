@@ -840,12 +840,12 @@ function DocumentViewerContent() {
           const navDisabledPrev = currentPage <= 1;
           const navDisabledNext = currentPage >= numPages;
           const searchDisabled = fileType === "image";
-          const selectionDisabled = fileType !== "pdf";
-
           const pageLabel =
             (fileType === "xls" || fileType === "xlsx" || fileType === "csv") ? "Sheet" :
             fileType === "pptx" || fileType === "ppt" ? "Slide" :
             "Page";
+
+          const selectionDisabled = fileType === "image" || fileType === "unknown";
 
           return (
             <>
@@ -891,9 +891,10 @@ function DocumentViewerContent() {
 
               {/* Selection Tool */}
               <button
-                onClick={() => setTool(tool === "select" ? "pointer" : "select")}
-                title="Selection Tool"
-                style={toolbarBtnStyle(tool === "select")}
+                onClick={() => !selectionDisabled && setTool(tool === "select" ? "pointer" : "select")}
+                title={selectionDisabled ? "Selection tool is not supported for images" : "Selection Tool"}
+                disabled={selectionDisabled}
+                style={toolbarBtnStyle(tool === "select" && !selectionDisabled, selectionDisabled)}
               >
                 <FaMousePointer size={13} />
                 <span style={{ fontSize: "11px", marginLeft: "4px" }}>Selection</span>
