@@ -207,6 +207,8 @@ function UnifiedWorkspace() {
 
             await executeBackendAction('create_folder', { parentId: currentFolderId, name: newFolderName.trim(), index: newIndex });
             await loadData();
+            // Auto-reindex: ensures new folder fits perfectly in sequence
+            await executeRebuildIndex();
             setNewFolderName(''); setIsNewFolderOpen(false);
             showToast('Folder Created');
         } catch (err) { showToast("Failed to create folder", "error"); }
@@ -235,6 +237,8 @@ function UnifiedWorkspace() {
             
             await executeBackendAction('trash', { docIds, folderIds });
             await loadData();
+            // Auto-reindex: remaining siblings shift up to fill gaps
+            await executeRebuildIndex();
             setSelectedIds(new Set());
             setIsDeleteModalOpen(false);
             showToast('Moved to Trash');
@@ -247,6 +251,8 @@ function UnifiedWorkspace() {
             const folderIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type === 'folder');
             await executeBackendAction('recover', { docIds, folderIds });
             await loadData();
+            // Auto-reindex: restored items get proper sequential indexes
+            await executeRebuildIndex();
             setSelectedIds(new Set());
             showToast('Recovered files');
         } catch (err) { showToast('Recover failed', 'error'); }
@@ -258,6 +264,8 @@ function UnifiedWorkspace() {
             const folderIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type === 'folder');
             await executeBackendAction('permanent_delete', { docIds, folderIds });
             await loadData();
+            // Auto-reindex: heal gaps left by permanently deleted items
+            await executeRebuildIndex();
             setSelectedIds(new Set());
             setIsPermDeleteModalOpen(false);
             showToast('Deleted permanently');
@@ -268,8 +276,12 @@ function UnifiedWorkspace() {
         try {
             const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
             const folderIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type === 'folder');
-            await executeBackendAction('move', { docIds, folderIds, targetFolderId: movingToFolderId === 'root' ? null : movingToFolderId });
+            const targetFolderId = movingToFolderId === 'root' ? null : movingToFolderId;
+
+            await executeBackendAction('move', { docIds, folderIds, targetFolderId });
             await loadData();
+            // Auto-reindex: heals source folder gaps + assigns correct indexes in destination
+            await executeRebuildIndex();
             setSelectedIds(new Set());
             setIsMoveModalOpen(false);
             showToast('Moved items');
@@ -285,7 +297,10 @@ function UnifiedWorkspace() {
         let prefix = '';
         if (currentFolderId) {
             const parentFolder = files.find(f => f.id === currentFolderId);
-            if (parentFolder && parentFolder.index && parentFolder.index !== '99') prefix = `${parentFolder.index}.`;
+            if (parentFolder) {
+                const pDisplay = getActiveDisplayIndex(parentFolder);
+                if (pDisplay && pDisplay !== '—' && pDisplay !== '99') prefix = `${pDisplay}.`;
+            }
         }
 
         const peers = files.filter(f => f.parentId === currentFolderId && !deletedIds.has(f.id));
@@ -302,7 +317,7 @@ function UnifiedWorkspace() {
                 formData.append('company_id', session.company_id);
                 formData.append('folder_id', currentFolderId || '');
                 formData.append('uploaded_by', session.id);
-                formData.append('index', `${prefix}${nextIndex}`);
+                formData.append('index', `${prefix}${nextIndex + i}`);
 
                 const res = await fetch('/api/documents/upload', { method: 'POST', body: formData });
                 if (!res.ok) throw new Error('Server conversion failed');
@@ -314,7 +329,9 @@ function UnifiedWorkspace() {
         }
         setTimeout(async () => {
             setUploadQueue([]); setIsUploadModalOpen(false);
-            await loadData(); // Reload UI data from DB
+            await loadData();
+            // Auto-reindex: guarantees gap-free numbering even with multi-user uploads
+            await executeRebuildIndex();
             showToast("Uploads Complete");
         }, 1500);
     };
@@ -405,13 +422,17 @@ function UnifiedWorkspace() {
         const sourceItem = files.find(f => f.id === sourceId);
         if (!sourceItem || sourceItem.parentId === folderId) return;
 
+        const targetFolderId = folderId === 'root' ? null : folderId;
+
         try {
             await executeBackendAction('move', { 
                 docIds: sourceItem.type !== 'folder' ? [sourceId] : [], 
                 folderIds: sourceItem.type === 'folder' ? [sourceId] : [], 
-                targetFolderId: folderId === 'root' ? null : folderId 
+                targetFolderId 
             });
             await loadData();
+            // Auto-reindex: heals source folder gaps + assigns correct indexes in destination
+            await executeRebuildIndex();
             showToast('Moved successfully ✓');
         } catch (err) { showToast('Failed to move', 'error'); }
     };
@@ -421,17 +442,111 @@ function UnifiedWorkspace() {
         e.preventDefault();
         const sourceId = e.dataTransfer.getData('text/plain');
         if (!sourceId || sourceId === targetItem.id) return;
-        
-        // Let handleDropToFolder handle putting items INTO folders
+
+        const sourceItem = files.find(f => f.id === sourceId);
+        if (!sourceItem) return;
+
+        // If dropping ON a folder — move inside it
         if (targetItem.type === 'folder') {
-             handleDropToFolder(e, targetItem.id);
-             return;
+            handleDropToFolder(e, targetItem.id);
+            return;
         }
 
-        // For reordering among siblings, we trigger loadData later if we want server-side reindexing.
-        // (Assuming you will implement a true backend reindex later, for now we will just refresh)
-        showToast('Sorting is managed by indexing on backend', 'success');
-        await loadData(); 
+        // Reorder among siblings
+        const updatedFiles = files.map(f => ({ ...f }));
+        const sourceIdxInUpdated = updatedFiles.findIndex(f => f.id === sourceId);
+
+        let newParentId = targetItem.parentId;
+
+        if (updatedFiles[sourceIdxInUpdated].parentId !== newParentId) {
+            updatedFiles[sourceIdxInUpdated].parentId = newParentId;
+            updatedFiles[sourceIdxInUpdated].index = '999999';
+        }
+
+        const siblings = updatedFiles.filter(f => f.parentId === newParentId && !deletedIds.has(f.id)).sort(sortItemsByIndex);
+        const sourceIdx = siblings.findIndex(f => f.id === sourceId);
+        const targetIdx = siblings.findIndex(f => f.id === targetItem.id);
+
+        if (sourceIdx !== -1 && targetIdx !== -1) {
+            const newSiblings = [...siblings];
+            const [removed] = newSiblings.splice(sourceIdx, 1);
+            newSiblings.splice(targetIdx, 0, removed);
+
+            newSiblings.forEach((sib, i) => {
+                const fIdx = updatedFiles.findIndex(x => x.id === sib.id);
+                if (fIdx > -1) {
+                    updatedFiles[fIdx].index = (i + 1).toString();
+                }
+            });
+        }
+
+        setFiles(updatedFiles);
+
+        try {
+            await executeRebuildIndex(updatedFiles, deletedIds, false);
+            showToast('Order updated ✓');
+        } catch (err) {
+            showToast('Failed to update order: ' + err.message, 'error');
+        }
+    };
+
+    // ── REBUILD INDEX (adapted for route.js backend) ───────────────────────────
+    const executeRebuildIndex = async (overrideFiles = null, overrideDeletedIds = null, shouldReload = true) => {
+        try {
+            // Guard: only accept real arrays/Sets, never event objects
+            const currentFiles = Array.isArray(overrideFiles) ? overrideFiles : files;
+            const currentDeletedIds = overrideDeletedIds instanceof Set ? overrideDeletedIds : deletedIds;
+
+            // Only active (non-deleted) items
+            const activeItems = currentFiles.filter(f => !currentDeletedIds.has(f.id));
+
+            // Group by parent
+            const byParent = {};
+            activeItems.forEach(f => {
+                const pId = f.parentId || 'root';
+                if (!byParent[pId]) byParent[pId] = [];
+                byParent[pId].push(f);
+            });
+
+            // Sort each group: folders first, then by existing index
+            Object.values(byParent).forEach(group => group.sort(sortItemsByIndex));
+
+            const folderUpdates = [];
+            const docUpdates = [];
+            const localUpdates = new Map();
+
+            // Recursively assign sequential hierarchical indexes
+            const assignIndexes = (parentId, prefix) => {
+                const group = byParent[parentId] || [];
+                group.forEach((item, idx) => {
+                    const newIndex = prefix ? `${prefix}.${idx + 1}` : `${idx + 1}`;
+                    if (item.type === 'folder') {
+                        folderUpdates.push({ id: item.id, index_number: idx + 1 });
+                        localUpdates.set(item.id, (idx + 1).toString());
+                        assignIndexes(item.id, newIndex);
+                    } else {
+                        docUpdates.push({ id: item.id, index: newIndex });
+                        localUpdates.set(item.id, newIndex);
+                    }
+                });
+            };
+            assignIndexes('root', '');
+
+            // Send bulk updates to backend via route.js
+            await executeBackendAction('reindex', { folderUpdates, docUpdates });
+
+            if (shouldReload) {
+                await loadData();
+            } else {
+                setFiles(prev => prev.map(f => {
+                    if (localUpdates.has(f.id)) return { ...f, index: localUpdates.get(f.id) };
+                    return f;
+                }));
+            }
+        } catch (err) {
+            console.error('Rebuild Index failed:', err);
+            showToast('Failed to rebuild index: ' + err.message, 'error');
+        }
     };
 
     // UI RENDERING LOGIC
