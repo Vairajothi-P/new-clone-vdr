@@ -193,6 +193,7 @@ export default function PowerPointViewer({
             const blocks = slideContainerRef.current.querySelectorAll("[data-block-index]");
             const blockIndices = [];
             const matchedTexts = [];
+            const exactMatches = []; // Store exact matched strings for each block
 
             blocks.forEach((block) => {
               const rect = block.getBoundingClientRect();
@@ -202,6 +203,10 @@ export default function PowerPointViewer({
               if (rectsOverlap({ x: rx, y: ry, w: rect.width, h: rect.height }, rawSel)) {
                 blockIndices.push(parseInt(block.getAttribute("data-block-index") || "0", 10));
                 matchedTexts.push(block.textContent || "");
+                
+                // Now find exact overlapping text nodes inside this block
+                const exactMatch = collectTextNodesInBox(block, rawSel, wrapperRect);
+                exactMatches.push(exactMatch ? exactMatch.matchedText : null);
               }
             });
 
@@ -211,6 +216,7 @@ export default function PowerPointViewer({
                 slideIndex,
                 blockIndices,
                 matchedTexts,
+                exactMatches,
                 replacement: "████████",
               };
             }
@@ -405,4 +411,75 @@ function rectsOverlap(a, b) {
     a.y < b.y + b.h &&
     a.y + a.h > b.y
   );
+}
+
+function collectTextNodesInBox(container, sel, wrapperRect) {
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      if (!node.nodeValue?.trim()) return NodeFilter.FILTER_SKIP;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+
+  const parts = [];
+  let node;
+
+  while ((node = walker.nextNode())) {
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const rects = range.getClientRects();
+      
+      let nodeOverlaps = false;
+      for (const r of rects) {
+        const rx = r.left - wrapperRect.left;
+        const ry = r.top - wrapperRect.top;
+        if (rectsOverlap({ x: rx, y: ry, w: r.width, h: r.height }, sel)) {
+          nodeOverlaps = true;
+          break;
+        }
+      }
+
+      if (nodeOverlaps) {
+        const text = node.nodeValue;
+        let minOffset = text.length;
+        let maxOffset = -1;
+        
+        for (let i = 0; i < text.length; i++) {
+          if (/\s/.test(text[i])) continue;
+          
+          range.setStart(node, i);
+          range.setEnd(node, i + 1);
+          
+          const charRects = range.getClientRects();
+          let charOverlaps = false;
+          
+          for (let j = 0; j < charRects.length; j++) {
+            const cr = charRects[j];
+            const crx = cr.left - wrapperRect.left;
+            const cry = cr.top - wrapperRect.top;
+            
+            if (rectsOverlap({ x: crx, y: cry, w: cr.width, h: cr.height }, sel)) {
+              charOverlaps = true;
+              break;
+            }
+          }
+          
+          if (charOverlaps) {
+            if (i < minOffset) minOffset = i;
+            if (i > maxOffset) maxOffset = i;
+          }
+        }
+        
+        if (maxOffset >= minOffset) {
+          parts.push(text.substring(minOffset, maxOffset + 1));
+        }
+      }
+    } catch {
+      // Ignore Range API errors on detached nodes
+    }
+  }
+
+  const matchedText = parts.length > 0 ? parts.join(" ") : null;
+  return matchedText ? { matchedText } : null;
 }

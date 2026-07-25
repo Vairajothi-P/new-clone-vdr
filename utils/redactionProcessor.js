@@ -44,18 +44,57 @@ export async function applyNativeRedactions(fileBytes, fileExt, selections) {
 function applyTextRedaction(fileBytes, selections) {
   const decoder = new TextDecoder("utf-8");
   let text = decoder.decode(fileBytes);
+  
+  let chars = Array.from(text);
 
   for (const sel of selections) {
     const target = sel.redactionTarget;
     if (target?.type === "text" && target.matchedText) {
-      // Global replacement in text
-      const regex = new RegExp(escapeRegExp(target.matchedText), "g");
-      text = text.replace(regex, target.replacement || "████████");
+      const searchChars = Array.from(target.matchedText).filter(c => !/\s/.test(c));
+      if (searchChars.length === 0) continue;
+      
+      let occurrenceCount = 0;
+      let targetOccurrence = target.matchOccurrenceIndex !== undefined ? target.matchOccurrenceIndex : -1;
+
+      for (let i = 0; i <= chars.length - searchChars.length; i++) {
+        // Skip searching if current char is whitespace
+        if (/\s/.test(chars[i])) continue;
+
+        let match = true;
+        let pSearch = 0;
+        let pDoc = i;
+
+        while (pSearch < searchChars.length && pDoc < chars.length) {
+          if (/\s/.test(chars[pDoc])) {
+            pDoc++;
+            continue;
+          }
+          if (chars[pDoc] !== searchChars[pSearch]) {
+            match = false;
+            break;
+          }
+          pSearch++;
+          pDoc++;
+        }
+
+        if (match && pSearch === searchChars.length) {
+          if (targetOccurrence === -1 || occurrenceCount === targetOccurrence) {
+            chars[i] = target.replacement || "████████";
+            for (let j = i + 1; j < pDoc; j++) {
+              if (!/\s/.test(chars[j])) {
+                 chars[j] = "";
+              }
+            }
+            if (targetOccurrence !== -1) break;
+          }
+          occurrenceCount++;
+        }
+      }
     }
   }
 
   const encoder = new TextEncoder();
-  return encoder.encode(text);
+  return encoder.encode(chars.join(""));
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -138,21 +177,85 @@ async function applyPowerPointRedaction(fileBytes, selections) {
         if (textContent) {
           // Check if this block index is targeted by any selection
           for (const target of targets) {
-            if (target.blockIndices && target.blockIndices.includes(globalBlockIndex)) {
-              // Found a match. Replace all text in this paragraph.
-              // We preserve formatting by keeping the first <a:r> (run) and its <a:rPr> (run properties),
-              // setting its <a:t> to "████████", and removing subsequent runs.
-              const allRuns = p.querySelectorAll("r");
-              let first = true;
-              allRuns.forEach(r => {
-                if (first) {
-                  const tNode = r.querySelector("t");
-                  if (tNode) tNode.textContent = target.replacement || "████████";
-                  first = false;
-                } else {
-                  r.parentNode.removeChild(r);
+            const targetIdx = target.blockIndices ? target.blockIndices.indexOf(globalBlockIndex) : -1;
+            if (targetIdx !== -1) {
+              const exactMatch = target.exactMatches ? target.exactMatches[targetIdx] : null;
+
+              if (!exactMatch) {
+                // Fallback: Replace all text in this paragraph.
+                const allRuns = p.querySelectorAll("r");
+                let first = true;
+                allRuns.forEach(r => {
+                  if (first) {
+                    const tNode = r.querySelector("t");
+                    if (tNode) tNode.textContent = target.replacement || "████████";
+                    first = false;
+                  } else {
+                    r.parentNode.removeChild(r);
+                  }
+                });
+              } else {
+                // Precise substring replacement
+                const tNodes = Array.from(p.querySelectorAll("t"));
+                if (tNodes.length > 0) {
+                  let fullText = "";
+                  const charMap = [];
+
+                  for (const node of tNodes) {
+                    const text = node.textContent || "";
+                    for (let i = 0; i < text.length; i++) {
+                      charMap.push({ node, localIndex: i });
+                    }
+                    fullText += text;
+                  }
+
+                  const searchChars = Array.from(exactMatch).filter(c => !/\s/.test(c));
+                  if (searchChars.length > 0) {
+                    for (let i = 0; i <= charMap.length - searchChars.length; i++) {
+                      if (/\s/.test(fullText[i])) continue;
+
+                      let match = true;
+                      let pSearch = 0;
+                      let pDoc = i;
+
+                      while (pSearch < searchChars.length && pDoc < charMap.length) {
+                        const docChar = fullText[pDoc];
+                        if (/\s/.test(docChar)) {
+                          pDoc++;
+                          continue;
+                        }
+                        if (docChar !== searchChars[pSearch]) {
+                          match = false;
+                          break;
+                        }
+                        pSearch++;
+                        pDoc++;
+                      }
+
+                      if (match && pSearch === searchChars.length) {
+                        for (let j = i; j < pDoc; j++) {
+                          const mapInfo = charMap[j];
+                          if (mapInfo.node.textContent) {
+                            if (!mapInfo.node._replacementChars) {
+                              mapInfo.node._replacementChars = Array.from(mapInfo.node.textContent);
+                            }
+                            if (!/\s/.test(fullText[j])) {
+                              mapInfo.node._replacementChars[mapInfo.localIndex] = (j === i) ? target.replacement || "████████" : "";
+                            }
+                          }
+                        }
+                      }
+                    }
+
+                    for (const node of tNodes) {
+                      if (node._replacementChars) {
+                        node.textContent = node._replacementChars.join("");
+                        delete node._replacementChars;
+                      }
+                    }
+                  }
                 }
-              });
+              }
               break;
             }
           }
@@ -231,8 +334,16 @@ async function applyWordRedaction(fileBytes, selections) {
       const searchChars = Array.from(searchStr).filter(c => !/\s/.test(c));
       if (searchChars.length === 0) continue;
 
+      let occurrenceCount = 0;
+      let targetOccurrence = target.matchOccurrenceIndex !== undefined ? target.matchOccurrenceIndex : -1;
+
       // Sliding window search across the charMap
       for (let i = 0; i <= charMap.length - searchChars.length; i++) {
+        // Optimization: skip if current char is whitespace
+        if (/\s/.test(fullText[charMap[i].localIndex])) continue; // Wait, charMap[i] points to fullText? fullText[i] is the char!
+        // The array is charMap. length of charMap == length of fullText.
+        if (/\s/.test(fullText[i])) continue;
+
         let match = true;
         let pSearch = 0;
         let pDoc = i;
@@ -252,24 +363,30 @@ async function applyWordRedaction(fileBytes, selections) {
         }
 
         if (match && pSearch === searchChars.length) {
-          // Found a match from index `i` to `pDoc - 1`
-          // We apply the replacement string to the FIRST character's node,
-          // and delete the characters from the rest.
-          const replaceChar = "█";
+          if (targetOccurrence === -1 || occurrenceCount === targetOccurrence) {
+            // Found a match from index `i` to `pDoc - 1`
+            // We apply the replacement string to the FIRST character's node,
+            // and delete the characters from the rest.
+            const replaceChar = "█";
 
-          for (let j = i; j < pDoc; j++) {
-            const mapInfo = charMap[j];
-            if (mapInfo.node.textContent) {
-              // We'll process replacements by modifying a tracked array of strings per node
-              if (!mapInfo.node._replacementChars) {
-                mapInfo.node._replacementChars = Array.from(mapInfo.node.textContent);
+            for (let j = i; j < pDoc; j++) {
+              const mapInfo = charMap[j];
+              if (mapInfo.node.textContent) {
+                // We'll process replacements by modifying a tracked array of strings per node
+                if (!mapInfo.node._replacementChars) {
+                  mapInfo.node._replacementChars = Array.from(mapInfo.node.textContent);
+                }
+                // Replace the first character of the match with the full replacement block
+                // and the rest with empty strings.
+                if (!/\s/.test(fullText[j])) {
+                  mapInfo.node._replacementChars[mapInfo.localIndex] = (j === i) ? target.replacement || "████████" : "";
+                }
               }
-              // Replace the first character of the match with the full replacement block
-              // and the rest with empty strings.
-              mapInfo.node._replacementChars[mapInfo.localIndex] = (j === i) ? target.replacement || "████████" : "";
             }
+            modified = true;
+            if (targetOccurrence !== -1) break;
           }
-          modified = true;
+          occurrenceCount++;
         }
       }
     }

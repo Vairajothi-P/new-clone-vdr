@@ -9,81 +9,80 @@ const supabase = createClient(
 export async function POST(req) {
     try {
         const { action, session, payload } = await req.json();
-        if (!session || !session.company_id) {
+        
+        // Use payload.company_id if session is missing for fallback
+        const companyId = session?.company_id || payload?.company_id;
+        
+        if (!companyId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const companyId = session.company_id;
-
         // ─── 1. FETCH BRANDING DATA ───
         if (action === 'fetch') {
-            const { data: compData } = await supabase
-                .from('companies')
-                .select('name, primary_color')
-                .eq('id', companyId)
+            const { data: wsData, error } = await supabase
+                .from('workspace_settings')
+                .select('*')
+                .eq('company_id', companyId)
+                .limit(1)
                 .single();
 
-            const { data: wsData } = await supabase
-                .from('workspace_settings')
-                .select('logo_url')
-                .eq('company_id', companyId)
-                .single();
+            if (error && error.code !== 'PGRST116') {
+                throw error;
+            }
 
             return NextResponse.json({
                 success: true,
-                branding: {
-                    name: compData?.name || '',
-                    primary_color: compData?.primary_color || '#1c7f9f',
-                    logo_url: wsData?.logo_url || ''
-                }
+                data: wsData || null
             });
         }
 
         // ─── 2. SAVE BRANDING DATA ───
         if (action === 'save') {
-            const { name, primary_color, logoBase64, logoMime, logoName } = payload;
-            let logoUrl = payload.logo_url;
+            let finalLogoPath = payload.logo_url;
 
-            // If a new logo was uploaded, store it in the 'vdr-logos' bucket
-            if (logoBase64 && logoName) {
-                const ext = logoName.split('.').pop();
-                const fileName = `${companyId}_brand_${Date.now()}.${ext}`;
-                const buffer = Buffer.from(logoBase64, 'base64');
+            // If a new logo was uploaded via base64
+            if (payload.logoBase64 && payload.logoName) {
+                const ext = payload.logoName.split('.').pop();
+                const fileName = `brand_${companyId}_${Date.now()}.${ext}`;
+                const buffer = Buffer.from(payload.logoBase64, 'base64');
 
                 const { error: uploadErr } = await supabase.storage
                     .from('vdr-logos')
-                    .upload(fileName, buffer, { contentType: logoMime, upsert: true });
+                    .upload(fileName, buffer, { contentType: payload.logoMime, upsert: true });
 
                 if (uploadErr) throw uploadErr;
 
-                const { data: publicUrlData } = supabase.storage.from('vdr-logos').getPublicUrl(fileName);
-                logoUrl = publicUrlData?.publicUrl || fileName;
+                finalLogoPath = fileName;
             }
 
-            // Update companies table (name, color)
-            if (name !== undefined || primary_color !== undefined) {
-                await supabase.from('companies').update({
-                    ...(name !== undefined && { name }),
-                    ...(primary_color !== undefined && { primary_color })
-                }).eq('id', companyId);
-            }
+            const dbPayload = {};
+            if (companyId !== undefined) dbPayload.company_id = companyId;
+            if (payload.brand_name !== undefined) dbPayload.brand_name = payload.brand_name;
+            if (finalLogoPath !== undefined) dbPayload.logo_url = finalLogoPath;
+            if (payload.active_theme !== undefined) dbPayload.active_theme = payload.active_theme;
+            if (payload.admin_name !== undefined) dbPayload.admin_name = payload.admin_name;
+            if (payload.admin_email !== undefined) dbPayload.admin_email = payload.admin_email;
+            if (payload.admin_phone !== undefined) dbPayload.admin_phone = payload.admin_phone;
 
-            // Update or Insert into workspace_settings table (logo_url)
-            if (logoUrl !== undefined) {
-                const { data: existingWs } = await supabase
+            let resultRecordId = payload.recordId;
+            
+            if (resultRecordId) {
+                const { error } = await supabase
                     .from('workspace_settings')
-                    .select('id')
-                    .eq('company_id', companyId)
+                    .update(dbPayload)
+                    .eq('id', resultRecordId);
+                if (error) throw error;
+            } else {
+                const { data, error } = await supabase
+                    .from('workspace_settings')
+                    .insert(dbPayload)
+                    .select()
                     .single();
-
-                if (existingWs) {
-                    await supabase.from('workspace_settings').update({ logo_url: logoUrl }).eq('company_id', companyId);
-                } else {
-                    await supabase.from('workspace_settings').insert({ company_id: companyId, logo_url: logoUrl });
-                }
+                if (error) throw error;
+                if (data) resultRecordId = data.id;
             }
 
-            return NextResponse.json({ success: true, logo_url: logoUrl });
+            return NextResponse.json({ success: true, logo_url: finalLogoPath, recordId: resultRecordId });
         }
 
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });

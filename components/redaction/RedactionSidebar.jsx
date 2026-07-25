@@ -13,11 +13,11 @@ export default function RedactionSidebar() {
       href: "/redaction/documents",
       icon: <FaFileAlt className="w-5 h-5" />,
     },
-    // {
-    //   name: "Upload",
-    //   href: "/redaction/upload",
-    //   icon: <FaUpload className="w-5 h-5" />,
-    // },
+    {
+      name: "Upload",
+      href: "/redaction/upload",
+      icon: <FaUpload className="w-5 h-5" />,
+    },
     {
       name: "Redacted Files",
       href: "/redaction/redacted",

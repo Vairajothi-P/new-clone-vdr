@@ -177,16 +177,17 @@ export default function WordViewer({
           const wrapperRect = containerRef.current.parentElement?.getBoundingClientRect();
 
           if (wrapperRect) {
-            const matchedText = collectTextNodesInBox(
+            const matchInfo = collectTextNodesInBox(
               containerRef.current,
               rawSel,
               wrapperRect
             );
 
-            if (matchedText) {
+            if (matchInfo && matchInfo.matchedText) {
               enriched.redactionTarget = {
                 type: "word",
-                matchedText,
+                matchedText: matchInfo.matchedText,
+                matchOccurrenceIndex: matchInfo.matchOccurrenceIndex,
                 replacement: "████████",
               };
             }
@@ -300,6 +301,8 @@ function collectTextNodesInBox(container, sel, wrapperRect) {
 
   const parts = [];
   let node;
+  let globalTextPrefix = "";
+  let matchStartGlobalOffset = -1;
 
   while ((node = walker.nextNode())) {
     try {
@@ -317,14 +320,13 @@ function collectTextNodesInBox(container, sel, wrapperRect) {
         }
       }
 
+      const text = node.nodeValue;
+
       if (nodeOverlaps) {
-        const text = node.nodeValue;
         let minOffset = text.length;
         let maxOffset = -1;
         
-        // Character by character measurement for precise selection
         for (let i = 0; i < text.length; i++) {
-          // Skip whitespace for bounding box checks to save time
           if (/\s/.test(text[i])) continue;
           
           range.setStart(node, i);
@@ -351,16 +353,39 @@ function collectTextNodesInBox(container, sel, wrapperRect) {
         }
         
         if (maxOffset >= minOffset) {
-          // We found the exact continuous range of characters that overlap!
+          if (matchStartGlobalOffset === -1) {
+            matchStartGlobalOffset = globalTextPrefix.length + minOffset;
+          }
           parts.push(text.substring(minOffset, maxOffset + 1));
         }
       }
+      
+      globalTextPrefix += text;
     } catch {
       // Ignore Range API errors on detached / shadow-DOM nodes
     }
   }
 
-  return parts.length > 0 ? parts.join(" ") : null;
+  const matchedText = parts.length > 0 ? parts.join(" ") : null;
+  if (!matchedText) return null;
+
+  // Calculate occurrence index based on non-whitespace text
+  const strippedDocBeforeMatch = globalTextPrefix.substring(0, matchStartGlobalOffset).replace(/\s/g, "");
+  const strippedMatch = matchedText.replace(/\s/g, "");
+  
+  // We need to count how many times strippedMatch could have matched before this point.
+  // Let's just collect all text to find the full occurrence count.
+  // Actually, wait, globalTextPrefix currently contains the entire document because the while loop finishes!
+  const fullStrippedDoc = globalTextPrefix.replace(/\s/g, "");
+  
+  let matchOccurrenceIndex = 0;
+  let idx = fullStrippedDoc.indexOf(strippedMatch);
+  while (idx !== -1 && idx < strippedDocBeforeMatch.length) {
+    matchOccurrenceIndex++;
+    idx = fullStrippedDoc.indexOf(strippedMatch, idx + 1);
+  }
+
+  return { matchedText, matchOccurrenceIndex };
 }
 
 /** True when rectangle a and rectangle b overlap (all coords: x,y = top-left). */
