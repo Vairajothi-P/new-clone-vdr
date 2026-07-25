@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
-const DEFAULT_ATTRIBUTES = { userName: true, email: true, cmplogo: false, cmpname: false };
+const DEFAULT_ATTRIBUTES = { userName: true, email: true, ip: false, date: false, cmplogo: false, cmpname: false };
 
 const DEFAULT_POSITIONS = {
   'top-left': true, 'top-center': false, 'top-right': false,
@@ -247,6 +247,8 @@ export default function WatermarkPage() {
     if (activeType === 'static') return [customText];
     const parts = [customText];
     if (emailText) parts.push(emailText);
+    if (attributes?.ip) parts.push('192.168.1.1');
+    if (attributes?.date) parts.push(new Date().toLocaleString());
     return parts.filter(Boolean);
   };
 
@@ -661,6 +663,21 @@ export default function WatermarkPage() {
                   <input type="email" value={emailText} onChange={e => setEmailText(e.target.value)}
                     placeholder="Enter email to display in watermark..."
                     className="w-full px-4 py-2.5 text-[15px] font-medium text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--brand)]/10 focus:border-[var(--brand)] transition-all" />
+                </div>
+              </div>
+
+              {/* Dynamic Variables */}
+              <div className="pt-4 border-t border-gray-100">
+                <label className="block text-[14px] font-bold text-gray-800 mb-3">Dynamic Variables</label>
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={attributes?.ip || false} onChange={e => setAttributes(a => ({ ...a, ip: e.target.checked }))} className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand" />
+                    <span className="text-sm font-medium text-gray-700">IP Address</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={attributes?.date || false} onChange={e => setAttributes(a => ({ ...a, date: e.target.checked }))} className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand" />
+                    <span className="text-sm font-medium text-gray-700">Date & Time</span>
+                  </label>
                 </div>
               </div>
 

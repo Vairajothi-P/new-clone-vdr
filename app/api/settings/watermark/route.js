@@ -22,6 +22,22 @@ export async function POST(req) {
             // Fetch templates
             const { data: templates } = await supabase.from('watermark_templates').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
 
+            // Safely map logo_path/logo_opacity/logo_position from attributes if they were saved there (schema cache workaround)
+            if (wmSettings && wmSettings.attributes) {
+                if (wmSettings.attributes.logo_path !== undefined) wmSettings.logo_path = wmSettings.attributes.logo_path;
+                if (wmSettings.attributes.logo_opacity !== undefined) wmSettings.logo_opacity = wmSettings.attributes.logo_opacity;
+                if (wmSettings.attributes.logo_position !== undefined) wmSettings.logo_position = wmSettings.attributes.logo_position;
+            }
+            if (templates) {
+                templates.forEach(t => {
+                    if (t.attributes) {
+                        if (t.attributes.logo_path !== undefined) t.logo_path = t.attributes.logo_path;
+                        if (t.attributes.logo_opacity !== undefined) t.logo_opacity = t.attributes.logo_opacity;
+                        if (t.attributes.logo_position !== undefined) t.logo_position = t.attributes.logo_position;
+                    }
+                });
+            }
+
             return NextResponse.json({
                 success: true,
                 brandLogo: wsData?.logo_url || null,
@@ -35,12 +51,19 @@ export async function POST(req) {
             const { recordId, settingsPayload } = payload;
             settingsPayload.company_id = companyId; // Enforce tenant isolation
 
+            // Move un-migrated columns into the JSON attributes field to avoid schema cache error
+            const { logo_path, logo_opacity, logo_position, ...dbPayload } = settingsPayload;
+            dbPayload.attributes = dbPayload.attributes || {};
+            if (logo_path !== undefined) dbPayload.attributes.logo_path = logo_path;
+            if (logo_opacity !== undefined) dbPayload.attributes.logo_opacity = logo_opacity;
+            if (logo_position !== undefined) dbPayload.attributes.logo_position = logo_position;
+
             let newId = recordId;
             if (recordId) {
-                const { error } = await supabase.from('watermark_settings').update(settingsPayload).eq('id', recordId).eq('company_id', companyId);
+                const { error } = await supabase.from('watermark_settings').update(dbPayload).eq('id', recordId).eq('company_id', companyId);
                 if (error) throw error;
             } else {
-                const { data, error } = await supabase.from('watermark_settings').insert(settingsPayload).select().single();
+                const { data, error } = await supabase.from('watermark_settings').insert(dbPayload).select().single();
                 if (error) throw error;
                 if (data) newId = data.id;
             }
@@ -80,13 +103,18 @@ export async function POST(req) {
                 finalLogoPath = fileName;
             }
 
-            templateForm.logo_path = finalLogoPath;
+            // Move un-migrated columns into the JSON attributes field to avoid schema cache error
+            const { logo_path, logo_opacity, logo_position, ...dbTemplateForm } = templateForm;
+            dbTemplateForm.attributes = dbTemplateForm.attributes || {};
+            dbTemplateForm.attributes.logo_path = finalLogoPath;
+            if (logo_opacity !== undefined) dbTemplateForm.attributes.logo_opacity = logo_opacity;
+            if (logo_position !== undefined) dbTemplateForm.attributes.logo_position = logo_position;
 
             if (templateId) {
-                const { error } = await supabase.from('watermark_templates').update(templateForm).eq('id', templateId).eq('company_id', companyId);
+                const { error } = await supabase.from('watermark_templates').update(dbTemplateForm).eq('id', templateId).eq('company_id', companyId);
                 if (error) throw error;
             } else {
-                const { error } = await supabase.from('watermark_templates').insert(templateForm);
+                const { error } = await supabase.from('watermark_templates').insert(dbTemplateForm);
                 if (error) throw error;
             }
             return NextResponse.json({ success: true });

@@ -4,21 +4,20 @@ import React, { useEffect, useState, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
 import { FaSpinner } from 'react-icons/fa';
-import fernet from 'fernet';
 
 // ── Risk configuration ────────────────────────────────────────────────────────
 const RISK = {
-    PRINT_SCREEN:  100,  // instant logout
-    DEVTOOLS:      100,  // instant logout
-    WIN_SHIFT_S:   100,  // instant logout — Snipping Tool
-    CTRL_P:         60,
-    CTRL_C:         30,
-    CTRL_A:         20,
-    CTRL_S:         40,
-    CTRL_U:         50,
-    BLUR:          100,  // instant logout — window lost focus / Snipping Tool active
-    RIGHT_CLICK:    10,
-    DRAG:           10,
+    PRINT_SCREEN: 100,  // instant logout
+    DEVTOOLS: 100,  // instant logout
+    WIN_SHIFT_S: 100,  // instant logout — Snipping Tool
+    CTRL_P: 60,
+    CTRL_C: 30,
+    CTRL_A: 20,
+    CTRL_S: 40,
+    CTRL_U: 50,
+    BLUR: 100,  // instant logout — window lost focus / Snipping Tool active
+    RIGHT_CLICK: 10,
+    DRAG: 10,
 };
 const LOGOUT_THRESHOLD = 100;
 // ─────────────────────────────────────────────────────────────────────────────
@@ -29,31 +28,39 @@ export default function SecureViewer({ params }) {
     const docId = resolvedParams.id;
 
     // ── Core state ────────────────────────────────────────────────────────────
-    const [loading, setLoading]       = useState(true);
-    const [error, setError]           = useState(null);
-    const [docName, setDocName]       = useState('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [docName, setDocName] = useState('');
     const [docPayload, setDocPayload] = useState(null);
     const containerRef = useRef(null);
 
-    // ── Security state ────────────────────────────────────────────────────────
-    const [riskScore, setRiskScore]       = useState(0);
-    const [violated, setViolated]         = useState(false);
-    const [violationMsg, setViolationMsg] = useState('');
-    const [countdown, setCountdown]       = useState(5);
-    const [userInfo, setUserInfo]         = useState({ name: '', email: '', sessionId: '' });
-    const [clientIp, setClientIp]         = useState('...');
+    // ── Watermark Settings State ──────────────────────────────────────────────
+    const [watermarkSettings, setWatermarkSettings] = useState(null);
+    const [brandLogo, setBrandLogo] = useState(null);
 
-    const riskRef      = useRef(0);
+    // ── Security state ────────────────────────────────────────────────────────
+    const [riskScore, setRiskScore] = useState(0);
+    const [violated, setViolated] = useState(false);
+    const [violationMsg, setViolationMsg] = useState('');
+    const [countdown, setCountdown] = useState(5);
+    const [userInfo, setUserInfo] = useState({ name: '', email: '', sessionId: '', companyId: '' });
+    const [clientIp, setClientIp] = useState('...');
+
+    const riskRef = useRef(0);
     const countdownRef = useRef(null);
-    const shiftSRef    = useRef(false);
-    const devtoolsRef  = useRef(false);
+    const shiftSRef = useRef(false);
+    const devtoolsRef = useRef(false);
     const shieldDivRef = useRef(null); // direct DOM ref — synchronous, no React delay
-    
-    const userInfoRef  = useRef(userInfo);
-    const clientIpRef  = useRef(clientIp);
+
+    const userInfoRef = useRef(userInfo);
+    const clientIpRef = useRef(clientIp);
+    const watermarkSettingsRef = useRef(null);
+    const brandLogoRef = useRef(null);
 
     useEffect(() => { userInfoRef.current = userInfo; }, [userInfo]);
     useEffect(() => { clientIpRef.current = clientIp; }, [clientIp]);
+    useEffect(() => { watermarkSettingsRef.current = watermarkSettings; }, [watermarkSettings]);
+    useEffect(() => { brandLogoRef.current = brandLogo; }, [brandLogo]);
     // ─────────────────────────────────────────────────────────────────────────
 
     // ── Load user info & IP for watermark ─────────────────────────────────────
@@ -66,9 +73,10 @@ export default function SecureViewer({ params }) {
                     name: s.name || '',
                     email: s.email || '',
                     sessionId: (s.id || '').slice(0, 8),
+                    companyId: s.company_id || '',
                 });
             }
-        } catch (_) {}
+        } catch (_) { }
         fetch('https://api.ipify.org?format=json')
             .then(r => r.json())
             .then(d => setClientIp(d.ip || '—'))
@@ -129,14 +137,14 @@ export default function SecureViewer({ params }) {
         const clearClipboard = () => {
             try {
                 if (navigator.clipboard && navigator.clipboard.writeText && document.hasFocus()) {
-                    navigator.clipboard.writeText('PROTECTED VDR DOCUMENT - SCREENSHOT RESTRICTED').catch(() => {});
+                    navigator.clipboard.writeText('PROTECTED VDR DOCUMENT - SCREENSHOT RESTRICTED').catch(() => { });
                 }
-            } catch (_) {}
+            } catch (_) { }
         };
 
         // ── Keyboard handler ─────────────────────────────────────────────────
         const onKeyDown = (e) => {
-            const key  = (e.key || '').toLowerCase();
+            const key = (e.key || '').toLowerCase();
             const ctrl = e.ctrlKey || e.metaKey;
 
             // 1. Instant black-out on Meta (Win key), Shift, or Alt to preempt Snipping Tool screen freeze
@@ -222,7 +230,7 @@ export default function SecureViewer({ params }) {
 
         // DevTools panel size detection (every 1s)
         const devToolsInterval = setInterval(() => {
-            const wDiff = window.outerWidth  - window.innerWidth;
+            const wDiff = window.outerWidth - window.innerWidth;
             const hDiff = window.outerHeight - window.innerHeight;
             if (wDiff > 160 || hDiff > 160) {
                 if (!devtoolsRef.current) {
@@ -265,65 +273,32 @@ export default function SecureViewer({ params }) {
             if (!raw) { window.location.href = '/login'; return; }
             const session = JSON.parse(raw);
 
-            const { data: doc, error: docErr } = await supabase
-                .from('documents')
-                .select('name, folder_id, uploaded_by, creator_revoked, file_path, dek_ref')
-                .eq('id', docId)
-                .single();
+            const res = await fetch('/api/view', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ docId, session })
+            });
 
-            if (docErr || !doc) throw new Error('Document not found in database.');
-            setDocName(doc.name);
-
-            let hasAccess = false;
-            if (session.role === 'super_admin' || (doc.uploaded_by === session.id && !doc.creator_revoked)) {
-                hasAccess = true;
-            } else {
-                const { data: groups } = await supabase
-                    .from('user_groups').select('group_id').eq('user_id', session.id);
-                if (groups && groups.length > 0) {
-                    const groupIds = groups.map(g => g.group_id).join(',');
-                    let queryStr = `group_id=in.(${groupIds})&select=can_view,scope,document_id,folder_id`;
-                    if (doc.folder_id) {
-                        queryStr += `&or=(document_id.eq.${docId},folder_id.eq.${doc.folder_id})`;
-                    } else {
-                        queryStr += `&document_id=eq.${docId}`;
-                    }
-                    const res = await fetch(
-                        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/permissions?${queryStr}`,
-                        { headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}` } }
-                    );
-                    const perms       = await res.json();
-                    const docPerms    = perms.filter(p => p.scope === 'document' && p.document_id === docId);
-                    const folderPerms = perms.filter(p => p.scope === 'folder'   && p.folder_id   === doc.folder_id);
-                    if (docPerms.length > 0)         { if (docPerms.some(p => p.can_view))    hasAccess = true; }
-                    else if (folderPerms.length > 0) { if (folderPerms.some(p => p.can_view)) hasAccess = true; }
-                }
+            const data = await res.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to load document');
             }
 
-            if (!hasAccess) throw new Error('You do not have permission to view this document.');
+            setDocName(data.docName);
 
-            const { data: fileData, error: fileErr } = await supabase.storage
-                .from('vault-files').download(doc.file_path);
-            if (fileErr || !fileData) throw new Error('Encrypted file not found in storage bucket.');
+            if (data.brandLogo) setBrandLogo(data.brandLogo);
+            if (data.watermarkSettings) {
+                setWatermarkSettings(data.watermarkSettings);
+                watermarkSettingsRef.current = data.watermarkSettings;
+            }
 
-            const encryptedText   = await fileData.text();
-            const secret          = new fernet.Secret(doc.dek_ref);
-            const token           = new fernet.Token({ token: encryptedText, secret, ttl: 0 });
-            const decryptedBase64 = token.decode();
-
+            const decryptedBase64 = data.base64Data;
             const binaryString = atob(decryptedBase64);
-            const bytes        = new Uint8Array(binaryString.length);
+            const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
 
             const utf8Text = new TextDecoder('utf-8').decode(bytes);
-            const fileExt  = doc.name.split('.').pop().toLowerCase();
-            setDocPayload({ ext: fileExt, bytes, text: utf8Text });
-
-            // Log document view
-            const { error: logErr } = await supabase
-                .from('document_access_logs')
-                .insert({ user_id: session.id, document_id: docId, opened_at: new Date().toISOString() });
-            if (logErr) console.error('[VIEW] Log failed:', logErr);
+            setDocPayload({ ext: data.fileExt, bytes, text: utf8Text });
 
             setLoading(false);
         } catch (err) {
@@ -339,7 +314,56 @@ export default function SecureViewer({ params }) {
         document.head.appendChild(s);
     });
 
-    const appendWatermarkToElement = (element, info, ip) => {
+    const hexToRGBA = (hex, opacity) => {
+        if (!hex) return `rgba(100, 116, 139, ${opacity / 100})`;
+        if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+            let c = hex.substring(1).split('');
+            if (c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+            c = '0x' + c.join('');
+            return `rgba(${[(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',')},${opacity / 100})`;
+        }
+        return `rgba(100, 116, 139, ${opacity / 100})`;
+    };
+
+    const getLogoUrl = (path) => {
+        if (!path) return null;
+        const { data } = supabase.storage.from('vdr-logos').getPublicUrl(path);
+        return data?.publicUrl || null;
+    };
+
+    const generateWatermarkContentHTML = (info, ip, settings, bLogo, scale = 1.0) => {
+        const type = settings?.watermark_type || 'dynamic';
+        const rawFontSize = settings?.font_size || 22;
+        const fontSize = Math.round(rawFontSize * scale);
+        const textColor = settings?.text_color || '#334155';
+        const textOpacity = settings?.text_opacity ?? 25;
+        const rotation = settings?.rotation ?? -30;
+        const logoPath = settings?.logo_path || bLogo;
+        const logoOpacity = settings?.logo_opacity ?? 0.5;
+
+        let lines = [];
+        if (type === 'static') {
+            lines.push(settings?.custom_text || 'CONFIDENTIAL');
+        } else {
+            lines.push(settings?.custom_text || 'CONFIDENTIAL');
+            if (settings?.email_address) lines.push(settings.email_address);
+            if (settings?.attributes?.ip) lines.push(ip || 'Unknown IP');
+            if (settings?.attributes?.date) lines.push(new Date().toLocaleString());
+        }
+
+        let html = `<div style="transform: rotate(${rotation}deg); color: ${hexToRGBA(textColor, textOpacity)}; font-weight: bold; transform-origin: center; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.2s;">`;
+        if (logoPath) {
+            html += `<img src="${getLogoUrl(logoPath)}" alt="logo" style="height: 40px; object-fit: contain; margin-bottom: 6px; opacity: ${logoOpacity};" />`;
+        }
+        html += `<div style="font-size: ${fontSize}px; white-space: nowrap; display: flex; flex-direction: column; align-items: center;">`;
+        lines.forEach(line => {
+            html += `<span style="line-height: 1.2;">${line}</span>`;
+        });
+        html += `</div></div>`;
+        return html;
+    };
+
+    const appendWatermarkToElement = (element, info, ip, scale = 1.0) => {
         if (!element) return;
         element.style.position = 'relative';
 
@@ -350,36 +374,39 @@ export default function SecureViewer({ params }) {
         overlay.style.pointerEvents = 'none';
         overlay.style.zIndex = '10';
         overlay.style.overflow = 'hidden';
+        overlay.style.display = 'grid';
+        overlay.style.gridTemplateColumns = 'repeat(3, 1fr)';
+        overlay.style.gridTemplateRows = 'repeat(3, 1fr)';
+        overlay.style.padding = '32px';
 
-        const timeStr = new Date().toLocaleString('en-IN');
-        const name = info?.name || 'CONFIDENTIAL';
-        const email = info?.email || '';
-        const sid = info?.sessionId || '';
+        const settings = watermarkSettingsRef.current || {};
+        const positions = settings.positions || { 'middle-center': true };
 
-        const mark = document.createElement('div');
-        mark.style.position = 'absolute';
-        mark.style.top = '50%';
-        mark.style.left = '50%';
-        mark.style.transform = 'translate(-50%, -50%) rotate(-30deg)';
-        mark.style.opacity = '0.38';
-        mark.style.whiteSpace = 'nowrap';
-        mark.style.fontFamily = 'system-ui, -apple-system, sans-serif';
-        mark.style.fontSize = '22px';
-        mark.style.lineHeight = '1.7';
-        mark.style.color = '#334155';
-        mark.style.textShadow = '0 0 3px rgba(255,255,255,0.95)';
-        mark.style.userSelect = 'none';
-        mark.style.webkitUserSelect = 'none';
-        mark.style.textAlign = 'center';
+        const gridCells = [
+            { key: 'top-left', cls: 'align-items: flex-start; justify-content: flex-start;' },
+            { key: 'top-center', cls: 'align-items: flex-start; justify-content: center;' },
+            { key: 'top-right', cls: 'align-items: flex-start; justify-content: flex-end;' },
+            { key: 'middle-left', cls: 'align-items: center; justify-content: flex-start;' },
+            { key: 'middle-center', cls: 'align-items: center; justify-content: center;' },
+            { key: 'middle-right', cls: 'align-items: center; justify-content: flex-end;' },
+            { key: 'bottom-left', cls: 'align-items: flex-end; justify-content: flex-start;' },
+            { key: 'bottom-center', cls: 'align-items: flex-end; justify-content: center;' },
+            { key: 'bottom-right', cls: 'align-items: flex-end; justify-content: flex-end;' },
+        ];
 
-        mark.innerHTML = `
-            <div style="font-weight: 900; font-size: 28px; color: #0f172a; margin-bottom: 4px; letter-spacing: 0.5px;">${name}</div>
-            <div>${email}</div>
-            <div>IP: ${ip}</div>
-            <div>${timeStr}</div>
-            <div>SID: ${sid}</div>
-        `;
-        overlay.appendChild(mark);
+        let contentHtml = generateWatermarkContentHTML(info, ip, settings, brandLogoRef.current, scale);
+
+        gridCells.forEach(({ key, cls }) => {
+            const cell = document.createElement('div');
+            cell.style.display = 'flex';
+            cell.style.overflow = 'visible';
+            cell.style.cssText += cls;
+            if (positions[key]) {
+                cell.innerHTML = contentHtml;
+            }
+            overlay.appendChild(cell);
+        });
+
         element.appendChild(overlay);
     };
 
@@ -421,18 +448,18 @@ export default function SecureViewer({ params }) {
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
                 const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
                 for (let i = 1; i <= pdf.numPages; i++) {
-                    const page     = await pdf.getPage(i);
+                    const page = await pdf.getPage(i);
                     const viewport = page.getViewport({ scale: 1.5 });
-                    const wrapper  = document.createElement('div');
-                    wrapper.className  = 'pdf-page-wrapper shadow-lg mb-8 bg-white relative overflow-hidden';
-                    wrapper.style.width  = viewport.width  + 'px';
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'pdf-page-wrapper shadow-lg mb-8 bg-white relative overflow-hidden';
+                    wrapper.style.width = viewport.width + 'px';
                     wrapper.style.height = viewport.height + 'px';
                     const canvas = document.createElement('canvas');
                     canvas.width = viewport.width; canvas.height = viewport.height;
                     wrapper.appendChild(canvas);
                     container.appendChild(wrapper);
                     await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-                    appendWatermarkToElement(wrapper, userInfoRef.current, clientIpRef.current);
+                    appendWatermarkToElement(wrapper, userInfoRef.current, clientIpRef.current, 1.5);
                 }
             } else if (['docx', 'doc'].includes(ext)) {
                 if (!window.docx) {
@@ -454,8 +481,8 @@ export default function SecureViewer({ params }) {
                 });
             } else if (['txt', 'text'].includes(ext)) {
                 const lines = utf8Text.split(/\r?\n/);
-                const LPP   = 40;
-                let html    = '';
+                const LPP = 40;
+                let html = '';
                 for (let i = 0; i < lines.length; i += LPP) {
                     html += `<div class="txt-page-wrapper relative overflow-hidden"><pre class="txt-view">${lines.slice(i, i + LPP).join('\n')}</pre></div>`;
                 }
@@ -498,7 +525,8 @@ export default function SecureViewer({ params }) {
             style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
         >
             {/* ── CSS ──────────────────────────────────────────────────────── */}
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 @import url('https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/css/pluginsCss.css');
                 @import url('https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/plugins.css');
                 @import url('https://cdn.jsdelivr.net/npm/luckysheet/dist/css/luckysheet.css');
@@ -571,34 +599,59 @@ export default function SecureViewer({ params }) {
             )}
 
             {/* ── DYNAMIC BACKGROUND WATERMARK GRID ────────────────────────── */}
-            <div style={{ position: 'fixed', inset: 0, zIndex: 50, pointerEvents: 'none', overflow: 'hidden' }}>
-                {Array.from({ length: 6 }).map((_, row) =>
-                    Array.from({ length: 5 }).map((__, col) => (
-                        <div
-                            key={`${row}-${col}`}
-                            style={{
-                                position: 'absolute',
-                                top:  `${row * 220 + 30}px`,
-                                left: `${col * 280 - 40}px`,
-                                transform: 'rotate(-30deg)',
-                                opacity: 0.15,
-                                whiteSpace: 'nowrap',
-                                fontFamily: 'system-ui, sans-serif',
-                                fontSize: 12,
-                                color: '#ffffff',
-                                lineHeight: 1.6,
-                                userSelect: 'none',
-                                textAlign: 'center',
-                            }}
-                        >
-                            <div style={{ fontWeight: 700 }}>{userInfo.name || 'CONFIDENTIAL'}</div>
-                            <div>{userInfo.email}</div>
-                            <div>IP: {clientIp}</div>
-                            <div>{new Date().toLocaleString('en-IN')}</div>
-                            <div>SID: {userInfo.sessionId}</div>
-                        </div>
-                    ))
-                )}
+            <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', inset: 0, padding: '32px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(3, 1fr)' }}>
+                    {[
+                        { key: 'top-left', cls: 'flex items-start justify-start' },
+                        { key: 'top-center', cls: 'flex items-start justify-center' },
+                        { key: 'top-right', cls: 'flex items-start justify-end' },
+                        { key: 'middle-left', cls: 'flex items-center justify-start' },
+                        { key: 'middle-center', cls: 'flex items-center justify-center' },
+                        { key: 'middle-right', cls: 'flex items-center justify-end' },
+                        { key: 'bottom-left', cls: 'flex items-end justify-start' },
+                        { key: 'bottom-center', cls: 'flex items-end justify-center' },
+                        { key: 'bottom-right', cls: 'flex items-end justify-end' },
+                    ].map(({ key, cls }) => {
+                        const settings = watermarkSettings || {};
+                        const positions = settings.positions || { 'middle-center': true };
+                        if (!positions[key]) return <div key={key} />;
+
+                        const type = settings.watermark_type || 'dynamic';
+                        const rawFontSize = settings.font_size || 22;
+                        const fontSize = Math.round(rawFontSize * 1.5);
+                        const textColor = settings.text_color || '#64748B';
+                        const textOpacity = settings.text_opacity ?? 25;
+                        const rotation = settings.rotation ?? -30;
+                        const logoPath = settings.logo_path || brandLogo;
+                        const logoOpacity = settings.logo_opacity ?? 0.5;
+
+                        let lines = [];
+                        if (type === 'static') {
+                            lines.push(settings.custom_text || 'CONFIDENTIAL');
+                        } else {
+                            lines.push(settings.custom_text || 'CONFIDENTIAL');
+                            if (settings.email_address) lines.push(settings.email_address);
+                            if (settings.attributes?.ip) lines.push(clientIpRef.current || 'Unknown IP');
+                            if (settings.attributes?.date) lines.push(new Date().toLocaleString());
+                        }
+
+                        return (
+                            <div key={key} className={`${cls} overflow-visible`}>
+                                <div style={{ transform: `rotate(${rotation}deg)`, color: hexToRGBA(textColor, textOpacity) }}
+                                    className="font-bold origin-center transition-all duration-200 flex flex-col items-center justify-center">
+                                    {logoPath && (
+                                        <img src={getLogoUrl(logoPath)} alt="logo" className="h-10 object-contain mb-1.5" style={{ opacity: logoOpacity }} />
+                                    )}
+                                    <div style={{ fontSize: `${fontSize}px`, whiteSpace: 'nowrap' }} className="flex flex-col items-center">
+                                        {lines.map((line, idx) => (
+                                            <span key={idx} style={{ lineHeight: 1.2 }} className="block">{line}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
 
             {/* ── TOP TOOLBAR ──────────────────────────────────────────────── */}
@@ -626,6 +679,7 @@ export default function SecureViewer({ params }) {
             {/* ── DOCUMENT CONTAINER ───────────────────────────────────────── */}
             <div
                 className="flex-1 w-full relative overflow-auto flex flex-col items-center py-10"
+                style={{ zIndex: 10 }}
                 ref={containerRef}
                 onCopy={e => e.preventDefault()}
                 onCut={e => e.preventDefault()}
