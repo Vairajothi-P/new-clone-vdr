@@ -82,13 +82,16 @@ export default function LoginPage() {
         setTimeout(() => {
           router.push('/sign-nda'); // <--- CORRECTED
         }, 1500);
-      }
-
-
-      else {
-        setSuccess(`Welcome back, ${user.name}! 🎉`);
+      } else {
+        setSuccess(`${user.name} login successfully`);
         setTimeout(() => {
-          router.push('/documents'); // Normal login
+          const redirectUrl = sessionStorage.getItem('vdr_redirect_url');
+          if (redirectUrl) {
+            sessionStorage.removeItem('vdr_redirect_url');
+            router.push(redirectUrl);
+          } else {
+            router.push('/documents'); // Normal login
+          }
         }, 1500);
       }
 
@@ -119,22 +122,48 @@ export default function LoginPage() {
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 backdrop-blur-sm">
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-              <span className="text-red-500 mt-1">⚠️</span>
-              <div>
-                <p className="text-red-800 font-medium text-sm">Login Failed</p>
-                <p className="text-red-700 text-xs mt-1">{error}</p>
+          {/* Animated Popup for Success/Error */}
+          {(success || error) && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-transparent transition-opacity duration-300">
+              <style>{`
+                @keyframes popIn {
+                  0% { transform: scale(0.9); opacity: 0; }
+                  100% { transform: scale(1); opacity: 1; }
+                }
+                @keyframes drawStroke {
+                  0% { stroke-dashoffset: 40; }
+                  100% { stroke-dashoffset: 0; }
+                }
+              `}</style>
+              <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full flex flex-col items-center text-center animate-[popIn_0.3s_cubic-bezier(0.16,1,0.3,1)] border border-slate-100">
+                {success ? (
+                  <>
+                    <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mb-5 shadow-inner shadow-green-100">
+                      <svg className="w-10 h-10 text-green-500" style={{ strokeDasharray: 40, animation: 'drawStroke 0.6s ease-out forwards' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-800 mb-2">Success!</h3>
+                    <p className="text-slate-500 font-medium text-[15px]">{success}</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-20 h-20 rounded-full bg-rose-50 flex items-center justify-center mb-5 shadow-inner shadow-rose-100">
+                      <svg className="w-10 h-10 text-rose-500" style={{ strokeDasharray: 40, animation: 'drawStroke 0.6s ease-out forwards' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-800 mb-2">Login Failed</h3>
+                    <p className="text-slate-500 font-medium text-[15px]">{error}</p>
+                    <button 
+                      onClick={() => setError('')}
+                      className="mt-8 w-full py-3.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-xl transition-colors duration-200"
+                    >
+                      Try Again
+                    </button>
+                  </>
+                )}
               </div>
-            </div>
-          )}
-
-          {/* Success Message */}
-          {success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
-              <span className="text-green-500 mt-1">✓</span>
-              <p className="text-green-800 font-medium text-sm">{success}</p>
             </div>
           )}
 
