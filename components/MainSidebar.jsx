@@ -113,31 +113,31 @@ export default function MainSidebar() {
 
         {showProfileMenu && session && (
           <div className="absolute bottom-4 left-full ml-4 w-56 bg-white rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.1)] border border-slate-100 p-2 z-50">
-             <div className="px-3 py-3 border-b border-slate-100 mb-1 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[var(--brand)]/10 flex items-center justify-center text-[13px] font-black text-[var(--brand)] shrink-0">
-                    {session.name?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-bold text-slate-800 truncate">{session.name}</p>
-                  <p className="text-[11px] font-semibold text-slate-400 truncate capitalize">{session.role.replace('_', ' ')}</p>
-                </div>
-             </div>
-             <button
-                onClick={() => {
-                  localStorage.removeItem('vdr_session');
-                  window.location.href = '/login';
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-[13px] text-rose-500 hover:bg-rose-50 rounded-lg transition-colors font-bold group"
-             >
-                <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center group-hover:scale-105 transition-transform text-rose-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                    <polyline points="16 17 21 12 16 7"></polyline>
-                    <line x1="21" y1="12" x2="9" y2="12"></line>
-                  </svg>
-                </div>
-                Sign Out
-             </button>
+            <div className="px-3 py-3 border-b border-slate-100 mb-1 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[var(--brand)]/10 flex items-center justify-center text-[13px] font-black text-[var(--brand)] shrink-0">
+                {session.name?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-bold text-slate-800 truncate">{session.name}</p>
+                <p className="text-[11px] font-semibold text-slate-400 truncate capitalize">{session.role.replace('_', ' ')}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem('vdr_session');
+                window.location.href = '/login';
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-[13px] text-rose-500 hover:bg-rose-50 rounded-lg transition-colors font-bold group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center group-hover:scale-105 transition-transform text-rose-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+              </div>
+              Sign Out
+            </button>
           </div>
         )}
       </div>

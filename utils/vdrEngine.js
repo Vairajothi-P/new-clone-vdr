@@ -1,6 +1,6 @@
 import fernet from 'fernet';
 
-export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPayload) => {
+export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPayload, backendUrl) => {
     const cleanExt = (fileType || fileName).split('.').pop().toLowerCase().replace(/[^a-z0-9]/gi, '');
     const safePayload = btoa(encryptedPayload);
 
@@ -9,21 +9,21 @@ export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPa
 <head>
     <title>SECURE: ${fileName}</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/fernet@0.4.0/fernetBrowser.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.min.js"></script>
-    <script src="https://unpkg.com/jszip/dist/jszip.min.js"></script>
-    <script src="https://unpkg.com/docx-preview/dist/docx-preview.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fernet@0.4.0/fernetBrowser.js"><\/script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.min.js"><\/script>
+    <script src="https://unpkg.com/jszip/dist/jszip.min.js"><\/script>
+    <script src="https://unpkg.com/docx-preview/dist/docx-preview.min.js"><\/script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"><\/script>
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-    <script src="https://unpkg.com/html-docx-js@0.3.1/dist/html-docx.js"></script>
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"><\/script>
+    <script src="https://unpkg.com/html-docx-js@0.3.1/dist/html-docx.js"><\/script>
     
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/css/pluginsCss.css' />
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/plugins.css' />
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet/dist/css/luckysheet.css' />
-    <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/js/plugin.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/luckysheet.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/luckyexcel/dist/luckyexcel.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/js/plugin.js"><\/script>
+    <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/luckysheet.umd.js"><\/script>
+    <script src="https://cdn.jsdelivr.net/npm/luckyexcel/dist/luckyexcel.umd.js"><\/script>
 
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #1a1a1a; color: #fff; font-family: sans-serif; overflow: hidden; }
@@ -58,37 +58,37 @@ export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPa
         .ql-toolbar { background: #f1f5f9; border: 1px solid #cbd5e1 !important; border-radius: 6px; margin-bottom: 15px; }
         
         .toast { position: fixed; bottom: 20px; right: 20px; background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px; display: none; z-index: 10000; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); }
-    </style>
-</head>
+    <\/style>
+<\/head>
 <body>
-    <script id="secure-payload" type="text/plain">${safePayload}</script>
+    <script id="secure-payload" type="text/plain">${safePayload}<\/script>
 
     <div id="login-ui" class="login-box">
-        <h2 style="margin-top:0; margin-bottom: 5px; color: #0f172a;">Secure Viewer</h2>
-        <p style="color: #64748b; font-size: 13px; margin-bottom: 25px; margin-top: 0;">Login required to decrypt</p>
-        <div class="input-group"><input type="email" id="email" placeholder="Enter your email" required></div>
-        <div class="input-group"><input type="password" id="password" placeholder="Enter your password" required></div>
-        <button id="auth-btn" class="btn">Unlock Document</button>
-        <div id="error-msg" style="color: #ef4444; margin-top: 15px; font-size: 13px; font-weight: 500;"></div>
-    </div>
+        <h2 style="margin-top:0; margin-bottom: 5px; color: #0f172a;">Secure Viewer<\/h2>
+        <p style="color: #64748b; font-size: 13px; margin-bottom: 25px; margin-top: 0;">Login required to decrypt<\/p>
+        <div class="input-group"><input type="email" id="email" placeholder="Enter your email" required><\/div>
+        <div class="input-group"><input type="password" id="password" placeholder="Enter your password" required><\/div>
+        <button id="auth-btn" class="btn">Unlock Document<\/button>
+        <div id="error-msg" style="color: #ef4444; margin-top: 15px; font-size: 13px; font-weight: 500;"><\/div>
+    <\/div>
 
     <div id="toolbar">
         <div style="display: flex; align-items: center; gap: 15px;">
-            <span style="background: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">SECURE VDR</span>
-            <span id="title-display" style="font-size: 15px; font-weight: 600; color: #f8fafc;">${fileName}</span>
-        </div>
+            <span style="background: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">SECURE VDR<\/span>
+            <span id="title-display" style="font-size: 15px; font-weight: 600; color: #f8fafc;">${fileName}<\/span>
+        <\/div>
         <div style="display: flex; gap: 10px;">
-            <button id="edit-btn" class="btn btn-toolbar" style="display: none;">✏️ Edit Document</button>
-            <button id="save-btn" class="btn btn-toolbar" style="display: none; background: #10b981;">💾 Save & Sync</button>
-        </div>
-    </div>
+            <button id="edit-btn" class="btn btn-toolbar" style="display: none;">✏️ Edit Document<\/button>
+            <button id="save-btn" class="btn btn-toolbar" style="display: none; background: #10b981;">💾 Save &amp; Sync<\/button>
+        <\/div>
+    <\/div>
 
     <div id="main-wrapper">
-        <div id="scroll-container"></div>
-        <div id="luckysheet-container"></div>
-    </div>
+        <div id="scroll-container"><\/div>
+        <div id="luckysheet-container"><\/div>
+    <\/div>
     
-    <div id="toast" class="toast">✅ Saved Successfully</div>
+    <div id="toast" class="toast">✅ Saved Successfully<\/div>
 
     <script>
         document.addEventListener('contextmenu', e => e.preventDefault());
@@ -464,9 +464,9 @@ export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPa
                  }, 100);
              }
         }
-    </script>
-</body>
-</html>`;
+    <\/script>
+<\/body>
+<\/html>`;
 
     return htmlContent;
-}
+};
