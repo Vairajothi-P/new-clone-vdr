@@ -28,10 +28,12 @@ export default function NdaSettingsPage() {
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
-      const mappedUsers = (data.users || []).map(u => ({
+      const sortedUsers = (data.users || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const mappedUsers = sortedUsers.map(u => ({
         id: u.id,
         name: u.name || u.email,
-        datetime: u.nda_accepted_at ? new Date(u.nda_accepted_at).toLocaleString() : 'N/A',
+        dateAccepted: u.nda_accepted_at ? new Date(u.nda_accepted_at).toLocaleDateString() : 'N/A',
+        timeAccepted: u.nda_accepted_at ? new Date(u.nda_accepted_at).toLocaleTimeString() : 'N/A',
         ndaAttached: (u.nda_status === 'accepted' || u.nda_status === 'pending') ? 'Yes' : 'No',
         status: u.nda_status === 'accepted' ? 'Accepted' : (u.nda_status === 'pending' ? 'Pending' : 'Not Required'),
         isRealUser: true,
@@ -130,7 +132,7 @@ export default function NdaSettingsPage() {
   }, [showEditor, ndaText]);
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8 max-w-7xl mx-auto w-full">
       {toastMessage && (
         <div className="fixed top-8 right-8 z-50 flex items-center gap-2 px-4 py-3 bg-green-50 text-green-700 border border-green-200 rounded-xl shadow-lg animate-in slide-in-from-top-4 fade-in duration-300">
           <Check size={18} className="text-green-500" />
@@ -214,6 +216,7 @@ export default function NdaSettingsPage() {
                     <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider">S.No</th>
                     <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider">Name</th>
                     <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider">Date Accepted</th>
+                    <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider">Time Accepted</th>
                     <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider">NDA Attached</th>
                     <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider text-center">Action</th>
@@ -226,7 +229,8 @@ export default function NdaSettingsPage() {
                     <tr key={u.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4 text-[14px] text-gray-500 font-medium">{index + 1}</td>
                       <td className="px-6 py-4"><span className="text-[14px] font-semibold text-gray-900">{u.name}</span></td>
-                      <td className="px-6 py-4 text-[14px] text-gray-600">{u.datetime}</td>
+                      <td className="px-6 py-4 text-[14px] text-gray-600">{u.dateAccepted}</td>
+                      <td className="px-6 py-4 text-[14px] text-gray-600">{u.timeAccepted}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[12px] font-semibold ${u.ndaAttached === 'Yes' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>{u.ndaAttached}</span>
                       </td>
@@ -240,8 +244,8 @@ export default function NdaSettingsPage() {
                         <button disabled={u.status !== 'Accepted'} className={`inline-flex items-center justify-center p-2 rounded-lg transition-all ${u.status === 'Accepted' ? 'bg-[var(--brand)] text-white hover:bg-[var(--brand)]/90 shadow-sm hover:shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`} title={u.status === 'Accepted' ? 'Download Signed Document' : 'Pending Acceptance'}>
                           <Download size={16} />
                         </button>
-                        {u.isRealUser && u.rawStatus !== 'pending' && (
-                          <button onClick={() => handleRequireNdaForUser(u.id)} className="inline-flex items-center gap-1 px-3 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-xs font-bold transition-all shadow-sm" title={u.rawStatus === 'accepted' ? "Force user to sign updated agreement" : "Force old user to sign NDA on next login"}>
+                        {u.isRealUser && u.rawStatus !== 'pending' && u.rawStatus !== 'accepted' && (
+                          <button onClick={() => handleRequireNdaForUser(u.id)} className="inline-flex items-center gap-1 px-3 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-xs font-bold transition-all shadow-sm" title="Force old user to sign NDA on next login">
                             <ShieldAlert size={14} /> Require NDA
                           </button>
                         )}
