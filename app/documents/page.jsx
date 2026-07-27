@@ -75,9 +75,13 @@ function UnifiedWorkspace() {
 
             setBookmarkedIds(new Set(data.files.filter(f => f.is_bookmarked).map(f => f.id)));
             setDownloadedIds(new Set(data.files.filter(f => f.is_downloaded).map(f => f.id)));
-            setDeletedIds(new Set(data.files.filter(f => f.is_deleted).map(f => f.id)));
+            const newDeletedIds = new Set(data.files.filter(f => f.is_deleted).map(f => f.id));
+            setDeletedIds(newDeletedIds);
+            
+            return { files: data.files, deletedIds: newDeletedIds };
         } catch (err) {
             console.error('Fetch error:', err);
+            return null;
         } finally {
             setLoading(false);
         }
@@ -468,22 +472,17 @@ function UnifiedWorkspace() {
         const targetIdx = siblings.findIndex(f => f.id === targetItem.id);
 
         if (sourceIdx !== -1 && targetIdx !== -1) {
-            const newSiblings = [...siblings];
-            const [removed] = newSiblings.splice(sourceIdx, 1);
-            newSiblings.splice(targetIdx, 0, removed);
-
-            newSiblings.forEach((sib, i) => {
-                const fIdx = updatedFiles.findIndex(x => x.id === sib.id);
-                if (fIdx > -1) {
-                    updatedFiles[fIdx].index = (i + 1).toString();
-                }
-            });
+            // LITERALLY SWAP THEIR INDICES in the array for sorting
+            const targetIdxInUpdated = updatedFiles.findIndex(f => f.id === targetItem.id);
+            const tempIndex = updatedFiles[sourceIdxInUpdated].index;
+            updatedFiles[sourceIdxInUpdated].index = updatedFiles[targetIdxInUpdated].index;
+            updatedFiles[targetIdxInUpdated].index = tempIndex;
         }
 
         setFiles(updatedFiles);
 
         try {
-            await executeRebuildIndex(updatedFiles, deletedIds, false);
+            await executeRebuildIndex(updatedFiles, deletedIds, true);
             showToast('Order updated ✓');
         } catch (err) {
             showToast('Failed to update order: ' + err.message, 'error');
@@ -493,9 +492,16 @@ function UnifiedWorkspace() {
     // ── REBUILD INDEX (adapted for route.js backend) ───────────────────────────
     const executeRebuildIndex = async (overrideFiles = null, overrideDeletedIds = null, shouldReload = true) => {
         try {
-            // Guard: only accept real arrays/Sets, never event objects
-            const currentFiles = Array.isArray(overrideFiles) ? overrideFiles : files;
-            const currentDeletedIds = overrideDeletedIds instanceof Set ? overrideDeletedIds : deletedIds;
+            let currentFiles = Array.isArray(overrideFiles) ? overrideFiles : files;
+            let currentDeletedIds = overrideDeletedIds instanceof Set ? overrideDeletedIds : deletedIds;
+
+            if (!overrideFiles) {
+                const fresh = await loadData();
+                if (fresh) {
+                    currentFiles = fresh.files;
+                    currentDeletedIds = fresh.deletedIds;
+                }
+            }
 
             // Only active (non-deleted) items
             const activeItems = currentFiles.filter(f => !currentDeletedIds.has(f.id));
@@ -627,6 +633,16 @@ function UnifiedWorkspace() {
                                 Add Folder
                             </button>
                         )}
+                        
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && (
+                            <button onClick={async () => {
+                                await executeRebuildIndex(null, null, false);
+                                showToast("Index successfully rebuilt");
+                            }} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-brand-soft hover:text-brand rounded-lg transition-colors" title="Force Rebuild Index">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                                Rebuild Index
+                            </button>
+                        )}
 
                         {!['trash', 'bookmarks', 'downloads'].includes(currentView) && hasAnyRenameAccess && (
                             <button disabled={selectedIds.size !== 1} onClick={() => {
@@ -713,7 +729,7 @@ function UnifiedWorkspace() {
                                     ) : null}
                                     <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center w-16">Index</th>
                                     <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Name</th>
-                                    {currentView !== 'trash' && <th className="py-4 px-2 w-8 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Star</th>}
+                                    {currentView !== 'trash' && <th className="py-4 px-3 w-8 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Star</th>}
                                     {currentView !== 'trash' && <th className="py-4 px-3 w-16 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Q&amp;A</th>}
                                     <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Version</th>
                                     {currentView === 'trash' ? (
@@ -1739,7 +1755,7 @@ function Modal({ children, onClose, maxWidth = 'max-w-lg' }) {
 //             const table = sourceItem.type === 'folder' ? 'folders' : 'documents';
 //             await supabase.from(table).update({ folder_id: folderId === 'root' || folderId === null ? null : folderId }).eq('id', sourceId);
 
-//             await executeRebuildIndex(updatedFiles, deletedIds, false);
+//             await executeRebuildIndex(updatedFiles, deletedIds, true);
 //             showToast('Index updated successfully ✓');
 //         } catch (err) {
 //             console.error('Failed to move', err);
@@ -1802,7 +1818,7 @@ function Modal({ children, onClose, maxWidth = 'max-w-lg' }) {
 //                 await supabase.from(table).update({ folder_id: newParentId === 'root' ? null : newParentId }).eq('id', sourceId);
 //             }
 
-//             await executeRebuildIndex(updatedFiles, deletedIds, false);
+//             await executeRebuildIndex(updatedFiles, deletedIds, true);
 //             showToast('Index updated successfully ✓');
 //         } catch (err) {
 //             console.error('Failed to update order or move', err);
