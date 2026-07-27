@@ -376,6 +376,8 @@ function UnifiedWorkspace() {
 
                 document.body.appendChild(a); a.click(); document.body.removeChild(a);
                 URL.revokeObjectURL(url);
+                setDownloadedIds(prev => new Set([...prev, file.id]));
+                setFiles(prev => prev.map(f => f.id === file.id ? { ...f, is_downloaded: true } : f));
                 showToast("Download Complete");
             } catch (err) { showToast(`Error: ${err.message}`, 'error'); } 
             finally { setDownloading(prev => { const n = { ...prev }; delete n[file.id]; return n; }); }
