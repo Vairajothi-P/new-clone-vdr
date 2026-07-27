@@ -60,6 +60,7 @@ export async function POST(req) {
                 action_type: 'DOWNLOAD_PDF'
             }]);
 
+            
             return new NextResponse(htmlContent, {
                 status: 200,
                 headers: {
