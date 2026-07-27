@@ -24,8 +24,12 @@ export async function POST(req) {
             const { data, error } = await supabase.storage.from('original-files').download(doc.original_file_path);
             if (error) throw new Error("Storage Error: " + error.message);
 
-            // Log access
-            await supabase.from('document_access_logs').insert([{ user_id: session.id, document_id: doc.id }]);
+            // Log download edit action
+            await supabase.from('document_edit_logs').insert([{
+                user_id: session.id,
+                document_id: doc.id,
+                action_type: 'DOWNLOAD_ORIGINAL'
+            }]);
 
             const buffer = Buffer.from(await data.arrayBuffer());
             return new NextResponse(buffer, {
@@ -49,8 +53,12 @@ export async function POST(req) {
             // Generate the HTML
             const htmlContent = generateSecureHtmlWrapper(doc.id, doc.name, fileExt, encryptedPayload, backendUrl);
 
-            // Log access
-            await supabase.from('document_access_logs').insert([{ user_id: session.id, document_id: doc.id }]);
+            // Log download edit action
+            await supabase.from('document_edit_logs').insert([{
+                user_id: session.id,
+                document_id: doc.id,
+                action_type: 'DOWNLOAD_PDF'
+            }]);
 
             return new NextResponse(htmlContent, {
                 status: 200,
