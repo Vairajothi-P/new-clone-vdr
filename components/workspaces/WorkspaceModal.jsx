@@ -1,29 +1,20 @@
 "use client";
 
 import React, { useState } from "react";
-import { WORKSPACE_TYPES, DEAL_TYPES, CURRENCIES, DEFAULT_WORKSPACE_FORM } from "@/lib/workspaces/constants";
-import { validateWorkspaceForm } from "@/lib/workspaces/validation";
+import { DEAL_TYPES } from "@/lib/workspaces/constants";
 import { FaTimes, FaShieldAlt, FaExclamationCircle } from "react-icons/fa";
 
 export default function WorkspaceModal({
   isOpen,
-  mode = "create", // "create" | "edit"
-  initialData = null,
   onClose,
   onSubmit,
 }) {
-  const [formData, setFormData] = useState(() => {
-    if (mode === "edit" && initialData) {
-      return {
-        type: initialData.type || "Virtual Data Room",
-        name: initialData.name || "",
-        dealType: initialData.dealType || "",
-        dealValue: initialData.dealValue !== undefined ? initialData.dealValue : "",
-        currency: initialData.currency || "USD",
-        expiryDate: initialData.expiryDate || "",
-      };
-    }
-    return DEFAULT_WORKSPACE_FORM;
+  const [formData, setFormData] = useState({
+    name: "",
+    dealType: "",
+    storageUnit: "GB",
+    storageLimit: "",
+    usersCount: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -45,17 +36,32 @@ export default function WorkspaceModal({
     e.preventDefault();
     setIsSubmitting(true);
 
-    const validation = validateWorkspaceForm(formData);
-    if (!validation.isValid) {
-      setErrors(validation.errors);
+    let newErrors = {};
+    if (!formData.name.trim()) newErrors.name = "Workspace Name is required";
+    if (!formData.storageLimit) newErrors.storageLimit = "Storage limit is required";
+    if (!formData.usersCount) newErrors.usersCount = "Number of users is required";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       setIsSubmitting(false);
       return;
     }
 
     onSubmit({
-      ...formData,
-      usersCount: initialData?.usersCount || 0,
-      storageMB: initialData?.storageMB || 0,
+      name: formData.name,
+      dealType: formData.dealType,
+      storageUnit: formData.storageUnit,
+      storageLimit: Number(formData.storageLimit),
+      usersCount: Number(formData.usersCount),
+    });
+    
+    // Reset form
+    setFormData({
+      name: "",
+      dealType: "",
+      storageUnit: "GB",
+      storageLimit: "",
+      usersCount: "",
     });
     setIsSubmitting(false);
   };
@@ -77,12 +83,10 @@ export default function WorkspaceModal({
             </div>
             <div>
               <h3 id="modal-title" className="text-base font-bold text-gray-900 tracking-tight">
-                {mode === "create" ? "Create New Workspace" : "Edit Workspace"}
+                Create New Workspace
               </h3>
               <p className="text-[12px] text-gray-500">
-                {mode === "create"
-                  ? "Configure your Virtual Data Room details."
-                  : "Update workspace deal information."}
+                Configure your Virtual Data Room details.
               </p>
             </div>
           </div>
@@ -98,30 +102,8 @@ export default function WorkspaceModal({
 
         {/* Modal Body Form - Compact spacing */}
         <form onSubmit={handleFormSubmit} className="p-5 space-y-4" noValidate>
-          {/* 1. Workspace Type */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-              Workspace Type
-            </label>
-            <div className="relative">
-              <select
-                value={formData.type}
-                onChange={(e) => handleChange("type", e.target.value)}
-                className="w-full h-10 px-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-medium text-gray-800 focus:bg-white focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10 outline-none transition-all appearance-none cursor-pointer"
-              >
-                {WORKSPACE_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 text-xs">
-                ▼
-              </div>
-            </div>
-          </div>
-
-          {/* 2. Workspace Name */}
+          
+          {/* 1. Workspace Name */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700">
@@ -153,7 +135,7 @@ export default function WorkspaceModal({
             )}
           </div>
 
-          {/* 3. Deal Type */}
+          {/* 2. Deal Type */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
               Deal Type <span className="text-gray-400 font-normal">(Optional)</span>
@@ -165,11 +147,18 @@ export default function WorkspaceModal({
                 className="w-full h-10 px-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-medium text-gray-800 focus:bg-white focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10 outline-none transition-all appearance-none cursor-pointer"
               >
                 <option value="">Select a deal type...</option>
-                {DEAL_TYPES.map((deal) => (
+                {DEAL_TYPES?.length > 0 ? DEAL_TYPES.map((deal) => (
                   <option key={deal} value={deal}>
                     {deal}
                   </option>
-                ))}
+                )) : (
+                  <>
+                    <option value="Mergers & Acquisitions">Mergers & Acquisitions</option>
+                    <option value="Initial Public Offering">Initial Public Offering</option>
+                    <option value="Fundraising">Fundraising</option>
+                    <option value="Due Diligence">Due Diligence</option>
+                  </>
+                )}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 text-xs">
                 ▼
@@ -177,77 +166,63 @@ export default function WorkspaceModal({
             </div>
           </div>
 
-          {/* 4. Deal Value & 5. Currency */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="md:col-span-2">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                Deal Value <span className="text-gray-400 font-normal">(Optional)</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  placeholder="e.g. 50000000"
-                  value={formData.dealValue}
-                  onChange={(e) => handleChange("dealValue", e.target.value)}
-                  className={`w-full h-10 px-3 bg-gray-50/50 border rounded-xl text-sm font-medium text-gray-800 placeholder-gray-400 focus:bg-white focus:ring-2 outline-none transition-all ${
-                    errors.dealValue
-                      ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/10"
-                      : "border-gray-200 focus:border-[var(--brand)] focus:ring-[var(--brand)]/10"
-                  }`}
-                />
-              </div>
-              {errors.dealValue && (
-                <p className="mt-1 text-xs text-rose-600 font-medium flex items-center gap-1">
-                  <FaExclamationCircle />
-                  <span>{errors.dealValue}</span>
-                </p>
-              )}
-            </div>
-
+          {/* 3. Storage Unit & Limit */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                Currency
+                Storage Unit
               </label>
               <div className="relative">
                 <select
-                  value={formData.currency}
-                  onChange={(e) => handleChange("currency", e.target.value)}
+                  value={formData.storageUnit}
+                  onChange={(e) => handleChange("storageUnit", e.target.value)}
                   className="w-full h-10 px-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:bg-white focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10 outline-none transition-all appearance-none cursor-pointer"
                 >
-                  {CURRENCIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.code} ({c.symbol})
-                    </option>
-                  ))}
+                  <option value="MB">MB</option>
+                  <option value="GB">GB</option>
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-400 text-xs">
                   ▼
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* 6. Expiry Date */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-              Expiry Date <span className="text-gray-400 font-normal">(Optional)</span>
-            </label>
-            <div className="relative">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                Storage Limit <span className="text-rose-500">*</span>
+              </label>
               <input
-                type="date"
-                value={formData.expiryDate}
-                onChange={(e) => handleChange("expiryDate", e.target.value)}
-                className="w-full h-10 px-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-medium text-gray-800 focus:bg-white focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10 outline-none transition-all cursor-pointer"
+                type="number"
+                min="1"
+                placeholder="e.g. 50"
+                value={formData.storageLimit}
+                onChange={(e) => handleChange("storageLimit", e.target.value)}
+                className={`w-full h-10 px-3 bg-gray-50/50 border rounded-xl text-sm font-medium text-gray-800 placeholder-gray-400 focus:bg-white focus:ring-2 outline-none transition-all ${
+                  errors.storageLimit
+                    ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/10"
+                    : "border-gray-200 focus:border-[var(--brand)] focus:ring-[var(--brand)]/10"
+                }`}
               />
             </div>
-            {errors.expiryDate && (
-              <p className="mt-1 text-xs text-rose-600 font-medium flex items-center gap-1">
-                <FaExclamationCircle />
-                <span>{errors.expiryDate}</span>
-              </p>
-            )}
+          </div>
+
+          {/* 4. Number of Users */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+              No. of Users <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="number"
+              min="1"
+              placeholder="e.g. 10"
+              value={formData.usersCount}
+              onChange={(e) => handleChange("usersCount", e.target.value)}
+              className={`w-full h-10 px-3 bg-gray-50/50 border rounded-xl text-sm font-medium text-gray-800 placeholder-gray-400 focus:bg-white focus:ring-2 outline-none transition-all ${
+                errors.usersCount
+                  ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/10"
+                  : "border-gray-200 focus:border-[var(--brand)] focus:ring-[var(--brand)]/10"
+              }`}
+            />
           </div>
 
           {/* Modal Footer */}
@@ -265,11 +240,7 @@ export default function WorkspaceModal({
               disabled={isSubmitting}
               className="px-5 py-2 rounded-xl bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-sm font-medium shadow-sm hover:shadow transition-all"
             >
-              {isSubmitting
-                ? "Saving..."
-                : mode === "create"
-                ? "Create Workspace"
-                : "Save Changes"}
+              {isSubmitting ? "Creating..." : "Create Workspace"}
             </button>
           </div>
         </form>

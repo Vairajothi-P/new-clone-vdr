@@ -29,38 +29,38 @@ function RegisterContent() {
 
   useEffect(() => {
     if (!token) {
-        setErrorMsg("Invalid or missing invitation token.");
-        setLoading(false);
-        return;
+      setErrorMsg("Invalid or missing invitation token.");
+      setLoading(false);
+      return;
     }
 
     const fetchInvite = async () => {
-        try {
-            const { data: invite, error: inviteErr } = await supabase
-                .from("invitations")
-                .select("*, groups(company_id)")
-                .eq("token", token)
-                .single();
+      try {
+        const { data: invite, error: inviteErr } = await supabase
+          .from("invitations")
+          .select("*, groups(company_id)")
+          .eq("token", token)
+          .single();
 
-            if (inviteErr || !invite) throw new Error("Invitation not found or expired.");
-            if (invite.status !== "pending") throw new Error("This invitation has already been used.");
+        if (inviteErr || !invite) throw new Error("Invitation not found or expired.");
+        if (invite.status !== "pending") throw new Error("This invitation has already been used.");
 
-            setInviteData(invite);
-            setEmail(invite.email);
+        setInviteData(invite);
+        setEmail(invite.email);
 
-            const { data: company } = await supabase
-                .from("companies")
-                .select("id, name")
-                .eq("id", invite.groups.company_id)
-                .single();
+        const { data: company } = await supabase
+          .from("companies")
+          .select("id, name")
+          .eq("id", invite.groups.company_id)
+          .single();
 
-            if (company) setCompanyData(company);
-        } catch (err) {
-            console.error(err);
-            setErrorMsg(err.message);
-        } finally {
-            setLoading(false);
-        }
+        if (company) setCompanyData(company);
+      } catch (err) {
+        console.error(err);
+        setErrorMsg(err.message);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchInvite();
@@ -106,7 +106,7 @@ function RegisterContent() {
           company_id: companyData.id,
           name: name.trim(),
           email: inviteData.email,
-          password_hash: password, 
+          password_hash: password,
           role: "user",
           status: "active",
           nda_status: assignedNdaStatus,
@@ -119,26 +119,26 @@ function RegisterContent() {
       }
 
       await supabase
-          .from("invitations")
-          .update({ status: "accepted" })
-          .eq("id", inviteData.id);
+        .from("invitations")
+        .update({ status: "accepted" })
+        .eq("id", inviteData.id);
 
       // THE FORK IN THE ROAD
       if (inviteData.requires_nda) {
-          // NDA is required! Keep session temporarily and pass the '?from=register' flag
-          localStorage.setItem('vdr_session', JSON.stringify({
-              id: userId,
-              company_id: companyData.id,
-              name: name,
-              email: inviteData.email,
-              role: "user",
-              nda_status: assignedNdaStatus
-          }));
-          router.push("/sign-nda?from=register"); // <-- Tells NDA page to show Login button at the end
+        // NDA is required! Keep session temporarily and pass the '?from=register' flag
+        localStorage.setItem('vdr_session', JSON.stringify({
+          id: userId,
+          company_id: companyData.id,
+          name: name,
+          email: inviteData.email,
+          role: "user",
+          nda_status: assignedNdaStatus
+        }));
+        router.push("/sign-nda?from=register"); // <-- Tells NDA page to show Login button at the end
       } else {
-          // NDA is OFF. Wipe session and show the success screen with Login button.
-          localStorage.removeItem('vdr_session');
-          setIsSuccess(true); 
+        // NDA is OFF. Wipe session and show the success screen with Login button.
+        localStorage.removeItem('vdr_session');
+        setIsSuccess(true);
       }
 
     } catch (err) {
@@ -173,16 +173,16 @@ function RegisterContent() {
 
   // ERROR SCREEN
   if (errorMsg && !inviteData) {
-      return (
-          <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
-              <div className="bg-white p-8 rounded-2xl shadow-sm border border-rose-100 max-w-md w-full text-center">
-                  <FaShieldAlt className="text-rose-500 text-4xl mx-auto mb-4" />
-                  <h2 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h2>
-                  <p className="text-slate-500 text-sm mb-6">{errorMsg}</p>
-                  <button onClick={() => router.push('/login')} className="w-full py-2.5 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-all">Go to Login</button>
-              </div>
-          </div>
-      );
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-rose-100 max-w-md w-full text-center">
+          <FaShieldAlt className="text-rose-500 text-4xl mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h2>
+          <p className="text-slate-500 text-sm mb-6">{errorMsg}</p>
+          <button onClick={() => router.push('/login')} className="w-full py-2.5 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-all">Go to Login</button>
+        </div>
+      </div>
+    );
   }
 
   return (

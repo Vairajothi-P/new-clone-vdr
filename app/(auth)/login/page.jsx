@@ -90,7 +90,7 @@ export default function LoginPage() {
             sessionStorage.removeItem('vdr_redirect_url');
             router.push(redirectUrl);
           } else {
-            router.push('/documents'); // Normal login
+            router.push('/workspace'); // Normal login
           }
         }, 1500);
       }
