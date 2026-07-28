@@ -379,7 +379,7 @@ export default function FileActivityPage() {
                     </div>
                     <div>View Count</div>
                     <div>Download Original Count</div>
-                    <div>Download PDF Count</div>
+                    <div>Download Secure Count</div>
                     <div>Total Activity Count</div>
                 </div>
 

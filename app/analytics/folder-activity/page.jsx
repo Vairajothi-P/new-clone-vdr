@@ -356,9 +356,9 @@ export default function FolderActivityPage() {
                             <polyline points="5 12 12 5 19 12" />
                         </svg>
                     </div>
-                    <div>Download Encrypted Count</div>
+                    <div>View Count</div>
                     <div>Download Original Count</div>
-                    <div>Download PDF Count</div>
+                    <div>Download Secure Count</div>
                     <div>Total Activity Count</div>
                 </div>
 
