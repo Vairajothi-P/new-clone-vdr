@@ -1,16 +1,26 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from '@/components/business-owner/Sidebar';
 import Header from '@/components/business-owner/Header';
 
 export default function BusinessOwnerLayout({ children }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
+  // Check if we are on the login page
+  const isLoginPage = pathname === '/business-owner/login';
+
   useEffect(() => {
+    // If it's the login page, we don't need to authorize them to view it
+    if (isLoginPage) {
+      setIsAuthorized(true);
+      return;
+    }
+
     const raw = localStorage.getItem('vdr_session');
     if (!raw) {
       router.replace('/business-owner/login');
@@ -26,7 +36,7 @@ export default function BusinessOwnerLayout({ children }) {
     } catch (err) {
       router.replace('/business-owner/login');
     }
-  }, [router]);
+  }, [router, isLoginPage]);
 
   if (!isAuthorized) {
     return (
@@ -37,6 +47,11 @@ export default function BusinessOwnerLayout({ children }) {
         </div>
       </div>
     );
+  }
+
+  if (isLoginPage) {
+    // Render only the login page without the sidebar and header
+    return <>{children}</>;
   }
 
   return (

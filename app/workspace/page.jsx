@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { FaCog, FaPlus, FaTimes, FaShieldAlt, FaCheck, FaDatabase } from "react-icons/fa";
+import { FaCog, FaPlus, FaTimes, FaShieldAlt, FaCheck, FaDatabase, FaUsers } from "react-icons/fa";
 import { FiChevronDown } from "react-icons/fi";
 import WorkspaceModal from "@/components/workspaces/WorkspaceModal";
 
@@ -162,12 +162,28 @@ export default function WorkspacePage() {
                   
                   {/* Center Icon & Title */}
                   <div className="flex-1 flex flex-col items-center justify-center -mt-2">
-                    <div className="text-slate-800 mb-3 opacity-90 group-hover:opacity-100 transition-opacity">
-                      <FaShieldAlt size={40} className="text-[var(--brand)]/80" />
+                    <div className="text-slate-800 mb-2 opacity-90 group-hover:opacity-100 transition-opacity">
+                      <FaShieldAlt size={32} className="text-[var(--brand)]/80" />
                     </div>
-                    <h3 className="font-semibold text-slate-800 text-sm text-center line-clamp-2">
+                    <h3 className="font-semibold text-slate-800 text-sm text-center line-clamp-2 mb-2">
                       {ws.name}
                     </h3>
+                    
+                    <div className="flex flex-col items-center gap-1.5 mt-auto mb-1">
+                      {ws.storageLimit && (
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
+                          <FaDatabase className="text-blue-500/70" size={10} />
+                          <span>{ws.storageLimit} {ws.storageType || 'GB'} Storage</span>
+                        </div>
+                      )}
+                      
+                      {ws.usersCount && (
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
+                          <FaUsers className="text-emerald-500/70" size={11} />
+                          <span>{ws.usersCount} Users</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Link>
