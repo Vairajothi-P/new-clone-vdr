@@ -155,7 +155,8 @@ export default function BusinessOwnerPlansPage() {
         ) : (
           plans.map((plan) => {
             const orgCount = getPlanOrgCount(plan.name);
-            const limitGb = Math.round((plan.storageLimitMb || 0) / 1024);
+            const isGb = plan.storageLimitMb >= 1024 && plan.storageLimitMb % 1024 === 0;
+            const storageDisplay = isGb ? `${plan.storageLimitMb / 1024} GB` : `${plan.storageLimitMb || 0} MB`;
 
             return (
               <div
@@ -205,7 +206,7 @@ export default function BusinessOwnerPlansPage() {
                         <span>Storage</span>
                       </div>
                       <span className="text-base font-extrabold text-slate-900">
-                        {limitGb} GB
+                        {storageDisplay}
                       </span>
                     </div>
 

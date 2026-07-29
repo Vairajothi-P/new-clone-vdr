@@ -21,7 +21,8 @@ export default function PlanModal({
 }) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('$0/mo');
-  const [storageGb, setStorageGb] = useState('50');
+  const [storageValue, setStorageValue] = useState('50');
+  const [storageUnit, setStorageUnit] = useState('GB');
   const [maxUsers, setMaxUsers] = useState('5');
   const [description, setDescription] = useState('');
   const [features, setFeatures] = useState([]);
@@ -41,17 +42,24 @@ export default function PlanModal({
     } else if (initialData && mode === 'edit') {
       setName(initialData.name || '');
       setPrice(initialData.price || '');
-      setStorageGb(String(Math.round((initialData.storageLimitMb || 51200) / 1024)));
+      if (initialData.storageLimitMb >= 1024 && initialData.storageLimitMb % 1024 === 0) {
+        setStorageValue(String(initialData.storageLimitMb / 1024));
+        setStorageUnit('GB');
+      } else {
+        setStorageValue(String(initialData.storageLimitMb || 51200));
+        setStorageUnit('MB');
+      }
       setMaxUsers(String(initialData.maxUsers || 5));
       setDescription(initialData.description || '');
       setFeatures(initialData.features || []);
     } else {
       setName('');
-      setPrice('$199/mo');
-      setStorageGb('100');
-      setMaxUsers('25');
-      setDescription('Custom Enterprise VDR Tier');
-      setFeatures(['Secure Document Vault', 'Granular Permissions', '24/7 Priority Support']);
+      setPrice('');
+      setStorageValue('');
+      setStorageUnit('GB');
+      setMaxUsers('');
+      setDescription('');
+      setFeatures(['']);
     }
     setErrorMsg('');
   }, [initialData, mode, isOpen, organizations]);
@@ -92,7 +100,7 @@ export default function PlanModal({
           planId: mode === 'edit' ? initialData?.id : undefined,
           name: name.trim(),
           price: price.trim(),
-          storageLimitMb: Number(storageGb) * 1024,
+          storageLimitMb: storageUnit === 'GB' ? Number(storageValue) * 1024 : Number(storageValue),
           maxUsers: Number(maxUsers),
           description: description.trim(),
           features,
@@ -127,8 +135,8 @@ export default function PlanModal({
                 {mode === 'assign'
                   ? 'Assign Plan to Tenant Organization'
                   : mode === 'edit'
-                  ? 'Edit SaaS Subscription Plan'
-                  : 'Create New Subscription Plan'}
+                    ? 'Edit SaaS Subscription Plan'
+                    : 'Create New Subscription Plan'}
               </h3>
               <p className="text-xs text-slate-500 font-medium">
                 Set monthly pricing and deal room resource quotas
@@ -215,7 +223,7 @@ export default function PlanModal({
                     required
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    placeholder="e.g. $199/mo or Custom"
+                    placeholder="e.g. ₹199/mo or Custom"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-[var(--brand)]"
                   />
                 </div>
@@ -224,16 +232,26 @@ export default function PlanModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                    Storage Quota (GB)
+                    Storage Quota
                   </label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={storageGb}
-                    onChange={(e) => setStorageGb(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-[var(--brand)]"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={storageValue}
+                      onChange={(e) => setStorageValue(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-[var(--brand)]"
+                    />
+                    <select
+                      value={storageUnit}
+                      onChange={(e) => setStorageUnit(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 font-bold focus:outline-none focus:border-[var(--brand)] cursor-pointer"
+                    >
+                      <option value="MB">MB</option>
+                      <option value="GB">GB</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div>

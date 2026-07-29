@@ -12,7 +12,7 @@ export default function BusinessOwnerLoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e, demoEmail, demoPass) => {
+  const handleLogin = async (e, demoEmail, demoPass) => {
     if (e) e.preventDefault();
     setError('');
     setIsLoading(true);
@@ -20,28 +20,28 @@ export default function BusinessOwnerLoginPage() {
     const targetEmail = demoEmail || email;
     const targetPass = demoPass || password;
 
-    setTimeout(() => {
-      if (
-        (targetEmail === 'owner@pibivdr.com' && targetPass === 'superadmin123') ||
-        (targetEmail && targetPass.length >= 6)
-      ) {
-        // Save session
-        const sessionData = {
-          id: 'owner-super-admin-001',
-          email: targetEmail,
-          name: 'Anushiya Selvaraj',
-          role: 'super_admin',
-          loggedInAt: new Date().toISOString(),
-        };
-        localStorage.setItem('vdr_session', JSON.stringify(sessionData));
+    try {
+      const res = await fetch("/api/auth/super-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetEmail, password: targetPass }),
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        localStorage.setItem('vdr_session', JSON.stringify(data.user));
         document.cookie = "vdr_super_admin=true; path=/; max-age=86400; SameSite=Lax";
-
         router.push('/business-owner');
       } else {
-        setError('Invalid executive credentials. Please check your email and password.');
-        setIsLoading(false);
+        setError(data.error || 'Invalid executive credentials. Please check your email and password.');
       }
-    }, 400);
+    } catch (err) {
+      console.error(err);
+      setError('An error occurred during login. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDemoLogin = () => {
