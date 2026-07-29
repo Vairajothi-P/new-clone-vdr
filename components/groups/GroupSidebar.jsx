@@ -208,13 +208,13 @@ export default function GroupsSidebar({ isOpen = true }) {
 
     return (
         <>
-            <aside className={`${isOpen ? 'w-64 border-r' : 'w-0 border-r-0'} transition-all duration-300 bg-white flex flex-col h-screen sticky top-0 shrink-0 font-sans`}>
+            <aside className={`${isOpen ? 'w-64 border-r border-gray-200' : 'w-0 border-r-0'} transition-all duration-300 bg-white flex flex-col h-screen sticky top-0 shrink-0 font-sans`}>
                 <div className="flex-1 overflow-y-auto">
                     <div className="p-5 border-b border-gray-100 flex items-center justify-between">
                         <h2 className="text-[14px] font-bold font-sans text-gray-800 tracking-tight uppercase">Active Members</h2>
                     </div>
 
-                    <nav className="py-2">
+                    <nav className="py-3 space-y-1">
                         {isLoading ? (
                             <div className="p-6 space-y-4 animate-pulse"><div className="h-4 bg-gray-100 rounded w-full"></div></div>
                         ) : (
@@ -224,8 +224,8 @@ export default function GroupsSidebar({ isOpen = true }) {
                                     <Link
                                         key={item.id}
                                         href={item.href}
-                                        className={`group flex items-center justify-between px-6 py-3 transition-all ${active
-                                            ? 'bg-[var(--brand-50)] border-r-2 border-[var(--brand)] text-[var(--brand)] font-bold'
+                                        className={`group flex items-center justify-between mx-3 px-3.5 py-2.5 rounded-xl transition-all ${active
+                                            ? 'bg-[var(--brand-50)] text-[var(--brand)] font-bold'
                                             : 'text-gray-600 hover:bg-gray-50'
                                             }`}
                                     >

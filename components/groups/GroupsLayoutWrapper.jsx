@@ -48,7 +48,7 @@ export default function GroupsLayoutWrapper({ children }) {
 
     return (
         <>
-            <Suspense fallback={<div className="w-64 bg-white border-r shrink-0 h-full"></div>}>
+            <Suspense fallback={<div className="w-64 bg-white border-r border-gray-200 shrink-0 h-full"></div>}>
                 <GroupSidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
             </Suspense>
 
