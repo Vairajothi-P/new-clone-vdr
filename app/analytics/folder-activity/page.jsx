@@ -356,7 +356,7 @@ export default function FolderActivityPage() {
                             <polyline points="5 12 12 5 19 12" />
                         </svg>
                     </div>
-                    <div>View Count</div>
+                    {/* <div>View Count</div> */}
                     <div>Download Original Count</div>
                     <div>Download Secure Count</div>
                     <div>Total Activity Count</div>
@@ -375,12 +375,12 @@ export default function FolderActivityPage() {
                                 className={`grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-4 px-4 py-3 border-b border-gray-100 ${index % 2 === 0 ? 'bg-gray-50/50' : 'bg-white'}`}
                             >
                                 <div className="text-gray-600 font-medium truncate pr-4" title={folder.name}>{folder.name}</div>
-                                <div 
+                                {/* <div 
                                     className={`text-gray-800 ${folder.downloadEncryptedCount > 0 ? 'underline cursor-pointer hover:text-black font-semibold' : ''}`}
                                     onClick={() => handleOpenModal(folder, 'download_secure')}
                                 >
                                     {folder.downloadEncryptedCount}
-                                </div>
+                                </div> */}
                                 <div 
                                     className={`text-gray-800 ${folder.downloadOriginalCount > 0 ? 'underline cursor-pointer hover:text-black font-semibold' : ''}`}
                                     onClick={() => handleOpenModal(folder, 'download_original')}
