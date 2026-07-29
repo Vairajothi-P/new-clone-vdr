@@ -166,6 +166,16 @@ function RegisterContent() {
           >
             Go to Login
           </button>
+          <button
+            onClick={() =>
+              router.push(
+                `/verify-email?email=${encodeURIComponent(inviteData?.email || "")}`
+              )
+            }
+            className="w-full py-2.5 mt-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-all duration-300 text-sm cursor-pointer"
+          >
+            Verify Email Address
+          </button>
         </div>
       </div>
     );

@@ -1,5 +1,61 @@
 {
-  "organizations": [],
+  "organizations": [
+    {
+      "id": "org-101",
+      "name": "Acme Corp VDR",
+      "adminEmail": "admin@acmecorp.com",
+      "usersCount": 14,
+      "plan": "Pro",
+      "status": "active",
+      "storageUsedMb": 42500,
+      "storageLimitMb": 100000,
+      "createdAt": "2026-06-12"
+    },
+    {
+      "id": "org-102",
+      "name": "Global Financial M&A",
+      "adminEmail": "compliance@globalmna.com",
+      "usersCount": 68,
+      "plan": "Enterprise",
+      "status": "active",
+      "storageUsedMb": 412000,
+      "storageLimitMb": 1000000,
+      "createdAt": "2026-05-19"
+    },
+    {
+      "id": "org-103",
+      "name": "Starlight Ventures",
+      "adminEmail": "ops@starlightvc.com",
+      "usersCount": 4,
+      "plan": "Free",
+      "status": "trial",
+      "storageUsedMb": 680,
+      "storageLimitMb": 1000,
+      "createdAt": "2026-07-15"
+    },
+    {
+      "id": "org-104",
+      "name": "Apex Healthcare Group",
+      "adminEmail": "security@apexhealth.org",
+      "usersCount": 22,
+      "plan": "Pro",
+      "status": "active",
+      "storageUsedMb": 89300,
+      "storageLimitMb": 100000,
+      "createdAt": "2026-06-28"
+    },
+    {
+      "id": "org-105",
+      "name": "Quantum Tech Labs",
+      "adminEmail": "it-admin@quantumlabs.io",
+      "usersCount": 95,
+      "plan": "Enterprise",
+      "status": "suspended",
+      "storageUsedMb": 610000,
+      "storageLimitMb": 1000000,
+      "createdAt": "2026-04-03"
+    }
+  ],
   "plans": [
     {
       "id": "plan-free",
@@ -73,7 +129,44 @@
       "updatedAt": "2026-07-25 09:04:00"
     }
   ],
-  "activityLogs": [],
+  "activityLogs": [
+    {
+      "id": "log-1",
+      "action": "Organization Created",
+      "description": "New organization 'Quantum Tech Labs' provisioned with Enterprise Plan.",
+      "timestamp": "10 mins ago",
+      "iconType": "org"
+    },
+    {
+      "id": "log-2",
+      "action": "Storage Limit Updated",
+      "description": "Increased storage quota to 100 GB for 'Apex Healthcare Group'.",
+      "timestamp": "2 hours ago",
+      "iconType": "storage"
+    },
+    {
+      "id": "log-3",
+      "action": "Plan Reassigned",
+      "description": "Upgraded 'Global Financial M&A' from Pro to Enterprise.",
+      "timestamp": "5 hours ago",
+      "iconType": "plan"
+    },
+    {
+      "id": "log-4",
+      "action": "Email Template Edited",
+      "subject": "Welcome Email template updated by Super Admin.",
+      "description": "Modified dynamic tokens in Welcome Email template.",
+      "timestamp": "Yesterday",
+      "iconType": "email"
+    },
+    {
+      "id": "log-5",
+      "action": "Security Audit",
+      "description": "Super Admin login verified from IP 192.168.1.104.",
+      "timestamp": "2 days ago",
+      "iconType": "security"
+    }
+  ],
   "adminProfile": {
     "name": "Anushiya Selvaraj",
     "email": "owner@pibivdr.com",
