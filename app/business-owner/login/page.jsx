@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FaShieldAlt, FaLock, FaEnvelope, FaArrowRight } from 'react-icons/fa';
+import { FaShieldAlt, FaLock, FaEnvelope, FaArrowRight, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 export default function BusinessOwnerLoginPage() {
   const router = useRouter();
@@ -11,6 +11,7 @@ export default function BusinessOwnerLoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e, demoEmail, demoPass) => {
     if (e) e.preventDefault();
@@ -114,13 +115,20 @@ export default function BusinessOwnerLoginPage() {
                 </span>
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-12 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
               </div>
             </div>
 
@@ -130,26 +138,12 @@ export default function BusinessOwnerLoginPage() {
                 disabled={isLoading}
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl shadow-sm text-sm font-bold text-white bg-[var(--brand)] hover:bg-[var(--brand-dark)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand)] transition-all disabled:opacity-50"
               >
-                <span>{isLoading ? 'Verifying Executive Clearance...' : 'Authenticate as Super Admin'}</span>
+                <span>{isLoading ? 'Verifying Executive Clearance...' : 'Login'}</span>
                 <FaArrowRight className="text-xs" />
               </button>
             </div>
           </form>
 
-          {/* Quick Demo Login Shortcut */}
-          <div className="mt-6 pt-6 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={handleDemoLogin}
-              className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold transition-all border border-slate-200"
-            >
-              <FaShieldAlt className="text-[var(--brand)]" />
-              <span>Demo Executive Login (One-Click)</span>
-            </button>
-            <p className="mt-2 text-center text-xs text-slate-400 font-medium">
-              One-click shortcut fills demo credentials and signs you in
-            </p>
-          </div>
 
           <div className="mt-6 text-center">
             <Link
