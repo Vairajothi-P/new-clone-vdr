@@ -350,6 +350,17 @@ function CompanyRegisterContent() {
   const MOCK_OTP = "123456";
 
   const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [countdown, setCountdown] = useState(60);
+
+  useEffect(() => {
+    let timer;
+    if (step === 2 && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [step, countdown]);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -398,6 +409,7 @@ function CompanyRegisterContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send OTP");
       
+      setCountdown(60);
       setStep(2);
     } catch (err) {
       console.error(err);
@@ -429,6 +441,30 @@ function CompanyRegisterContent() {
       if (!res.ok) throw new Error(data.error || "Invalid OTP code");
       
       setStep(3);
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setErrorMsg("");
+    setSubmitting(true);
+    
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: adminEmail.trim() }),
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to resend OTP");
+      
+      setCountdown(60);
+      setOtpCode("");
     } catch (err) {
       console.error(err);
       setErrorMsg(err.message);
@@ -678,44 +714,87 @@ function CompanyRegisterContent() {
 
           {/* STEP 2: OTP Verification */}
           {step === 2 && (
-            <form onSubmit={handleVerifyOtp} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-              <div className="text-center mb-4">
-                <div className="text-5xl mb-4 text-slate-300">📧</div>
-                <p className="text-slate-600 text-sm">Please enter the 6-digit verification code sent to <strong className="text-slate-900">{adminEmail}</strong>.</p>
-                <p className="text-amber-600 text-xs mt-2 font-medium bg-amber-50 p-2 rounded-lg border border-amber-100 inline-block">If you didn't configure SMTP, check the terminal console for the OTP.</p>
+            <form onSubmit={handleVerifyOtp} className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500 shadow-inner shadow-blue-100">
+                  <FaShieldAlt className="text-3xl" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">Verify Your Email</h2>
+                <p className="text-slate-500 text-sm max-w-xs mx-auto leading-relaxed">
+                  We've sent a 6-digit verification code to <br/>
+                  <strong className="text-slate-800 font-semibold">{adminEmail}</strong>
+                </p>
               </div>
 
-              <div>
+              <div className="relative max-w-[300px] mx-auto">
+                <div className="flex justify-between gap-2">
+                  {[0, 1, 2, 3, 4, 5].map((index) => {
+                    const digit = otpCode[index] || "";
+                    const isFocused = otpCode.length === index;
+                    return (
+                      <div
+                        key={index}
+                        className={`w-11 h-14 flex items-center justify-center text-2xl font-bold rounded-xl border-2 transition-all duration-300
+                          ${digit ? 'border-[var(--brand)] text-slate-800 bg-white shadow-sm' : 'border-gray-200 text-slate-300 bg-gray-50'}
+                          ${isFocused ? 'border-[var(--brand)] ring-4 ring-[var(--brand)]/10 bg-white' : ''}
+                        `}
+                      >
+                        {digit}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Hidden Input for Mobile Keyboard & Desktop Typing */}
                 <input
                   type="text"
-                  placeholder="000000"
                   maxLength={6}
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                   disabled={submitting}
+                  autoFocus
                   required
-                  className="w-full text-center text-3xl tracking-[0.5em] py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand)] transition disabled:bg-gray-100 placeholder-gray-300 font-mono text-slate-900"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-text z-10"
                 />
               </div>
 
-              <div className="flex gap-3 mt-8">
+              <div className="text-center -mt-2">
+                {countdown > 0 ? (
+                  <p className="text-sm text-slate-500 font-medium">
+                    Code expires in <span className="text-[var(--brand)] font-bold">{countdown}s</span>
+                  </p>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 mt-2">
+                    <p className="text-sm text-rose-500 font-medium">Code has expired</p>
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      disabled={submitting}
+                      className="px-6 py-2 border-2 border-[var(--brand)] text-[var(--brand)] hover:bg-[var(--brand)] hover:text-white font-semibold rounded-xl transition-all duration-300 text-sm shadow-sm flex items-center gap-2"
+                    >
+                      {submitting ? "Sending..." : "Resend Code"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setStep(1)}
                   disabled={submitting}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-slate-700 font-semibold rounded-xl transition-all duration-300"
+                  className="flex-1 py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-600 font-semibold rounded-xl transition-all duration-300 border border-slate-200"
                 >
-                  Back
+                  Go Back
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || otpCode.length !== 6}
-                  className="flex-1 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-70 flex items-center justify-center gap-2 shadow-lg"
+                  disabled={submitting || otpCode.length !== 6 || countdown === 0}
+                  className="flex-[2] py-3.5 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2 shadow-lg shadow-[var(--brand)]/20"
                 >
                   {submitting ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <span>Verify Code</span>
+                    <span>Verify & Continue</span>
                   )}
                 </button>
               </div>
