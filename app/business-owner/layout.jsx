@@ -28,7 +28,7 @@ export default function BusinessOwnerLayout({ children }) {
     }
     try {
       const session = JSON.parse(raw);
-      if (session.role !== 'super_admin') {
+      if (session.role !== 'business_owner' && session.role !== 'super_admin') {
         router.replace('/business-owner/login');
         return;
       }
