@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { FaUserPlus, FaArrowLeft, FaPaperPlane, FaEnvelope, FaCheckCircle, FaFileSignature } from "react-icons/fa";
+import { FaUserPlus, FaArrowLeft, FaPaperPlane, FaEnvelope, FaCheckCircle, FaFileSignature, FaUsers } from "react-icons/fa";
 
 export default function InviteMemberPage() {
     const params = useParams();
@@ -12,7 +12,9 @@ export default function InviteMemberPage() {
     const [groupData, setGroupData] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const [inviteMode, setInviteMode] = useState("single"); // 'single' or 'bulk'
     const [inviteEmail, setInviteEmail] = useState("");
+    const [bulkEmails, setBulkEmails] = useState("");
     const [inviteDescription, setInviteDescription] = useState("");
     const [requireNda, setRequireNda] = useState(true);
     const [inviting, setInviting] = useState(false);
@@ -47,23 +49,50 @@ export default function InviteMemberPage() {
         e.preventDefault();
         setErrorMsg(""); setSuccessMsg("");
 
-        if (!inviteEmail.trim()) return setErrorMsg("Please enter a valid email address.");
+        let emailsToInvite = [];
+        if (inviteMode === "single") {
+            if (!inviteEmail.trim()) return setErrorMsg("Please enter a valid email address.");
+            emailsToInvite = [inviteEmail.trim()];
+        } else {
+            if (!bulkEmails.trim()) return setErrorMsg("Please enter at least one email address.");
+            emailsToInvite = bulkEmails.split(/[\n,]+/).map(e => e.trim()).filter(e => e);
+            if (emailsToInvite.length === 0) return setErrorMsg("Please enter valid email addresses.");
+        }
 
         setInviting(true);
         try {
-            const response = await fetch("/api/invite", {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: inviteEmail, description: inviteDescription, group_id: groupData?.id,
-                    invited_by: session.id, requires_nda: requireNda
-                }),
-            });
+            let successCount = 0;
+            let failCount = 0;
+            let lastError = "";
 
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || "Failed to dispatch invitation.");
+            for (const email of emailsToInvite) {
+                try {
+                    const response = await fetch("/api/invite", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            email: email, description: inviteDescription, group_id: groupData?.id,
+                            invited_by: session.id, requires_nda: requireNda
+                        }),
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || "Failed to dispatch invitation.");
+                    successCount++;
+                } catch (err) {
+                    failCount++;
+                    lastError = err.message;
+                }
+            }
 
-            setSuccessMsg(`Invitation sent successfully to ${inviteEmail}`);
-            setInviteEmail(""); setInviteDescription(""); setRequireNda(true);
+            if (failCount === 0) {
+                setSuccessMsg(`Successfully sent ${successCount} invitation${successCount !== 1 ? 's' : ''}.`);
+                setInviteEmail(""); setBulkEmails(""); setInviteDescription(""); setRequireNda(true);
+            } else if (successCount > 0) {
+                setSuccessMsg(`Sent ${successCount} invitation(s).`);
+                setErrorMsg(`Failed to send ${failCount} invitation(s). Last error: ${lastError}`);
+            } else {
+                setErrorMsg(`Failed to send invitations. Last error: ${lastError}`);
+            }
+
         } catch (err) {
             setErrorMsg("Error sending invitation: " + err.message);
         } finally {
@@ -88,7 +117,7 @@ export default function InviteMemberPage() {
                             <span className="w-9 h-9 rounded-xl bg-[var(--brand)] text-white flex items-center justify-center shadow-sm">
                                 <FaUserPlus size={15} />
                             </span>
-                            Invite Member
+                            Invite Members
                         </h1>
                     </div>
                 </div>
@@ -100,14 +129,41 @@ export default function InviteMemberPage() {
                     {errorMsg && <div className="bg-rose-50 border border-rose-200 rounded-2xl px-6 py-4 mb-6 flex items-center gap-3 text-rose-700 font-medium text-sm">⚠️ {errorMsg}</div>}
 
                     <div className="bg-white/80 backdrop-blur-xl border border-gray-200/80 rounded-3xl shadow-sm p-8 hover:border-gray-300 transition-all">
+
+                        <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
+                            <button
+                                type="button"
+                                onClick={() => setInviteMode('single')}
+                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${inviteMode === 'single' ? 'bg-white text-[var(--brand)] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                <FaEnvelope size={13} /> Single Invite
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setInviteMode('bulk')}
+                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${inviteMode === 'bulk' ? 'bg-white text-[var(--brand)] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                <FaUsers size={14} /> Bulk Invite
+                            </button>
+                        </div>
+
                         <form onSubmit={handleInviteSubmit} className="space-y-6">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Candidate Email <span className="text-rose-400">*</span></label>
-                                <div className="relative">
-                                    <FaEnvelope size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} required className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-medium focus:border-[var(--brand)] outline-none" />
+                            {inviteMode === "single" ? (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Candidate Email <span className="text-rose-400">*</span></label>
+                                    <div className="relative">
+                                        <FaEnvelope size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} required className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-medium focus:border-[var(--brand)] outline-none" />
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Candidate Emails <span className="text-rose-400">*</span></label>
+                                    <p className="text-xs text-slate-400 mb-2">Enter multiple email addresses separated by commas or new lines.</p>
+                                    <textarea value={bulkEmails} onChange={(e) => setBulkEmails(e.target.value)} rows={4} required className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:border-[var(--brand)] outline-none resize-none" placeholder="john@example.com, jane@example.com&#10;team@example.com" />
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Message (Optional)</label>
                                 <textarea value={inviteDescription} onChange={(e) => setInviteDescription(e.target.value)} rows={3} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:border-[var(--brand)] outline-none resize-none" />
@@ -129,8 +185,8 @@ export default function InviteMemberPage() {
 
                             <div className="flex items-center gap-3 pt-2">
                                 <button type="button" onClick={() => router.push(`/groups/${groupSlug}`)} className="flex-1 bg-white border border-slate-200 text-slate-700 py-3 rounded-xl font-semibold text-sm hover:bg-slate-50 transition-all">Cancel</button>
-                                <button type="submit" disabled={inviting || !inviteEmail.trim()} className="flex-1 bg-[var(--brand)] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[var(--brand-dark)] transition-all flex justify-center items-center gap-2">
-                                    {inviting ? "Sending..." : <><FaPaperPlane size={13} /> Send Invitation</>}
+                                <button type="submit" disabled={inviting || (inviteMode === 'single' ? !inviteEmail.trim() : !bulkEmails.trim())} className="flex-1 bg-[var(--brand)] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[var(--brand-dark)] transition-all flex justify-center items-center gap-2">
+                                    {inviting ? "Sending..." : <><FaPaperPlane size={13} /> Send Invitation{inviteMode === 'bulk' && 's'}</>}
                                 </button>
                             </div>
                         </form>
