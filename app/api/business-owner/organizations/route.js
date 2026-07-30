@@ -41,7 +41,7 @@ export async function GET() {
         name: company.name,
         adminEmail: company.email,
         usersCount: usersCount,
-        plan: 'Custom Plan', // Subscriptions table does not have a plan_id relation
+        plan: company.plan_name || 'Standard VDR',
         status: company.status,
         storageUsedMb: 0, // Placeholder, actual storage calculation requires file tracking
         storageLimitMb: sub.storage_limit_mb || 0,

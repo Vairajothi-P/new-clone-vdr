@@ -215,7 +215,6 @@ export default function BusinessOwnerOrganizationsPage() {
                         </div>
                         <div>
                           <p className="font-bold text-slate-900">{org.name}</p>
-                          <span className="text-xs text-slate-400">ID: {org.id}</span>
                         </div>
                       </div>
                     </td>

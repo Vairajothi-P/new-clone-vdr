@@ -18,6 +18,7 @@ import {
 export default function BusinessOwnerOverviewPage() {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const fetchOverview = async () => {
     try {
@@ -25,6 +26,13 @@ export default function BusinessOwnerOverviewPage() {
       if (res.ok) {
         const json = await res.json();
         setData(json);
+      }
+      const pendingRes = await fetch('/api/request-workspace?status=pending');
+      if (pendingRes.ok) {
+        const pJson = await pendingRes.json();
+        if (pJson.success && pJson.requests) {
+          setPendingCount(pJson.requests.length);
+        }
       }
     } catch (err) {
       console.error('Failed to load overview data:', err);
@@ -86,6 +94,36 @@ export default function BusinessOwnerOverviewPage() {
           <FaArrowRight />
         </Link>
       </div>
+
+      {/* Pending Requests Minimal Alert Banner */}
+      {pendingCount > 0 && (
+        <div className="bg-white border border-[var(--brand)]/20 rounded-2xl p-5 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center text-lg font-bold shrink-0">
+              <FaBuilding />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900">
+                  Pending Workspace Requests
+                </h3>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--brand)]/10 text-[var(--brand)]">
+                  {pendingCount} new
+                </span>
+              </div>
+              <p className="text-slate-500 text-sm mt-0.5">
+                Organizations require executive approval to initialize VDR vaults.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/workspace-requests"
+            className="px-5 py-2.5 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-semibold text-sm rounded-xl transition-all shadow-2xs shrink-0"
+          >
+            Review Requests
+          </Link>
+        </div>
+      )}
 
       {/* 4 Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

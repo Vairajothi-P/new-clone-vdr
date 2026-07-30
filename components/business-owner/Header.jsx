@@ -9,6 +9,7 @@ import {
   FaUserShield,
   FaSignOutAlt,
   FaCog,
+  FaBell,
 } from 'react-icons/fa';
 
 export default function Header({ onOpenSidebar }) {
@@ -17,6 +18,8 @@ export default function Header({ onOpenSidebar }) {
   const [session, setSession] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem('vdr_session');
@@ -27,6 +30,21 @@ export default function Header({ onOpenSidebar }) {
         console.error('Failed to parse session:', err);
       }
     }
+
+    const fetchPending = async () => {
+      try {
+        const res = await fetch('/api/request-workspace?status=pending');
+        const data = await res.json();
+        if (data.success && data.requests) {
+          setPendingRequests(data.requests);
+        }
+      } catch (err) {
+        console.error('Failed to fetch pending requests:', err);
+      }
+    };
+    fetchPending();
+    const interval = setInterval(fetchPending, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = () => {
@@ -40,6 +58,7 @@ export default function Header({ onOpenSidebar }) {
     if (pathname?.startsWith('/business-owner/organizations')) return 'Organizations';
     if (pathname?.startsWith('/business-owner/storage')) return 'Storage & Quotas';
     if (pathname?.startsWith('/business-owner/plans')) return 'Subscription Plans';
+    if (pathname?.startsWith('/business-owner/purchase')) return 'Purchase Plans';
     if (pathname?.startsWith('/business-owner/email-templates')) return 'Email Templates';
     if (pathname?.startsWith('/business-owner/settings')) return 'Settings';
     return 'Business Owner Portal';
@@ -78,6 +97,81 @@ export default function Header({ onOpenSidebar }) {
             placeholder="Search organizations..."
             className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-[13.5px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] transition-all"
           />
+        </div>
+
+        {/* Notifications Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-600 hover:text-slate-900 transition-all"
+            aria-label="Workspace request notifications"
+          >
+            <FaBell className="text-base" />
+            {pendingRequests.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[var(--brand)] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+                {pendingRequests.length}
+              </span>
+            )}
+          </button>
+
+          {showNotifications && (
+            <>
+              <div
+                onClick={() => setShowNotifications(false)}
+                className="fixed inset-0 z-40"
+              />
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-slate-700 max-h-[420px] flex flex-col">
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-slate-900">Workspace Requests</p>
+                    {pendingRequests.length > 0 && (
+                      <span className="bg-[var(--brand)]/10 text-[var(--brand)] text-xs px-2 py-0.5 rounded-full font-semibold">
+                        {pendingRequests.length} Pending
+                      </span>
+                    )}
+                  </div>
+                  <Link
+                    href="/admin/workspace-requests"
+                    onClick={() => setShowNotifications(false)}
+                    className="text-xs text-[var(--brand)] font-semibold hover:underline"
+                  >
+                    View All
+                  </Link>
+                </div>
+
+                <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
+                  {pendingRequests.length === 0 ? (
+                    <div className="p-6 text-center text-slate-400 text-sm">
+                      <p>No pending workspace requests</p>
+                    </div>
+                  ) : (
+                    pendingRequests.map((req) => (
+                      <div key={req.id} className="p-4 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h4 className="text-sm font-bold text-slate-900">{req.company_name}</h4>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Requested by <span className="font-medium text-slate-700">{req.admin_name}</span> ({req.admin_email})
+                            </p>
+                            <span className="inline-block mt-2 px-2 py-0.5 bg-slate-100 text-slate-600 text-[11px] rounded font-medium uppercase">
+                              Plan: {req.plan_id}
+                            </span>
+                          </div>
+                          <Link
+                            href="/admin/workspace-requests"
+                            onClick={() => setShowNotifications(false)}
+                            className="px-3 py-1.5 bg-[var(--brand)] text-white text-xs font-semibold rounded-lg hover:bg-[var(--brand-dark)] transition-colors shrink-0 shadow-2xs"
+                          >
+                            Review
+                          </Link>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Profile Dropdown */}

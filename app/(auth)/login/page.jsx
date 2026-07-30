@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [rejectionPopup, setRejectionPopup] = useState({ show: false, reason: null });
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -63,14 +64,38 @@ export default function LoginPage() {
         console.error('Failed to insert login history:', historyError);
       }
 
-      // 2. Add nda_status to local storage so the whole app knows
+      // Check workspace request status for approval flow
+      let requestStatus = user.request_status || 'approved';
+      let rejectionReason = null;
+      try {
+        const resStatus = await fetch(`/api/request-workspace?email=${encodeURIComponent(user.email)}`);
+        const statusData = await resStatus.json();
+        if (statusData && statusData.status) {
+          requestStatus = statusData.status;
+          rejectionReason = statusData.rejection_reason;
+        }
+      } catch (err) {
+        console.warn('Could not fetch workspace request status:', err);
+      }
+
+      if (requestStatus === 'rejected') {
+        setRejectionPopup({
+          show: true,
+          reason: rejectionReason
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Add nda_status and request_status to local storage so the whole app knows
       localStorage.setItem('vdr_session', JSON.stringify({
         id: user.id,
         company_id: user.company_id,
         name: user.name,
         email: user.email,
         role: user.role,
-        nda_status: user.nda_status // <-- Added this
+        nda_status: user.nda_status,
+        request_status: requestStatus
       }));
 
       if (rememberMe) {
@@ -290,6 +315,33 @@ export default function LoginPage() {
         <p className="text-center text-xs text-gray-500 mt-6">
           Secure VDR Platform • Encrypted Connection
         </p>
+        {/* Rejection Popup Modal */}
+        {rejectionPopup.show && (
+          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white p-8 rounded-2xl max-w-md w-full text-center space-y-4 shadow-2xl animate-in zoom-in-95 duration-200 border border-red-100">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto text-red-500">
+                <FiShield className="text-3xl" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">Workspace Request Rejected</h3>
+              <p className="text-slate-600 text-sm leading-relaxed">
+                Your plan request has been rejected. Please contact support.
+              </p>
+              {rejectionPopup.reason && (
+                <div className="bg-red-50 text-red-700 text-xs p-3 rounded-lg text-left border border-red-100">
+                  <strong>Reason:</strong> {rejectionPopup.reason}
+                </div>
+              )}
+              <div className="pt-2">
+                <button
+                  onClick={() => setRejectionPopup({ show: false, reason: null })}
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm transition-colors"
+                >
+                  Close & Contact Support
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

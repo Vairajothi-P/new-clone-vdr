@@ -33,14 +33,10 @@ yarn-error.log*
 .env*
 .vercel
 
-
-
-
-
-
-
-
-
-
-
-
+# Local fallback store and temp scripts
+.vdr_*.json
+check_tables.js
+check_otps.js
+verify_debug.js
+AUDIT_REPORT.md
+build_output.txt

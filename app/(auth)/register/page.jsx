@@ -304,7 +304,7 @@ function InviteRegisterContent({ token }) {
                   <span>Processing...</span>
                 </>
               ) : (
-                <span>{inviteData?.requires_nda ? "Next: Review Security Terms" : "Complete Registration"}</span>
+                <span>{inviteData?.requires_nda ? "Next: Review Security Terms" : "Request Workspace"}</span>
               )}
             </button>
           </form>
@@ -481,7 +481,7 @@ function CompanyRegisterContent() {
     setSubmitting(true);
 
     try {
-      const res = await fetch("/api/auth/register-company", {
+      const res = await fetch("/api/request-workspace", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -510,18 +510,18 @@ function CompanyRegisterContent() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[var(--brand)]/10 via-white to-[var(--brand-secondary)]/10 flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border border-gray-100 animate-in zoom-in-95 duration-300">
-          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-500">
-            <FaCheckCircle className="text-4xl" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-sm max-w-md w-full text-center border border-slate-200 animate-in zoom-in-95 duration-300">
+          <div className="w-16 h-16 bg-[var(--brand)]/10 rounded-full flex items-center justify-center mx-auto mb-4 text-[var(--brand)]">
+            <FaCheckCircle className="text-3xl" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Registration Submitted!</h2>
-          <p className="text-gray-600 text-sm mb-6">
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Registration Submitted!</h2>
+          <p className="text-slate-600 text-sm mb-6">
             Your VDR account is currently pending executive approval. You will be notified once our team reviews your request.
           </p>
           <button
             onClick={() => router.push("/login")}
-            className="w-full py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-semibold rounded-xl transition-all duration-300 shadow-lg"
+            className="w-full py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-semibold rounded-xl transition-all duration-300 shadow-2xs"
           >
             Go to Login
           </button>
@@ -531,9 +531,7 @@ function CompanyRegisterContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[var(--brand)]/10 via-white to-[var(--brand-secondary)]/10 flex items-center justify-center p-4 py-12 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-96 h-96 bg-[var(--brand)]/10 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-[var(--brand-secondary)]/10 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-12 relative">
 
       <div className={`relative w-full ${step === 3 ? "max-w-4xl" : "max-w-lg"}`}>
         {/* Header */}
@@ -822,37 +820,37 @@ function CompanyRegisterContent() {
                       <div 
                         key={plan.id}
                         onClick={() => setSelectedPlanId(plan.id)}
-                        className={`relative rounded-2xl border-2 transition-all duration-300 cursor-pointer overflow-hidden p-6 flex flex-col items-center text-center
+                        className={`relative rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden p-6 flex flex-col items-center text-center
                           ${selectedPlanId === plan.id 
-                            ? 'border-[var(--brand)] shadow-xl shadow-[var(--brand)]/20 bg-[var(--brand)]/5 scale-[1.02]' 
-                            : 'border-gray-200 hover:border-gray-300 hover:shadow-md bg-white'}`}
+                            ? 'border-[var(--brand)] ring-2 ring-[var(--brand)]/20 bg-[var(--brand)]/5 shadow-sm' 
+                            : 'border-slate-200 hover:border-slate-300 bg-white'}`}
                       >
                         {selectedPlanId === plan.id && (
-                          <div className="absolute top-4 right-4 text-[var(--brand)] animate-in zoom-in duration-300">
-                            <FaCheckCircle className="text-xl" />
+                          <div className="absolute top-4 right-4 text-[var(--brand)]">
+                            <FaCheckCircle className="text-lg" />
                           </div>
                         )}
-                        <h3 className={`text-xl font-bold mb-2 ${selectedPlanId === plan.id ? 'text-[var(--brand)]' : 'text-slate-900'}`}>
+                        <h3 className={`text-lg font-bold mb-2 ${selectedPlanId === plan.id ? 'text-[var(--brand)]' : 'text-slate-900'}`}>
                           {plan.name}
                         </h3>
-                        <div className="w-12 h-1 bg-gray-200 rounded-full my-4"></div>
-                        <p className="text-3xl font-black text-slate-900 mb-1">
+                        <div className="w-10 h-0.5 bg-slate-200 rounded-full my-4"></div>
+                        <p className="text-3xl font-extrabold text-slate-900 mb-1">
                           {plan.storage_limit_mb >= 1024 && plan.storage_limit_mb % 1024 === 0 ? (
                             <>
                               {plan.storage_limit_mb / 1024}
-                              <span className="text-base font-semibold text-slate-500">GB</span>
+                              <span className="text-sm font-semibold text-slate-500 ml-1">GB</span>
                             </>
                           ) : (
                             <>
                               {plan.storage_limit_mb}
-                              <span className="text-base font-semibold text-slate-500">MB</span>
+                              <span className="text-sm font-semibold text-slate-500 ml-1">MB</span>
                             </>
                           )}
                         </p>
-                        <p className="text-sm text-slate-500 mb-6 font-medium uppercase tracking-wider">Total Storage</p>
+                        <p className="text-xs text-slate-500 mb-6 font-medium uppercase tracking-wider">Total Storage</p>
                         
-                        <div className="w-full bg-slate-50 py-3 rounded-lg border border-slate-100 mt-auto">
-                          <p className="text-sm font-semibold text-slate-700 flex items-center justify-center gap-2">
+                        <div className="w-full bg-slate-50 py-2.5 rounded-xl border border-slate-100 mt-auto">
+                          <p className="text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5">
                             <FaUser className="text-slate-400" />
                             Up to {plan.users_limit} Users
                           </p>
@@ -865,15 +863,15 @@ function CompanyRegisterContent() {
                     <button
                       type="submit"
                       disabled={submitting || !selectedPlanId}
-                      className="w-full py-4 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-dark)] hover:shadow-lg hover:shadow-[var(--brand)]/30 text-white font-bold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3 text-lg"
+                      className="w-full py-3.5 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-semibold rounded-xl transition-all shadow-2xs disabled:opacity-50 flex items-center justify-center gap-2.5 text-base"
                     >
                       {submitting ? (
                         <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                           <span>Finalizing...</span>
                         </>
                       ) : (
-                        <span>Complete Registration</span>
+                        <span>Request Workspace</span>
                       )}
                     </button>
                   </div>
