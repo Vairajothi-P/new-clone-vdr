@@ -37,8 +37,10 @@ function ViewOnlyContent() {
 
   useEffect(() => {
     if (!docId) {
-      setError("No document specified.");
-      setLoading(false);
+      queueMicrotask(() => {
+        setError("No document specified.");
+        setLoading(false);
+      });
       return;
     }
 
@@ -80,10 +82,38 @@ function ViewOnlyContent() {
         }
 
         if (!resolvedUrl) {
-          const storagePath = docData.file_path;
-          const { data: urlData, error: urlError } = await supabase.storage
+          let storagePath = docData.original_file_path || docData.file_path;
+          if (storagePath && storagePath.includes("secure_") && !docData.original_file_path) {
+            storagePath = storagePath.replace("secure_", "original_");
+          }
+
+          let { data: urlData, error: urlError } = await supabase.storage
             .from("original-files")
             .createSignedUrl(storagePath, 3600);
+
+          if (urlError && docData.file_path && docData.file_path.includes("secure_")) {
+            const candidate = docData.file_path.replace("secure_", "original_");
+            const fallback = await supabase.storage
+              .from("original-files")
+              .createSignedUrl(candidate, 3600);
+            if (!fallback.error && fallback.data) {
+              urlData = fallback.data;
+              urlError = null;
+              storagePath = candidate;
+            }
+          }
+
+          if (urlError && docData.file_path && storagePath !== docData.file_path) {
+            const fallback = await supabase.storage
+              .from("original-files")
+              .createSignedUrl(docData.file_path, 3600);
+            if (!fallback.error && fallback.data) {
+              urlData = fallback.data;
+              urlError = null;
+              storagePath = docData.file_path;
+            }
+          }
+
           if (urlError) throw new Error("Failed to get original file url");
           resolvedUrl = urlData.signedUrl;
         }

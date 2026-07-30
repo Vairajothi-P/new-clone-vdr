@@ -183,8 +183,10 @@ function DocumentViewerContent() {
   ───────────────────────────────────────── */
   useEffect(() => {
     if (!docId) {
-      setError("No document specified.");
-      setLoading(false);
+      queueMicrotask(() => {
+        setError("No document specified.");
+        setLoading(false);
+      });
       return;
     }
 
@@ -266,12 +268,40 @@ function DocumentViewerContent() {
         }
 
         if (!resolvedUrl) {
-          // Fall back to original-files bucket
-          const storagePath = docData.file_path;
+          // Fall back to original-files bucket (support both original_file_path and file_path fallback)
+          let storagePath = docData.original_file_path || docData.file_path;
+          if (storagePath && storagePath.includes("secure_") && !docData.original_file_path) {
+            storagePath = storagePath.replace("secure_", "original_");
+          }
 
-          const { data: urlData, error: urlError } = await supabase.storage
+          let { data: urlData, error: urlError } = await supabase.storage
             .from("original-files")
             .createSignedUrl(storagePath, 3600);
+
+          // Fallback candidate if secure_ -> original_ replacement can be tried
+          if (urlError && docData.file_path && docData.file_path.includes("secure_")) {
+            const candidate = docData.file_path.replace("secure_", "original_");
+            const fallback = await supabase.storage
+              .from("original-files")
+              .createSignedUrl(candidate, 3600);
+            if (!fallback.error && fallback.data) {
+              urlData = fallback.data;
+              urlError = null;
+              storagePath = candidate;
+            }
+          }
+
+          // Fallback check original file_path directly if different
+          if (urlError && docData.file_path && storagePath !== docData.file_path) {
+            const fallback = await supabase.storage
+              .from("original-files")
+              .createSignedUrl(docData.file_path, 3600);
+            if (!fallback.error && fallback.data) {
+              urlData = fallback.data;
+              urlError = null;
+              storagePath = docData.file_path;
+            }
+          }
 
           if (urlError) {
              throw new Error(`original-files bucket error: ${urlError.message}. Path tried: ${storagePath}`);
@@ -410,7 +440,7 @@ function DocumentViewerContent() {
     });
 
     if (!searchQuery) {
-      setTotalMatches(0);
+      queueMicrotask(() => setTotalMatches(0));
       return;
     }
 
@@ -458,7 +488,7 @@ function DocumentViewerContent() {
       span.innerHTML = newHtml;
     });
 
-    setTotalMatches(matchCount);
+    queueMicrotask(() => setTotalMatches(matchCount));
 
     if (matchCount > 0) {
       const activeMark = textLayerRef.current.querySelector(
@@ -564,12 +594,39 @@ function DocumentViewerContent() {
     if (!raw) throw new Error("Session not found");
     const session = JSON.parse(raw);
 
-    // 1. Get original PDF bytes
-    const storagePath = doc.file_path;
+    // 1. Get original PDF bytes (support original_file_path & secure_ to original_ fallback)
+    let storagePath = doc.original_file_path || doc.file_path;
+    if (storagePath && storagePath.includes("secure_") && !doc.original_file_path) {
+      storagePath = storagePath.replace("secure_", "original_");
+    }
 
-    const { data: urlData, error: urlError } = await supabase.storage
+    let { data: urlData, error: urlError } = await supabase.storage
       .from("original-files")
       .createSignedUrl(storagePath, 3600);
+
+    if (urlError && doc.file_path && doc.file_path.includes("secure_")) {
+      const candidate = doc.file_path.replace("secure_", "original_");
+      const fallback = await supabase.storage
+        .from("original-files")
+        .createSignedUrl(candidate, 3600);
+      if (!fallback.error && fallback.data) {
+        urlData = fallback.data;
+        urlError = null;
+        storagePath = candidate;
+      }
+    }
+
+    if (urlError && doc.file_path && storagePath !== doc.file_path) {
+      const fallback = await supabase.storage
+        .from("original-files")
+        .createSignedUrl(doc.file_path, 3600);
+      if (!fallback.error && fallback.data) {
+        urlData = fallback.data;
+        urlError = null;
+        storagePath = doc.file_path;
+      }
+    }
+
     if (urlError) throw urlError;
 
     const pdfBytes = await fetch(urlData.signedUrl).then((r) =>
@@ -680,12 +737,39 @@ function DocumentViewerContent() {
     if (!raw) throw new Error("Session not found");
     const session = JSON.parse(raw);
 
-    // 1. Get original PDF bytes
-    const storagePath = doc.file_path;
+    // 1. Get original PDF bytes (support original_file_path & secure_ to original_ fallback)
+    let storagePath = doc.original_file_path || doc.file_path;
+    if (storagePath && storagePath.includes("secure_") && !doc.original_file_path) {
+      storagePath = storagePath.replace("secure_", "original_");
+    }
 
-    const { data: urlData, error: urlError } = await supabase.storage
+    let { data: urlData, error: urlError } = await supabase.storage
       .from("original-files")
       .createSignedUrl(storagePath, 3600);
+
+    if (urlError && doc.file_path && doc.file_path.includes("secure_")) {
+      const candidate = doc.file_path.replace("secure_", "original_");
+      const fallback = await supabase.storage
+        .from("original-files")
+        .createSignedUrl(candidate, 3600);
+      if (!fallback.error && fallback.data) {
+        urlData = fallback.data;
+        urlError = null;
+        storagePath = candidate;
+      }
+    }
+
+    if (urlError && doc.file_path && storagePath !== doc.file_path) {
+      const fallback = await supabase.storage
+        .from("original-files")
+        .createSignedUrl(doc.file_path, 3600);
+      if (!fallback.error && fallback.data) {
+        urlData = fallback.data;
+        urlError = null;
+        storagePath = doc.file_path;
+      }
+    }
+
     if (urlError) throw urlError;
 
     const pdfBytes = await fetch(urlData.signedUrl).then((r) =>

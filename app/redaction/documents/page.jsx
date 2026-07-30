@@ -341,22 +341,48 @@ const handleSaveConfig = async () => {
     pdfRef.current = null;
 
     try {
-      const storagePath = selectedDoc.file_path; 
+      let storagePath = selectedDoc.original_file_path || selectedDoc.file_path; 
+      if (storagePath && storagePath.includes("secure_") && !selectedDoc.original_file_path) {
+        storagePath = storagePath.replace("secure_", "original_");
+      }
 
       console.log("========== PREVIEW DEBUG ==========");
-console.log("Bucket:", "original-files");
-console.log("Storage Path:", storagePath);
-console.log("Document Name:", selectedDoc.name);
-console.log("Document Record:", selectedDoc);
+      console.log("Bucket:", "original-files");
+      console.log("Storage Path:", storagePath);
+      console.log("Document Name:", selectedDoc.name);
+      console.log("Document Record:", selectedDoc);
 
-const { data: urlData, error: urlError } = await supabase.storage
-  .from("original-files")
-  .createSignedUrl(storagePath, 3600);
+      let { data: urlData, error: urlError } = await supabase.storage
+        .from("original-files")
+        .createSignedUrl(storagePath, 3600);
 
-console.log("Signed URL:", urlData);
-console.log("URL Error:", urlError);
+      if (urlError && selectedDoc.file_path && selectedDoc.file_path.includes("secure_")) {
+        const candidate = selectedDoc.file_path.replace("secure_", "original_");
+        const fallback = await supabase.storage
+          .from("original-files")
+          .createSignedUrl(candidate, 3600);
+        if (!fallback.error && fallback.data) {
+          urlData = fallback.data;
+          urlError = null;
+          storagePath = candidate;
+        }
+      }
 
-if (urlError) throw urlError;
+      if (urlError && selectedDoc.file_path && storagePath !== selectedDoc.file_path) {
+        const fallback = await supabase.storage
+          .from("original-files")
+          .createSignedUrl(selectedDoc.file_path, 3600);
+        if (!fallback.error && fallback.data) {
+          urlData = fallback.data;
+          urlError = null;
+          storagePath = selectedDoc.file_path;
+        }
+      }
+
+      console.log("Signed URL:", urlData);
+      console.log("URL Error:", urlError);
+
+      if (urlError) throw urlError;
 
       const pdfjs = await loadPdfJs();
       if (!pdfjs) throw new Error("PDF.js failed to load");
