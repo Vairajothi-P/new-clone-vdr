@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FaCog, FaPlus, FaTimes, FaShieldAlt, FaCheck, FaDatabase, FaUsers } from "react-icons/fa";
 import { FiChevronDown } from "react-icons/fi";
 import WorkspaceModal from "@/components/workspaces/WorkspaceModal";
@@ -11,8 +12,11 @@ export default function WorkspacePage() {
   const [selectedStatus, setSelectedStatus] = useState("Active");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [companyName, setCompanyName] = useState("Loading...");
+  const [companyStatus, setCompanyStatus] = useState("active");
+  const [toastMessage, setToastMessage] = useState("");
   const [userRole, setUserRole] = useState("User");
   const [workspaces, setWorkspaces] = useState([]);
+  const router = useRouter();
   
   useEffect(() => {
     const fetchCompanyData = async () => {
@@ -27,11 +31,19 @@ export default function WorkspacePage() {
             const data = await res.json();
             if (data.company) {
               setCompanyName(data.company.name);
+              setCompanyStatus(data.company.status || "active");
             } else {
               setCompanyName("My Workspace");
             }
+
+            // Fetch workspaces
+            const wsRes = await fetch(`/api/workspaces?company_id=${session.company_id}&user_id=${session.id}&role=${session.role}`);
+            const wsData = await wsRes.json();
+            if (wsData.success) {
+              setWorkspaces(wsData.workspaces || []);
+            }
           } catch (err) {
-            console.error("Failed to fetch company", err);
+            console.error("Failed to fetch company or workspaces", err);
             setCompanyName("My Workspace");
           }
         }
@@ -40,15 +52,75 @@ export default function WorkspacePage() {
     fetchCompanyData();
   }, []);
 
-  const handleCreateWorkspace = (data) => {
-    console.log("Workspace Created:", data);
-    setWorkspaces((prev) => [...prev, { id: Date.now(), ...data }]);
-    setIsModalOpen(false);
+  const handleCreateWorkspace = async (data) => {
+    try {
+      const sessionData = localStorage.getItem('vdr_session');
+      if (!sessionData) return;
+      const session = JSON.parse(sessionData);
+
+      const res = await fetch('/api/workspaces', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          description: data.dealType ? `${data.type} - ${data.dealType}` : data.type,
+          company_id: session.company_id,
+          user_id: session.id,
+          role: session.role
+        })
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        setWorkspaces((prev) => [result.workspace, ...prev]);
+        setIsModalOpen(false);
+      } else {
+        alert("Error: " + result.error);
+      }
+    } catch (err) {
+      console.error("Failed to create workspace", err);
+      alert("Failed to create workspace");
+    }
+  };
+
+  const handleWorkspaceClick = (workspaceId) => {
+    const sessionData = localStorage.getItem('vdr_session');
+    if (sessionData) {
+      const session = JSON.parse(sessionData);
+      session.active_workspace_id = workspaceId;
+      localStorage.setItem('vdr_session', JSON.stringify(session));
+      router.push('/documents');
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-10 flex flex-col items-center">
       
+      {/* Warning Modal */}
+      {toastMessage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity duration-300">
+          <style>{`
+            @keyframes popIn {
+              0% { transform: scale(0.9); opacity: 0; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+          `}</style>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 max-w-sm w-full flex flex-col items-center text-center animate-[popIn_0.3s_cubic-bezier(0.16,1,0.3,1)]">
+            <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-4 shadow-inner">
+              <span className="text-amber-500 text-3xl">⚠️</span>
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Access Denied</h3>
+            <p className="text-slate-600 font-medium text-[15px] mb-6">{toastMessage}</p>
+            <button 
+              onClick={() => setToastMessage("")} 
+              className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-colors duration-200"
+            >
+              Okie
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main App Container */}
       <div className="w-full max-w-6xl bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         
@@ -129,20 +201,35 @@ export default function WorkspacePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             
             {/* 1. Add New Workspace Card */}
-            <button onClick={() => setIsModalOpen(true)} className="group w-full h-full text-left focus:outline-none">
-              <div className="h-48 border-2 border-dashed border-gray-300 rounded-xl bg-transparent hover:bg-white hover:border-[var(--brand)] hover:shadow-lg transition-all duration-300 flex flex-col items-center justify-center cursor-pointer">
-                <div className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center mb-4 group-hover:bg-[var(--brand)] group-hover:scale-110 transition-all duration-300 shadow-md">
-                  <FaPlus size={24} />
+            {userRole === 'super_admin' && (
+              <button 
+                onClick={() => {
+                  if (companyStatus === 'pending') {
+                    setToastMessage("Your package is not assign in business owner pls wait....");
+                  } else {
+                    setIsModalOpen(true);
+                  }
+                }} 
+                className="group w-full h-full text-left focus:outline-none"
+              >
+                <div className="h-48 border-2 border-dashed border-gray-300 rounded-xl bg-transparent hover:bg-white hover:border-[var(--brand)] hover:shadow-lg transition-all duration-300 flex flex-col items-center justify-center cursor-pointer">
+                  <div className="w-14 h-14 bg-black text-white rounded-2xl flex items-center justify-center mb-4 group-hover:bg-[var(--brand)] group-hover:scale-110 transition-all duration-300 shadow-md">
+                    <FaPlus size={24} />
+                  </div>
+                  <span className="text-gray-500 font-medium group-hover:text-slate-800 transition-colors">
+                    Add new workspace
+                  </span>
                 </div>
-                <span className="text-gray-500 font-medium group-hover:text-slate-800 transition-colors">
-                  Add new workspace
-                </span>
-              </div>
-            </button>
+              </button>
+            )}
 
             {/* Render Created Workspaces */}
             {workspaces.map((ws) => (
-              <Link href="/documents" key={ws.id} className="group">
+              <div 
+                key={ws.id} 
+                onClick={() => handleWorkspaceClick(ws.id)}
+                className="group cursor-pointer"
+              >
                 <div className="h-48 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col relative">
                   {/* Top Row: Badge & Close */}
                   <div className="flex justify-between items-start mb-4">
@@ -151,7 +238,7 @@ export default function WorkspacePage() {
                     </span>
                     <button 
                       onClick={(e) => { 
-                        e.preventDefault(); // Prevent Link navigation
+                        e.stopPropagation(); // Prevent card click
                         setWorkspaces(workspaces.filter(w => w.id !== ws.id)) 
                       }} 
                       className="text-gray-300 hover:text-red-500 transition-colors"
@@ -168,25 +255,9 @@ export default function WorkspacePage() {
                     <h3 className="font-semibold text-slate-800 text-sm text-center line-clamp-2 mb-2">
                       {ws.name}
                     </h3>
-                    
-                    <div className="flex flex-col items-center gap-1.5 mt-auto mb-1">
-                      {ws.storageLimit && (
-                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
-                          <FaDatabase className="text-blue-500/70" size={10} />
-                          <span>{ws.storageLimit} {ws.storageType || 'GB'} Storage</span>
-                        </div>
-                      )}
-                      
-                      {ws.usersCount && (
-                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
-                          <FaUsers className="text-emerald-500/70" size={11} />
-                          <span>{ws.usersCount} Users</span>
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
 
           </div>

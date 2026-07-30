@@ -12,26 +12,30 @@ export default function WorkspaceModal({
   onClose,
   onSubmit,
 }) {
-  const [formData, setFormData] = useState(() => {
-    if (mode === "edit" && initialData) {
-      return {
-        type: initialData.type || "Virtual Data Room",
-        name: initialData.name || "",
-        dealType: initialData.dealType || "",
-        storageLimit: initialData.storageLimit || "",
-        storageType: initialData.storageType || "GB",
-        usersCount: initialData.usersCount || "",
-      };
-    }
-    return {
-      type: "Virtual Data Room",
-      name: "",
-      dealType: "",
-      storageLimit: "",
-      storageType: "GB",
-      usersCount: "",
-    };
+  const [formData, setFormData] = useState({
+    type: "Virtual Data Room",
+    name: "",
+    dealType: "",
   });
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (mode === "edit" && initialData) {
+        setFormData({
+          type: initialData.type || "Virtual Data Room",
+          name: initialData.name || "",
+          dealType: initialData.dealType || "",
+        });
+      } else {
+        setFormData({
+          type: "Virtual Data Room",
+          name: "",
+          dealType: "",
+        });
+      }
+      setErrors({});
+    }
+  }, [isOpen, mode, initialData]);
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -182,82 +186,6 @@ export default function WorkspaceModal({
             </div>
           </div>
 
-          {/* 4. Storage Limit & Storage Type */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="md:col-span-2">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                Storage Limit <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  placeholder="e.g. 5"
-                  value={formData.storageLimit}
-                  onChange={(e) => handleChange("storageLimit", e.target.value)}
-                  className={`w-full h-10 px-3 bg-gray-50/50 border rounded-xl text-sm font-medium text-gray-800 placeholder-gray-400 focus:bg-white focus:ring-2 outline-none transition-all ${
-                    errors.storageLimit
-                      ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/10"
-                      : "border-gray-200 focus:border-[var(--brand)] focus:ring-[var(--brand)]/10"
-                  }`}
-                />
-              </div>
-              {errors.storageLimit && (
-                <p className="mt-1 text-xs text-rose-600 font-medium flex items-center gap-1">
-                  <FaExclamationCircle />
-                  <span>{errors.storageLimit}</span>
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                Storage Type
-              </label>
-              <div className="relative">
-                <select
-                  value={formData.storageType}
-                  onChange={(e) => handleChange("storageType", e.target.value)}
-                  className="w-full h-10 px-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:bg-white focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10 outline-none transition-all appearance-none cursor-pointer"
-                >
-                  <option value="GB">GB</option>
-                  <option value="TB">TB</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-400 text-xs">
-                  ▼
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 5. Number of Users */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-              Number of Users <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                min="1"
-                required
-                placeholder="e.g. 10"
-                value={formData.usersCount}
-                onChange={(e) => handleChange("usersCount", e.target.value)}
-                className={`w-full h-10 px-3 bg-gray-50/50 border rounded-xl text-sm font-medium text-gray-800 focus:bg-white focus:border-[var(--brand)] focus:ring-2 outline-none transition-all ${
-                  errors.usersCount
-                    ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/10"
-                    : "border-gray-200 focus:border-[var(--brand)] focus:ring-[var(--brand)]/10"
-                }`}
-              />
-            </div>
-            {errors.usersCount && (
-              <p className="mt-1 text-xs text-rose-600 font-medium flex items-center gap-1">
-                <FaExclamationCircle />
-                <span>{errors.usersCount}</span>
-              </p>
-            )}
-          </div>
 
           {/* Modal Footer */}
           <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2.5">

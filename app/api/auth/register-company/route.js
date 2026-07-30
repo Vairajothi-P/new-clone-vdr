@@ -59,7 +59,7 @@ export async function POST(req) {
         name: adminName,
         email: adminEmail,
         password_hash: password, // As requested by current architecture
-        role: 'admin', // Company admin
+        role: 'super_admin', // Company superadmin
         status: 'active',
         nda_status: 'not_required'
       }

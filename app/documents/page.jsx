@@ -319,6 +319,7 @@ function UnifiedWorkspace() {
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('company_id', session.company_id);
+                formData.append('workspace_id', session.active_workspace_id || '');
                 formData.append('folder_id', currentFolderId || '');
                 formData.append('uploaded_by', session.id);
                 formData.append('index', `${prefix}${nextIndex + i}`);
@@ -377,6 +378,7 @@ function UnifiedWorkspace() {
                 document.body.appendChild(a); a.click(); document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 showToast("Download Complete");
+                setDownloadedIds(prev => { const n = new Set(prev); n.add(file.id); return n; });
             } catch (err) { showToast(`Error: ${err.message}`, 'error'); } 
             finally { setDownloading(prev => { const n = { ...prev }; delete n[file.id]; return n; }); }
         }

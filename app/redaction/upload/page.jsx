@@ -63,6 +63,7 @@ export default function RedactionUploadPage() {
         .from("documents")
         .insert({
           company_id: session.company_id,
+          workspace_id: session.active_workspace_id,
           uploaded_by: session.id,
           name: file.name,
           file_path: filePath,

@@ -13,6 +13,7 @@ export async function POST(req) {
         const formData = await req.formData();
         const file = formData.get('file');
         const company_id = formData.get('company_id');
+        const workspace_id = formData.get('workspace_id');
         let folder_id = formData.get('folder_id');
         const uploaded_by = formData.get('uploaded_by');
         const index = formData.get('index');
@@ -57,6 +58,7 @@ export async function POST(req) {
 
         const { data: docData, error: dbErr } = await supabase.from('documents').insert({
             company_id: company_id,
+            workspace_id: workspace_id || null,
             folder_id: folder_id,
             uploaded_by: uploaded_by,
             name: file.name,

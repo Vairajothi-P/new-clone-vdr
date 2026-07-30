@@ -41,6 +41,7 @@ export default function ManageGroupsPage() {
       if (!rawSession) return;
       const session = JSON.parse(rawSession);
       const companyId = session.company_id;
+      const activeWorkspaceId = session.active_workspace_id;
       setCurrentCompanyId(companyId);
 
       // 1. Fetch all groups for the company
@@ -48,6 +49,7 @@ export default function ManageGroupsPage() {
         .from('groups')
         .select('*')
         .eq('company_id', companyId)
+        .eq('workspace_id', activeWorkspaceId)
         .order('created_at', { ascending: false });
 
       if (groupsError) throw groupsError;
@@ -279,6 +281,7 @@ export default function ManageGroupsPage() {
           .from('groups')
           .insert({
             company_id: currentCompanyId,
+            workspace_id: session ? session.active_workspace_id : null,
             name: formData.name,
             description: formData.description,
             role: formData.role,
