@@ -44,6 +44,7 @@ export default function ManageUsersPage() {
       if (!rawSession) return;
       const session = JSON.parse(rawSession);
       const companyId = session.company_id;
+      const activeWorkspaceId = session.active_workspace_id;
       setCurrentCompanyId(companyId);
 
       const { data: companyData, error: companyError } = await supabase
@@ -65,7 +66,8 @@ export default function ManageUsersPage() {
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('*')
-        .eq('company_id', companyId);
+        .eq('company_id', companyId)
+        .eq('workspace_id', activeWorkspaceId);
 
       if (usersError) throw usersError;
 
@@ -73,7 +75,8 @@ export default function ManageUsersPage() {
       const { data: groupsData, error: groupsError } = await supabase
         .from('groups')
         .select('*')
-        .eq('company_id', companyId);
+        .eq('company_id', companyId)
+        .eq('workspace_id', activeWorkspaceId);
 
       if (groupsError) throw groupsError;
       setGroups(groupsData || []);
@@ -291,6 +294,7 @@ export default function ManageUsersPage() {
           .from('users')
           .insert({
             company_id: currentCompanyId,
+            workspace_id: JSON.parse(localStorage.getItem('vdr_session'))?.active_workspace_id,
             name: formData.name,
             email: formData.email,
             phone_number: formData.mobile,

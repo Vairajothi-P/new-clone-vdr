@@ -145,6 +145,7 @@ export default function RedactionDocumentsPage() {
           .from("documents")
           .select("*")
           .eq("company_id", session.company_id)
+          .eq("workspace_id", session.active_workspace_id)
           .eq("is_deleted", false)
           .eq("uploaded_by", session.id)
           .order("created_at", { ascending: false });
@@ -163,6 +164,7 @@ export default function RedactionDocumentsPage() {
                   .from("documents")
                   .select("*")
                   .eq("company_id", session.company_id)
+                  .eq("workspace_id", session.active_workspace_id)
                   .eq("is_deleted", false)
                   .in("id", idsToFetch)
                   .order("created_at", { ascending: false });

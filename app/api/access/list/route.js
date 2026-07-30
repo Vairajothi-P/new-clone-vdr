@@ -8,7 +8,7 @@ export async function POST(req) {
         const { session } = await req.json();
         if (!session || !session.company_id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        let groupQuery = supabase.from('groups').select('*').eq('company_id', session.company_id).order('created_at', { ascending: false });
+        let groupQuery = supabase.from('groups').select('*').eq('company_id', session.company_id).eq('workspace_id', session.active_workspace_id).order('created_at', { ascending: false });
         if (session.role !== 'super_admin') groupQuery = groupQuery.eq('created_by', session.id);
 
         const [
@@ -16,11 +16,11 @@ export async function POST(req) {
             { data: permsData }, { data: userGroups }, { data: usersData }
         ] = await Promise.all([
             groupQuery,
-            supabase.from('folders').select('*').eq('company_id', session.company_id).eq('is_deleted', false),
-            supabase.from('documents').select('id, name, folder_id, index, uploaded_by, creator_revoked').eq('company_id', session.company_id).eq('is_deleted', false).order('created_at', { ascending: true }),
+            supabase.from('folders').select('*').eq('company_id', session.company_id).eq('workspace_id', session.active_workspace_id).eq('is_deleted', false),
+            supabase.from('documents').select('id, name, folder_id, index, uploaded_by, creator_revoked').eq('company_id', session.company_id).eq('workspace_id', session.active_workspace_id).eq('is_deleted', false).order('created_at', { ascending: true }),
             supabase.from('permissions').select('id, document_id, folder_id, scope, group_id, can_view, can_edit, can_upload, can_download_secure, can_download_original, can_delete, can_redact').eq('company_id', session.company_id),
             supabase.from('user_groups').select('user_id, group_id'),
-            supabase.from('users').select('id, name, email')
+            supabase.from('users').select('id, name, email').eq('workspace_id', session.active_workspace_id)
         ]);
 
         // 🔥 CALCULATE ACCESS (Exactly like your old code, but super fast on the server)

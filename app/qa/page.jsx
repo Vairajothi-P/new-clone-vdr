@@ -50,8 +50,8 @@ function QAPageContent() {
       const session = JSON.parse(sessionStr);
 
       const [foldersRes, docsRes] = await Promise.all([
-        supabase.from('folders').select('id, name, parent_folder_id').eq('company_id', session.company_id),
-        supabase.from('documents').select('id, name, folder_id, is_deleted').eq('company_id', session.company_id).eq('is_deleted', false)
+        supabase.from('folders').select('id, name, parent_folder_id').eq('company_id', session.company_id).eq('workspace_id', session.active_workspace_id),
+        supabase.from('documents').select('id, name, folder_id, is_deleted').eq('company_id', session.company_id).eq('workspace_id', session.active_workspace_id).eq('is_deleted', false)
       ]);
 
       const items = [];
@@ -160,7 +160,7 @@ function QAPageContent() {
       const sessionStr = localStorage.getItem('vdr_session');
       if (!sessionStr) return;
       const session = JSON.parse(sessionStr);
-      const { data } = await supabase.from('users').select('id, name, role').eq('company_id', session.company_id).in('role', ['admin', 'super_admin']);
+      const { data } = await supabase.from('users').select('id, name, role').eq('company_id', session.company_id).eq('workspace_id', session.active_workspace_id).in('role', ['admin', 'super_admin']);
       if (data) setAdmins(data);
     } catch (err) {
       console.error("Error fetching admins:", err);

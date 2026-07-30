@@ -19,7 +19,9 @@ export async function POST(req) {
             case 'create_folder':
                 const { parentId, name, index } = payload;
                 const { error: cfErr } = await supabase.from('folders').insert({
-                    company_id: companyId, parent_folder_id: parentId,
+                    company_id: companyId, 
+                    workspace_id: session.active_workspace_id || null,
+                    parent_folder_id: parentId,
                     name: name, index_number: index, created_by: userId
                 });
                 if (cfErr) throw cfErr;

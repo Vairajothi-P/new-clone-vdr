@@ -81,22 +81,32 @@ export default function GroupsSidebar({ isOpen = true }) {
                 const groupIds = ugRows?.map(r => r.group_id) || [];
                 if (!groupIds.length) { setNavItems([]); setIsLoading(false); return; }
 
-                const { data } = await supabase
+                let query = supabase
                     .from('groups')
                     .select('*')
                     .in('id', groupIds)
                     .eq('company_id', companyId);
+                
+                if (session?.active_workspace_id) query = query.eq('workspace_id', session.active_workspace_id);
+                else query = query.is('workspace_id', null);
+
+                const { data } = await query;
 
                 setNavItems((data || []).map(g => ({
                     id: g.id, name: g.name, href: `/groups/${g.id}`, role: g.role || ''
                 })));
 
             } else {
-                const { data } = await supabase
+                let query = supabase
                     .from('groups')
                     .select('*')
                     .eq('company_id', companyId)
                     .order('created_at', { ascending: false });
+
+                if (session?.active_workspace_id) query = query.eq('workspace_id', session.active_workspace_id);
+                else query = query.is('workspace_id', null);
+
+                const { data } = await query;
 
                 let groups = data || [];
 
@@ -186,6 +196,7 @@ export default function GroupsSidebar({ isOpen = true }) {
                 description: newGroupDescription.trim() || null,
                 role: newGroupRole,                    // ← இந்த line add
                 company_id: session?.company_id,
+                workspace_id: session?.active_workspace_id || null,
                 created_by: session?.id
             }).select().single();
 

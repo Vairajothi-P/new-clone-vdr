@@ -33,19 +33,29 @@ export default function GroupsPage() {
 
           const groupIds = ugRows?.map((r) => r.group_id) || [];
           if (groupIds.length > 0) {
-            const { data } = await supabase
+            let query = supabase
               .from("groups")
               .select("id")
               .in("id", groupIds)
               .eq("company_id", companyId);
+              
+            if (session?.active_workspace_id) query = query.eq('workspace_id', session.active_workspace_id);
+            else query = query.is('workspace_id', null);
+            
+            const { data } = await query;
             groups = data || [];
           }
         } else {
-          const { data } = await supabase
+          let query = supabase
             .from("groups")
             .select("id")
             .eq("company_id", companyId)
             .order("created_at", { ascending: false });
+
+          if (session?.active_workspace_id) query = query.eq('workspace_id', session.active_workspace_id);
+          else query = query.is('workspace_id', null);
+          
+          const { data } = await query;
 
           groups = data || [];
 

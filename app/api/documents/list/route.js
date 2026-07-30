@@ -54,9 +54,23 @@ export async function POST(req) {
         }
 
         // 2. 🗄️ FETCH RAW DATA
+        const workspaceId = session.active_workspace_id;
+        
+        let foldersQuery = supabase.from('folders').select('*').eq('company_id', session.company_id);
+        let docsQuery = supabase.from('documents').select('*').eq('company_id', session.company_id);
+        
+        if (workspaceId) {
+            foldersQuery = foldersQuery.eq('workspace_id', workspaceId);
+            docsQuery = docsQuery.eq('workspace_id', workspaceId);
+        } else {
+            // If no workspace is selected, we might want to return nothing or only items with no workspace
+            foldersQuery = foldersQuery.is('workspace_id', null);
+            docsQuery = docsQuery.is('workspace_id', null);
+        }
+
         const [{ data: foldersData }, { data: docsData }, { data: usersData }] = await Promise.all([
-            supabase.from('folders').select('*').eq('company_id', session.company_id),
-            supabase.from('documents').select('*').eq('company_id', session.company_id),
+            foldersQuery,
+            docsQuery,
             supabase.from('users').select('id, name').eq('company_id', session.company_id),
         ]);
 
