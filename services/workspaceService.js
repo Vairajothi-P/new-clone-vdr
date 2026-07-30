@@ -174,7 +174,7 @@ export async function createWorkspaceRequest({ companyName, adminName, adminEmai
         name: adminName,
         email: adminEmail,
         password_hash: password || 'defaultHash',
-        role: 'admin',
+        role: 'super_admin',
         status: 'active',
         nda_status: 'not_required'
       };
