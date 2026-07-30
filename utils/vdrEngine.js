@@ -1,6 +1,6 @@
 import fernet from 'fernet';
 
-export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPayload, backendUrl) => {
+export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPayload, backendUrl, watermarkSettings = null, brandLogo = null) => {
     const cleanExt = (fileType || fileName).split('.').pop().toLowerCase().replace(/[^a-z0-9]/gi, '');
     const safePayload = btoa(encryptedPayload);
 
@@ -108,6 +108,109 @@ export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPa
             utf8Text: null,
             filePath: null
         };
+
+        window.__watermarkSettings = ${JSON.stringify(watermarkSettings || {})};
+        window.__brandLogo = ${JSON.stringify(brandLogo || null)};
+        window.__resolveLogoUrl = (path) => path;
+
+        const hexToRGBA = (hex, opacity) => {
+            if (!hex) return \`rgba(100, 116, 139, \${opacity / 100})\`;
+            if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+                let c = hex.substring(1).split('');
+                if (c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+                c = '0x' + c.join('');
+                return \`rgba(\${[(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',')},\${opacity / 100})\`;
+            }
+            return \`rgba(100, 116, 139, \${opacity / 100})\`;
+        };
+
+        const getLogoUrl = (path) => {
+            if (!path) return null;
+            if (window.__resolveLogoUrl) return window.__resolveLogoUrl(path);
+            return path;
+        };
+
+        const generateWatermarkContentHTML = (info, ip, settings, bLogo, scale = 1.0) => {
+            const type = settings?.watermark_type || 'dynamic';
+            const rawFontSize = settings?.font_size || 22;
+            const fontSize = Math.round(rawFontSize * scale);
+            const textColor = settings?.text_color || '#334155';
+            const textOpacity = settings?.text_opacity ?? 25;
+            const rotation = settings?.rotation ?? -30;
+            const logoPath = settings?.logo_path || bLogo;
+            const logoOpacity = settings?.logo_opacity ?? 0.5;
+
+            let lines = [];
+            if (type === 'static') {
+                lines.push(settings?.custom_text || 'CONFIDENTIAL');
+            } else {
+                lines.push(settings?.custom_text || 'CONFIDENTIAL');
+                if (settings?.email_address || info?.email) lines.push(settings?.email_address || info?.email);
+                if (settings?.attributes?.ip) lines.push(ip || 'Unknown IP');
+                if (settings?.attributes?.date) lines.push(new Date().toLocaleString());
+            }
+
+            let html = \`<div style="transform: rotate(\${rotation}deg); color: \${hexToRGBA(textColor, textOpacity)}; font-weight: bold; transform-origin: center; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.2s;">\`;
+            if (logoPath) {
+                html += \`<img src="\${getLogoUrl(logoPath)}" alt="logo" style="height: 40px; object-fit: contain; margin-bottom: 6px; opacity: \${logoOpacity};" />\`;
+            }
+            html += \`<div style="font-size: \${fontSize}px; white-space: nowrap; display: flex; flex-direction: column; align-items: center;">\`;
+            lines.forEach(line => {
+                html += \`<span style="line-height: 1.2;">\${line}</span>\`;
+            });
+            html += \`</div></div>\`;
+            return html;
+        };
+
+        const appendWatermarkToElement = (element, info, ip, scale = 1.0) => {
+            if (!element) return;
+            element.style.position = 'relative';
+
+            const overlay = document.createElement('div');
+            overlay.className = 'page-watermark-overlay';
+            overlay.style.position = 'absolute';
+            overlay.style.inset = '0';
+            overlay.style.pointerEvents = 'none';
+            overlay.style.zIndex = '10';
+            overlay.style.overflow = 'hidden';
+            overlay.style.display = 'grid';
+            overlay.style.gridTemplateColumns = 'repeat(3, 1fr)';
+            overlay.style.gridTemplateRows = 'repeat(3, 1fr)';
+            overlay.style.padding = '32px';
+
+            const settings = window.__watermarkSettings || {};
+            const positions = settings.positions || { 'middle-center': true };
+
+            const gridCells = [
+                { key: 'top-left', cls: 'align-items: flex-start; justify-content: flex-start;' },
+                { key: 'top-center', cls: 'align-items: flex-start; justify-content: center;' },
+                { key: 'top-right', cls: 'align-items: flex-start; justify-content: flex-end;' },
+                { key: 'middle-left', cls: 'align-items: center; justify-content: flex-start;' },
+                { key: 'middle-center', cls: 'align-items: center; justify-content: center;' },
+                { key: 'middle-right', cls: 'align-items: center; justify-content: flex-end;' },
+                { key: 'bottom-left', cls: 'align-items: flex-end; justify-content: flex-start;' },
+                { key: 'bottom-center', cls: 'align-items: flex-end; justify-content: center;' },
+                { key: 'bottom-right', cls: 'align-items: flex-end; justify-content: flex-end;' },
+            ];
+
+            let contentHtml = generateWatermarkContentHTML(info, ip, settings, window.__brandLogo, scale);
+
+            gridCells.forEach(({ key, cls }) => {
+                const cell = document.createElement('div');
+                cell.style.display = 'flex';
+                cell.style.overflow = 'visible';
+                cell.style.cssText += cls;
+                if (positions[key]) {
+                    cell.innerHTML = contentHtml;
+                }
+                overlay.appendChild(cell);
+            });
+
+            element.appendChild(overlay);
+        };
+
+        let clientIp = 'Unknown IP';
+        fetch('https://api.ipify.org?format=json').then(r => r.json()).then(d => clientIp = d.ip).catch(()=>{});
 
         function showToast(message) {
             const toast = document.getElementById('toast');
@@ -345,6 +448,10 @@ export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPa
                             window.luckysheet.create({ ...luckyOptions, data: json.sheets, title: SECURE_DATA.docId });
                         });
                     }
+                    setTimeout(() => {
+                        const luckysheetBox = document.getElementById('luckysheet-container');
+                        if (luckysheetBox) appendWatermarkToElement(luckysheetBox, { email: document.getElementById('email').value }, clientIp);
+                    }, 500);
                 } 
                 else if (SECURE_DATA.fileExt === 'pdf') {
                     container.style.display = 'flex';
@@ -360,10 +467,13 @@ export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPa
                         breakPages: true, 
                         ignoreLastRenderedPageBreak: false, 
                         experimental: true
+                    }).then(() => {
+                        const sections = container.querySelectorAll('section.docx');
+                        sections.forEach(sec => appendWatermarkToElement(sec, { email: document.getElementById('email').value }, clientIp));
                     }).catch(err => {
                         container.innerHTML = "<p style='color:red;'>Error parsing DOCX: " + err.message + "</p>";
                     });
-                } 
+                }
                 else if (['txt', 'text'].includes(SECURE_DATA.fileExt)) {
                     container.style.display = 'flex';
                     const lines = SECURE_DATA.utf8Text.split(/\\r?\\n/);
@@ -378,6 +488,8 @@ export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPa
                         \`;
                     }
                     container.innerHTML = html;
+                    const txtPages = container.querySelectorAll('.txt-page-wrapper');
+                    txtPages.forEach(p => appendWatermarkToElement(p, { email: document.getElementById('email').value }, clientIp));
                 } 
                 else {
                     container.style.display = 'flex';
@@ -407,6 +519,7 @@ export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPa
                 wrapper.appendChild(canvas);
                 container.appendChild(wrapper);
                 await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                appendWatermarkToElement(wrapper, { email: document.getElementById('email').value }, clientIp, 1.5);
             }
         }
 

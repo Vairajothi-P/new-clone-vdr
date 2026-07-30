@@ -408,9 +408,7 @@ export default function SecureViewer({ params }) {
         });
 
         element.appendChild(overlay);
-    };
-
-    const renderDocument = async (ext, bytes, utf8Text) => {
+    };    const renderDocument = async (ext, bytes, utf8Text) => {
         const container = containerRef.current;
         if (!container) return;
         container.innerHTML = '';
