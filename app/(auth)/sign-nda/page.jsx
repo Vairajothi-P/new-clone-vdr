@@ -23,6 +23,18 @@ export default function SignNdaPage() {
     const [uploadedSig, setUploadedSig] = useState(null); // Preview image URL for upload mode
     const [signatureData, setSignatureData] = useState(null); // Final base64/DataURL signature
 
+    // Helper: Guarantee solid white (#FFFFFF) background by exporting as JPEG (which cannot have any transparency)
+    const getWhiteBackgroundDataURL = (sourceCanvas) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = sourceCanvas.width || 400;
+        canvas.height = sourceCanvas.height || 150;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(sourceCanvas, 0, 0);
+        return canvas.toDataURL("image/jpeg", 0.95);
+    };
+
     // 1. Fetch User Session and Company NDA on Load
     useEffect(() => {
         const fetchRequiredData = async () => {
@@ -88,7 +100,7 @@ export default function SignNdaPage() {
                 return new Blob([u8arr], { type: mime });
             };
 
-            const fileName = `signature_${Date.now()}.png`;
+            const fileName = `signature_${Date.now()}.jpg`;
             const signaturePath = `users/${sessionData.id}/${fileName}`;
             const sigBlob = dataURLtoBlob(signatureData);
 
@@ -97,7 +109,7 @@ export default function SignNdaPage() {
                 .from("signature_documents")
                 .upload(signaturePath, sigBlob, {
                     upsert: true,
-                    contentType: "image/png",
+                    contentType: "image/jpeg",
                 });
 
             if (uploadErr) {
@@ -434,12 +446,14 @@ export default function SignNdaPage() {
                                     <div className="relative border-2 border-slate-300 bg-white rounded-xl w-full h-44 overflow-hidden shadow-inner">
                                         <SignatureCanvas
                                             ref={(ref) => setSigPad(ref)}
+                                            backgroundColor="#ffffff"
                                             canvasProps={{
                                                 className: "w-full h-full cursor-crosshair"
                                             }}
                                             onEnd={() => {
                                                 if (sigPad && !sigPad.isEmpty()) {
-                                                    setSignatureData(sigPad.getTrimmedCanvas().toDataURL("image/png"));
+                                                    const trimmed = sigPad.getTrimmedCanvas();
+                                                    setSignatureData(getWhiteBackgroundDataURL(trimmed));
                                                 }
                                             }}
                                         />
@@ -489,8 +503,13 @@ export default function SignNdaPage() {
                                                     if (file) {
                                                         const reader = new FileReader();
                                                         reader.onloadend = () => {
-                                                            setUploadedSig(reader.result);
-                                                            setSignatureData(reader.result);
+                                                            const img = new Image();
+                                                            img.onload = () => {
+                                                                const whiteDataUrl = getWhiteBackgroundDataURL(img);
+                                                                setUploadedSig(whiteDataUrl);
+                                                                setSignatureData(whiteDataUrl);
+                                                            };
+                                                            img.src = reader.result;
                                                         };
                                                         reader.readAsDataURL(file);
                                                     }
