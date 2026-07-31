@@ -62,7 +62,7 @@ export default function BusinessOwnerLoginPage() {
         </div>
 
         <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900 tracking-tight">
-          PiBi <span className="text-[var(--brand)]">VDR</span> Business Owner Portal
+        <span className="text-[var(--brand)]">VDR</span> Business Owner Portal
         </h2>
         <p className="mt-2 text-center text-[15px] text-slate-500">
           Super Admin clearance required to manage tenant organizations
@@ -84,7 +84,7 @@ export default function BusinessOwnerLoginPage() {
                 htmlFor="email"
                 className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2"
               >
-                Super Admin Email
+                Business owner Email
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 text-sm">
@@ -96,7 +96,7 @@ export default function BusinessOwnerLoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="owner@pibivdr.com"
+                  placeholder="example@gamil.com"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] transition-all"
                 />
               </div>
@@ -145,14 +145,14 @@ export default function BusinessOwnerLoginPage() {
           </form>
 
 
-          <div className="mt-6 text-center">
+          {/* <div className="mt-6 text-center">
             <Link
               href="/login"
               className="text-sm font-semibold text-[var(--brand)] hover:underline"
             >
               ← Back to Tenant User Portal
             </Link>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

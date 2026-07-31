@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FaCog, FaPlus, FaTimes, FaShieldAlt, FaCheck, FaDatabase, FaUsers } from "react-icons/fa";
+import { FaCog, FaPlus, FaTimes, FaShieldAlt, FaCheck, FaDatabase, FaUsers, FaPowerOff, FaEllipsisV } from "react-icons/fa";
 import { FiChevronDown } from "react-icons/fi";
 import WorkspaceModal from "@/components/workspaces/WorkspaceModal";
 
@@ -16,6 +16,7 @@ export default function WorkspacePage() {
   const [toastMessage, setToastMessage] = useState("");
   const [userRole, setUserRole] = useState("User");
   const [workspaces, setWorkspaces] = useState([]);
+  const [openMenuId, setOpenMenuId] = useState(null);
   const router = useRouter();
   
   useEffect(() => {
@@ -93,6 +94,11 @@ export default function WorkspacePage() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('vdr_session');
+    router.push('/login');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-10 flex flex-col items-center">
       
@@ -120,6 +126,17 @@ export default function WorkspacePage() {
           </div>
         </div>
       )}
+
+      {/* Top Actions */}
+      <div className="w-full max-w-6xl flex justify-end mb-4 md:mb-6">
+        <button 
+          onClick={handleLogout}
+          title="Logout"
+          className="flex items-center justify-center w-16 h-16 bg-gradient-to-tr from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full hover:opacity-90 transition-opacity shadow-lg"
+        >
+          <FaPowerOff size={28} />
+        </button>
+      </div>
 
       {/* Main App Container */}
       <div className="w-full max-w-6xl bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -201,7 +218,7 @@ export default function WorkspacePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             
             {/* 1. Add New Workspace Card */}
-            {userRole === 'super_admin' && (
+            {userRole === 'super_admin' && selectedStatus === 'Active' && (
               <button 
                 onClick={() => {
                   if (companyStatus === 'pending') {
@@ -223,28 +240,79 @@ export default function WorkspacePage() {
               </button>
             )}
 
-            {/* Render Created Workspaces */}
-            {workspaces.map((ws) => (
+            {/* Render Filtered Workspaces */}
+            {workspaces.filter(ws => {
+              const wsStatus = ws.status || 'active';
+              return selectedStatus === 'Active' ? wsStatus === 'active' : wsStatus === 'inactive';
+            }).map((ws) => (
               <div 
                 key={ws.id} 
                 onClick={() => handleWorkspaceClick(ws.id)}
                 className="group cursor-pointer"
               >
                 <div className="h-48 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col relative">
-                  {/* Top Row: Badge & Close */}
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded uppercase tracking-wider">
-                      Active
+                  {/* Top Row: Badge & Menu */}
+                  <div className="flex justify-between items-start mb-4 relative">
+                    <span className={`px-2.5 py-1 text-[10px] font-bold rounded uppercase tracking-wider ${
+                      (ws.status || 'active') === 'active' 
+                        ? 'bg-emerald-50 text-emerald-600' 
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {ws.status || 'active'}
                     </span>
-                    <button 
-                      onClick={(e) => { 
-                        e.stopPropagation(); // Prevent card click
-                        setWorkspaces(workspaces.filter(w => w.id !== ws.id)) 
-                      }} 
-                      className="text-gray-300 hover:text-red-500 transition-colors"
-                    >
-                      <FaTimes size={14} />
-                    </button>
+                    
+                    <div className="relative">
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setOpenMenuId(openMenuId === ws.id ? null : ws.id);
+                        }} 
+                        className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-full hover:bg-gray-100"
+                      >
+                        <FaEllipsisV size={14} />
+                      </button>
+                      
+                      {openMenuId === ws.id && (
+                        <div 
+                          className="absolute right-0 top-full w-32 bg-white rounded-lg shadow-[0_4px_20px_rgb(0,0,0,0.08)] border border-gray-100 z-10 py-1 overflow-hidden"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button 
+                            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(null);
+                              const newStatus = (ws.status || 'active') === 'active' ? 'inactive' : 'active';
+                              setWorkspaces(workspaces.map(w => w.id === ws.id ? { ...w, status: newStatus } : w));
+                              
+                              try {
+                                await fetch(`/api/workspaces/${ws.id}`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ status: newStatus })
+                                });
+                              } catch(e) {}
+                            }}
+                          >
+                            {(ws.status || 'active') === 'active' ? 'Make Inactive' : 'Make Active'}
+                          </button>
+                          <button 
+                            className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              setWorkspaces(workspaces.filter(w => w.id !== ws.id));
+                              setOpenMenuId(null);
+                              
+                              try {
+                                await fetch(`/api/workspaces/${ws.id}`, { method: 'DELETE' });
+                              } catch(e) {}
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Center Icon & Title */}

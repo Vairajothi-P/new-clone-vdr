@@ -58,9 +58,6 @@ export default function MainSidebar() {
 
   return (
     <>
-      {session?.request_status === 'pending' && !pathname?.startsWith('/admin') && !pathname?.startsWith('/business-owner') && (
-        <WorkspacePendingOverlay companyName={session?.company_name || session?.name || "Your Organization"} />
-      )}
       <aside className="w-16 md:w-20 h-screen bg-white/90 backdrop-blur-xl border-r border-gray-200/80 flex flex-col items-center py-6 shrink-0 z-50 shadow-[4px_0_24px_rgba(28,127,159,0.06)]">
 
       {/* Top Logo — PiBi gradient icon */}
@@ -104,29 +101,7 @@ export default function MainSidebar() {
         })}
       </div>
 
-      {/* Admin Portal Shortcut for Business Owner / Admins */}
-      {(isAdmin || isSuperAdmin || session?.role === 'business_owner') && (
-        <Link
-          href="/admin/workspace-requests"
-          title="Admin Workspace Requests"
-          className="group relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-300 mb-2"
-        >
-          {pathname?.startsWith('/admin') && (
-            <div className="absolute left-0 w-1 h-7 bg-gradient-to-b from-emerald-500 to-teal-500 rounded-r-full shadow-sm" />
-          )}
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${pathname?.startsWith('/admin')
-            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-            : 'text-gray-400 hover:bg-emerald-500/10 hover:text-emerald-500'
-            }`}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-          </div>
-          <span className="absolute left-16 bg-emerald-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
-            Workspace Requests
-          </span>
-        </Link>
-      )}
+
 
       {/* Profile / Sign Out Menu */}
       <div className="flex flex-col items-center mt-auto relative mb-4">

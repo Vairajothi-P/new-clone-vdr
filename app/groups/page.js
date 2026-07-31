@@ -59,26 +59,7 @@ export default function GroupsPage() {
 
           groups = data || [];
 
-          if (userRole === "admin") {
-            const { data: targetUsers } = await supabase
-              .from("users")
-              .select("id")
-              .eq("company_id", companyId)
-              .in("role", ["sub_admin", "external_user"]);
-
-            const targetUserIds = (targetUsers || []).map((u) => u.id);
-            if (targetUserIds.length > 0) {
-              const { data: ugRows } = await supabase
-                .from("user_groups")
-                .select("group_id")
-                .in("user_id", targetUserIds);
-
-              const validGroupIds = new Set((ugRows || []).map((r) => r.group_id));
-              groups = groups.filter((g) => validGroupIds.has(g.id));
-            } else {
-              groups = [];
-            }
-          } else if (userRole === "sub_admin") {
+          if (userRole === "sub_admin") {
             const { data: extUsers } = await supabase
               .from("users")
               .select("id")

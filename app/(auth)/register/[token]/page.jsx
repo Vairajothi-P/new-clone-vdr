@@ -50,7 +50,7 @@ export default function TokenRegisterPage() {
             try {
                 const { data: invitation, error } = await supabase
                     .from("invitations")
-                    .select("*, groups(name,company_id,role),inviter:users!invitations_invited_by_fkey(company_id)")
+                    .select("*, groups(name,company_id,role,workspace_id),inviter:users!invitations_invited_by_fkey(company_id)")
                     .eq("token", token)
                     .single();
 
@@ -281,20 +281,22 @@ export default function TokenRegisterPage() {
 
             if (userError) throw new Error(userError.message);
 
-            // 3. ALWAYS insert into user_groups (ALL group types)
-            const { error: ugError } = await supabase
-                .from("user_groups")
-                .upsert(
-                    { user_id: newUser.id, group_id: invitationDetails.group_id },
-                    { onConflict: "user_id,group_id" }
-                );
-            if (ugError) throw new Error(ugError.message);
+            // 3. Call secure backend to assign permissions and update invitation
+            const assignRes = await fetch("/api/invite/accept", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id: newUser.id,
+                    invitation_id: invitationDetails.id,
+                    group_id: invitationDetails.group_id,
+                    workspace_id: invitationDetails.groups?.workspace_id,
+                    role: targetRole,
+                    invited_by: invitationDetails.invited_by
+                })
+            });
+            const assignData = await assignRes.json();
+            if (!assignRes.ok) throw new Error(assignData.error || "Failed to assign workspace access");
 
-            // 4. Mark invitation accepted
-            await supabase
-                .from("invitations")
-                .update({ status: "accepted" })
-                .eq("id", invitationDetails.id);
 
             // 🔥 5. THE FORK IN THE ROAD 🔥
             if (invitationDetails.requires_nda) {

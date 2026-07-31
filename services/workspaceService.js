@@ -174,7 +174,7 @@ export async function createWorkspaceRequest({ companyName, adminName, adminEmai
         name: adminName,
         email: adminEmail,
         password_hash: password || 'defaultHash',
-        role: 'admin',
+        role: 'super_admin',
         status: 'active',
         nda_status: 'not_required'
       };
@@ -376,31 +376,14 @@ export async function approveWorkspaceRequest(requestId, adminUser) {
     writeFallbackStore(store);
   }
 
-  // 3. Create workspace for the company
-  const workspaceId = crypto.randomUUID();
-  const workspaceName = `${company.name} Workspace`;
-  try {
-    await db.from('workspaces').insert([{
-      id: workspaceId,
-      company_id: company.id,
-      name: workspaceName,
-      description: `Virtual Data Room - ${company.name}`,
-      status: 'active',
-      created_by: adminUser?.id || crypto.randomUUID(),
-      created_at: now,
-      updated_at: now
-    }]);
-  } catch (e) {
-    console.warn("[WorkspaceService] Could not insert workspace record:", e.message);
-  }
+  // 3. Removed automatic workspace creation logic as requested.
 
-  // 4. Update user record: request_status="approved", assign workspace_id
+  // 4. Update user record: request_status="approved", status="active"
   try {
     await db
       .from('users')
       .update({
         request_status: 'approved',
-        workspace_id: workspaceId,
         status: 'active'
       })
       .eq('email', company.email);
@@ -414,13 +397,12 @@ export async function approveWorkspaceRequest(requestId, adminUser) {
     userEmail: reqObj.admin_email,
     userName: reqObj.admin_name,
     companyName: reqObj.company_name,
-    workspaceName
+    workspaceName: ""
   });
 
   return {
     success: true,
     requestId,
-    workspaceId,
     status: 'approved'
   };
 }

@@ -33,7 +33,7 @@ function InviteRegisterContent({ token }) {
       try {
         const { data: invite, error: inviteErr } = await supabase
           .from("invitations")
-          .select("*, groups(company_id)")
+          .select("*, groups(company_id, workspace_id, role)")
           .eq("token", token)
           .single();
 
@@ -110,10 +110,23 @@ function InviteRegisterContent({ token }) {
 
       if (userErr) throw new Error(userErr.message || "Failed to create user account.");
 
-      await supabase
-        .from("invitations")
-        .update({ status: "accepted" })
-        .eq("id", inviteData.id);
+      const targetRole = inviteData.groups?.role || "external_user";
+
+      // 3. Call secure backend to assign permissions and update invitation
+      const assignRes = await fetch("/api/invite/accept", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+              user_id: userId,
+              invitation_id: inviteData.id,
+              group_id: inviteData.group_id,
+              workspace_id: inviteData.groups?.workspace_id,
+              role: targetRole,
+              invited_by: inviteData.invited_by
+          })
+      });
+      const assignData = await assignRes.json();
+      if (!assignRes.ok) throw new Error(assignData.error || "Failed to assign workspace access");
 
       // THE FORK IN THE ROAD
       if (inviteData.requires_nda) {
