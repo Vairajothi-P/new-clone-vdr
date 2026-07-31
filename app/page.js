@@ -73,7 +73,7 @@ export default function Home() {
         
         
         <div className="hidden md:flex gap-4 items-center">
-          <Link href="/business-owner" className="px-5 py-2 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full font-semibold shadow-md shadow-[var(--brand)]/25 hover:from-[var(--brand-dark)] hover:to-[var(--brand-secondary)] hover:shadow-lg hover:shadow-[var(--brand)]/35 hover:scale-102 transition-all duration-300 flex items-center gap-2">
+          <Link href="/business-owner/login" className="px-5 py-2 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full font-semibold shadow-md shadow-[var(--brand)]/25 hover:from-[var(--brand-dark)] hover:to-[var(--brand-secondary)] hover:shadow-lg hover:shadow-[var(--brand)]/35 hover:scale-102 transition-all duration-300 flex items-center gap-2">
             <i className="fas fa-chart-line"></i> Business Owner
           </Link>
           <Link href="/documents" className="px-5 py-2 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full font-semibold shadow-md shadow-[var(--brand)]/25 hover:from-[var(--brand-dark)] hover:to-[var(--brand-secondary)] hover:shadow-lg hover:shadow-[var(--brand)]/35 hover:scale-102 transition-all duration-300 flex items-center gap-2">
