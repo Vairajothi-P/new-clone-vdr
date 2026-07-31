@@ -71,16 +71,18 @@ export default function Home() {
           <i className="fas fa-shield-alt text-[var(--brand)] mr-2"></i> SecureVDR
         </div>
         
-        {/* Desktop Menu */}
+        
         <div className="hidden md:flex gap-4 items-center">
+          <Link href="/business-owner" className="px-5 py-2 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full font-semibold shadow-md shadow-[var(--brand)]/25 hover:from-[var(--brand-dark)] hover:to-[var(--brand-secondary)] hover:shadow-lg hover:shadow-[var(--brand)]/35 hover:scale-102 transition-all duration-300 flex items-center gap-2">
+            <i className="fas fa-chart-line"></i> Business Owner
+          </Link>
           <Link href="/documents" className="px-5 py-2 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full font-semibold shadow-md shadow-[var(--brand)]/25 hover:from-[var(--brand-dark)] hover:to-[var(--brand-secondary)] hover:shadow-lg hover:shadow-[var(--brand)]/35 hover:scale-102 transition-all duration-300 flex items-center gap-2">
             <i className="fas fa-chart-line"></i> Dashboard
           </Link>
           <a href="/login" className="px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300">Login</a>
           <Link href="/register" className="px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300">Register</Link>
         </div>
-
-        {/* Mobile Menu Button */}
+        
         <button 
           className="md:hidden text-2xl text-[var(--brand)] focus:outline-none"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
