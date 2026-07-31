@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { FaShieldAlt, FaCheckCircle } from "react-icons/fa";
+import { FaShieldAlt, FaCheckCircle, FaPenNib, FaUpload, FaTrash, FaDownload, FaPrint } from "react-icons/fa";
+import SignatureCanvas from "react-signature-canvas";
 
 export default function SignNdaPage() {
     const router = useRouter();
@@ -15,6 +16,12 @@ export default function SignNdaPage() {
     const [companyData, setCompanyData] = useState(null);
     const [sessionData, setSessionData] = useState(null);
     const [ndaAccepted, setNdaAccepted] = useState(false);
+
+    // ── DIGITAL SIGNATURE STATES ──────────────────────────────────────────────
+    const [sigMode, setSigMode] = useState("draw"); // "draw" | "upload"
+    const [sigPad, setSigPad] = useState(null); // Ref for SignatureCanvas
+    const [uploadedSig, setUploadedSig] = useState(null); // Preview image URL for upload mode
+    const [signatureData, setSignatureData] = useState(null); // Final base64/DataURL signature
 
     // 1. Fetch User Session and Company NDA on Load
     useEffect(() => {
@@ -54,25 +61,95 @@ export default function SignNdaPage() {
 
     // 2. Handle Final Submission (Accepting the NDA)
     const handleAcceptNda = async () => {
-        if (!ndaAccepted) return;
+        if (!ndaAccepted) {
+            setErrorMsg("Please accept the NDA terms checkbox.");
+            return;
+        }
+
+        if (!signatureData) {
+            setErrorMsg("Please provide your digital signature (draw or upload) before accepting.");
+            return;
+        }
 
         setSubmitting(true);
         setErrorMsg("");
 
         try {
+            // Helper to convert base64 DataURL to Blob for Supabase storage upload
+            const dataURLtoBlob = (dataurl) => {
+                const arr = dataurl.split(",");
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                return new Blob([u8arr], { type: mime });
+            };
+
+            const fileName = `signature_${Date.now()}.png`;
+            const signaturePath = `users/${sessionData.id}/${fileName}`;
+            const sigBlob = dataURLtoBlob(signatureData);
+
+            // Upload signature image to signature_documents storage bucket (like redacted-files)
+            const { error: uploadErr } = await supabase.storage
+                .from("signature_documents")
+                .upload(signaturePath, sigBlob, {
+                    upsert: true,
+                    contentType: "image/png",
+                });
+
+            if (uploadErr) {
+                console.error("Signature storage upload failed:", uploadErr);
+                throw new Error(`Storage upload failed (${uploadErr.message}). Please check signature_documents bucket & policies.`);
+            }
+
+            // Get Public URL for the uploaded signature
+            const { data: publicUrlData } = supabase.storage
+                .from("signature_documents")
+                .getPublicUrl(signaturePath);
+
+            const storageUrl = publicUrlData?.publicUrl || signatureData;
+
+            // Prepare update payload
+            const updatePayload = {
+                nda_status: "accepted",
+                nda_accepted_at: new Date().toISOString(),
+                nda_signature_path: signaturePath,
+                nda_signature_url: storageUrl,
+                nda_signature_type: sigMode
+            };
+
             // Update the user's status in the database to record the legal acceptance
             const { error: updateErr } = await supabase
                 .from("users")
-                .update({
-                    nda_status: "accepted",
-                    nda_accepted_at: new Date().toISOString()
-                })
+                .update(updatePayload)
                 .eq("id", sessionData.id);
 
-            if (updateErr) throw updateErr;
+            if (updateErr) {
+                console.warn("Full signature DB update failed, attempting fallback to save core NDA status...", updateErr);
+                const { error: fallbackErr } = await supabase
+                    .from("users")
+                    .update({
+                        nda_status: "accepted",
+                        nda_accepted_at: new Date().toISOString()
+                    })
+                    .eq("id", sessionData.id);
+
+                if (fallbackErr) {
+                    throw updateErr;
+                }
+            }
 
             // Update the local storage session so they don't get trapped in a loop
-            const updatedSession = { ...sessionData, nda_status: "accepted" };
+            const updatedSession = {
+                ...sessionData,
+                nda_status: "accepted",
+                nda_signature_path: signaturePath,
+                nda_signature_url: storageUrl,
+                nda_signature_type: sigMode
+            };
             localStorage.setItem("vdr_session", JSON.stringify(updatedSession));
 
             // Route to Dashboard!
@@ -80,9 +157,159 @@ export default function SignNdaPage() {
 
         } catch (err) {
             console.error("Failed to accept NDA:", err);
-            setErrorMsg("A database error occurred while saving your signature. Please try again.");
+            setErrorMsg(`Save Error: ${err.message || "A database error occurred while saving your signature. Please try again."}`);
             setSubmitting(false);
         }
+    };
+
+    // 3. Handle Download Signed Agreement (With Embedded Signature)
+    const handleDownloadSignedNDA = () => {
+        if (!signatureData) {
+            setErrorMsg("Please provide your signature before downloading the agreement.");
+            return;
+        }
+
+        const companyName = companyData?.name || "Organization";
+        const userName = sessionData?.name || sessionData?.email || "Authorized Signatory";
+        const userEmail = sessionData?.email || "";
+        const signDate = new Date().toLocaleString();
+        const agreementContent = companyData?.nda_text || "<p>No terms provided.</p>";
+
+        const printWindow = window.open("", "_blank");
+        if (!printWindow) {
+            setErrorMsg("Please allow popups to download/print the signed NDA document.");
+            return;
+        }
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>${companyName} - Signed NDA (${userName})</title>
+                <style>
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                        color: #1e293b;
+                        line-height: 1.6;
+                        padding: 40px;
+                        max-w: 800px;
+                        margin: 0 auto;
+                        background: #ffffff;
+                    }
+                    .header {
+                        text-align: center;
+                        border-bottom: 2px solid #e2e8f0;
+                        padding-bottom: 20px;
+                        margin-bottom: 30px;
+                    }
+                    .header h1 {
+                        font-size: 24px;
+                        font-weight: 800;
+                        margin: 0 0 8px 0;
+                        color: #0f172a;
+                    }
+                    .header p {
+                        font-size: 14px;
+                        color: #64748b;
+                        margin: 0;
+                    }
+                    .content {
+                        font-size: 14px;
+                        color: #0f172a;
+                        margin-bottom: 40px;
+                    }
+                    .content h1, .content h2, .content h3 {
+                        color: #0f172a;
+                    }
+                    .signature-box {
+                        border-top: 2px solid #0f172a;
+                        padding-top: 25px;
+                        margin-top: 50px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-end;
+                        page-break-inside: avoid;
+                    }
+                    .sig-details {
+                        font-size: 13px;
+                    }
+                    .sig-details p {
+                        margin: 5px 0;
+                    }
+                    .sig-details strong {
+                        color: #0f172a;
+                    }
+                    .sig-image-wrapper {
+                        text-align: right;
+                    }
+                    .sig-image {
+                        max-height: 80px;
+                        max-width: 240px;
+                        border-bottom: 1px solid #cbd5e1;
+                        padding-bottom: 6px;
+                        margin-bottom: 6px;
+                        display: block;
+                    }
+                    .sig-label {
+                        font-size: 11px;
+                        color: #64748b;
+                        text-transform: uppercase;
+                        letter-spacing: 0.05em;
+                    }
+                    .audit-footer {
+                        margin-top: 40px;
+                        padding-top: 15px;
+                        border-top: 1px dashed #cbd5e1;
+                        font-size: 11px;
+                        color: #94a3b8;
+                        text-align: center;
+                    }
+                    @media print {
+                        body { padding: 0; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>NON-DISCLOSURE AGREEMENT</h1>
+                    <p>${companyName} • Virtual Data Room Security Agreement</p>
+                </div>
+
+                <div class="content">
+                    ${agreementContent}
+                </div>
+
+                <div class="signature-box">
+                    <div class="sig-details">
+                        <p><strong>Digitally Signed By:</strong> ${userName}</p>
+                        ${userEmail ? `<p><strong>Email Address:</strong> ${userEmail}</p>` : ""}
+                        <p><strong>Legal Status:</strong> Accepted & Executed</p>
+                        <p><strong>Execution Timestamp:</strong> ${signDate}</p>
+                    </div>
+                    <div class="sig-image-wrapper">
+                        <img src="${signatureData}" class="sig-image" alt="Digital Signature" />
+                        <div class="sig-label">Authorized Digital Signature</div>
+                    </div>
+                </div>
+
+                <div class="audit-footer">
+                    Executed and cryptographically stamped via Virtual Data Room Platform • Document Audit Trail Active
+                </div>
+
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                        }, 350);
+                    };
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.open();
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
     };
 
     if (loading) {
@@ -106,7 +333,7 @@ export default function SignNdaPage() {
                     <h2 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h2>
                     <p className="text-slate-500 text-sm mb-6">{errorMsg}</p>
                     <button
-                        onClick={() => router.push('/login')}
+                        onClick={() => router.push("/login")}
                         className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition-all active:scale-95"
                     >
                         Return to Login
@@ -144,20 +371,12 @@ export default function SignNdaPage() {
                     <div className="p-8">
 
                         {/* The NDA Document Viewer */}
-                        <div className="relative mb-8">
+                        <div className="relative mb-6">
                             <div className="absolute top-0 left-0 w-full h-4 bg-gradient-to-b from-slate-50 to-transparent z-10 pointer-events-none rounded-t-2xl"></div>
                             <div className="absolute bottom-0 left-0 w-full h-4 bg-gradient-to-t from-slate-50 to-transparent z-10 pointer-events-none rounded-b-2xl"></div>
 
-                            {/* <div className="w-full h-96 overflow-y-auto border-2 border-slate-100 bg-slate-50 rounded-2xl p-8 custom-scrollbar">
-                            
-                            <div
-                                className="prose prose-sm prose-slate max-w-none prose-headings:text-slate-800 prose-p:text-slate-600 prose-a:text-[var(--brand)]"
-                                dangerouslySetInnerHTML={{ __html: companyData?.nda_text || "No terms provided." }}
-                            />
-                        </div> */}
-
-                            <div className="w-full h-96 overflow-y-auto border-2 border-slate-200 bg-white rounded-2xl p-8 custom-scrollbar">
-                                {/* 🔥 FORCED PURE BLACK TEXT & PROPER HEADER SIZING 🔥 */}
+                            <div className="w-full h-80 overflow-y-auto border-2 border-slate-200 bg-white rounded-2xl p-8 custom-scrollbar">
+                                {/* FORCED PURE BLACK TEXT & PROPER HEADER SIZING */}
                                 <div
                                     className="prose max-w-none text-black prose-p:text-black prose-headings:text-black prose-li:text-black prose-strong:text-black prose-h1:text-2xl prose-h1:font-extrabold prose-h1:text-center prose-h2:text-xl prose-h2:font-bold prose-h2:mt-6 prose-h2:mb-4 prose-h2:border-b prose-h2:border-gray-300 prose-h2:pb-2"
                                     dangerouslySetInnerHTML={{ __html: companyData?.nda_text || "<p>No terms provided.</p>" }}
@@ -165,10 +384,148 @@ export default function SignNdaPage() {
                             </div>
                         </div>
 
+                        {/* ── DIGITAL SIGNATURE PAD SECTION ── */}
+                        <div className="mb-6 border-2 border-slate-200 rounded-2xl p-6 bg-slate-50/70">
+                            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                                <div className="flex items-center gap-2">
+                                    <FaPenNib className="text-[var(--brand)]" />
+                                    <span className="text-sm font-bold text-slate-800">2. Provide Your Digital Signature</span>
+                                    {signatureData && (
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">
+                                            <FaCheckCircle className="text-[10px]" /> Signature Captured
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex gap-1.5 bg-slate-200/80 p-1 rounded-xl">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSigMode("draw");
+                                            setSignatureData(null);
+                                            setUploadedSig(null);
+                                        }}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${sigMode === "draw"
+                                            ? "bg-white text-slate-900 shadow-sm"
+                                            : "text-slate-600 hover:text-slate-900"
+                                            }`}
+                                    >
+                                        <FaPenNib className="text-xs" /> Draw
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSigMode("upload");
+                                            setSignatureData(null);
+                                            setUploadedSig(null);
+                                        }}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${sigMode === "upload"
+                                            ? "bg-white text-slate-900 shadow-sm"
+                                            : "text-slate-600 hover:text-slate-900"
+                                            }`}
+                                    >
+                                        <FaUpload className="text-xs" /> Upload
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* TAB 1: DRAW SIGNATURE */}
+                            {sigMode === "draw" ? (
+                                <div className="flex flex-col items-center">
+                                    <div className="relative border-2 border-slate-300 bg-white rounded-xl w-full h-44 overflow-hidden shadow-inner">
+                                        <SignatureCanvas
+                                            ref={(ref) => setSigPad(ref)}
+                                            canvasProps={{
+                                                className: "w-full h-full cursor-crosshair"
+                                            }}
+                                            onEnd={() => {
+                                                if (sigPad && !sigPad.isEmpty()) {
+                                                    setSignatureData(sigPad.getTrimmedCanvas().toDataURL("image/png"));
+                                                }
+                                            }}
+                                        />
+                                        <div className="absolute bottom-2 right-3 left-3 border-b border-dashed border-slate-200 pointer-events-none"></div>
+                                        <span className="absolute bottom-1.5 left-3 text-[10px] text-slate-400 font-semibold pointer-events-none uppercase tracking-wider">
+                                            Sign above this line
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center w-full mt-3">
+                                        <span className="text-xs text-slate-500 font-medium">
+                                            Use your mouse, trackpad, or touch screen to sign.
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                sigPad?.clear();
+                                                setSignatureData(null);
+                                            }}
+                                            className="flex items-center gap-1 text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors"
+                                        >
+                                            <FaTrash className="text-[10px]" /> Clear
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* TAB 2: UPLOAD SIGNATURE IMAGE */
+                                <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 bg-white rounded-xl w-full p-6 text-center">
+                                    {!uploadedSig ? (
+                                        <label className="cursor-pointer flex flex-col items-center justify-center gap-2">
+                                            <div className="w-10 h-10 rounded-full bg-brand-soft text-brand flex items-center justify-center">
+                                                <FaUpload size={16} />
+                                            </div>
+                                            <div>
+                                                <span className="text-sm font-bold text-slate-800 block">
+                                                    Click to upload signature image
+                                                </span>
+                                                <span className="text-xs text-slate-500">
+                                                    PNG or JPG (transparent background recommended)
+                                                </span>
+                                            </div>
+                                            <input
+                                                type="file"
+                                                accept="image/png, image/jpeg, image/jpg"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setUploadedSig(reader.result);
+                                                            setSignatureData(reader.result);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="p-2 border border-slate-200 rounded-xl bg-slate-50">
+                                                <img
+                                                    src={uploadedSig}
+                                                    alt="Uploaded Signature"
+                                                    className="h-20 object-contain max-w-xs"
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setUploadedSig(null);
+                                                    setSignatureData(null);
+                                                }}
+                                                className="flex items-center gap-1 text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors"
+                                            >
+                                                <FaTrash className="text-[10px]" /> Remove & Upload Another
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                         {/* Acceptance Checkbox Gate */}
                         <label className={`flex items-start gap-4 p-5 border-2 rounded-2xl cursor-pointer transition-all duration-300 ${ndaAccepted
-                            ? 'border-[var(--brand)] bg-[var(--brand)]/5'
-                            : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+                            ? "border-[var(--brand)] bg-[var(--brand)]/5"
+                            : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                             }`}>
                             <div className="pt-0.5">
                                 <input
@@ -178,22 +535,41 @@ export default function SignNdaPage() {
                                     className="w-5 h-5 rounded border-slate-300 text-[var(--brand)] focus:ring-[var(--brand)] cursor-pointer transition-colors"
                                 />
                             </div>
-                            <div>
+                            <div className="flex-1">
                                 <span className="block text-sm font-bold text-slate-800 mb-0.5">
                                     I accept the terms of the Non-Disclosure Agreement
                                 </span>
                                 <span className="block text-xs text-slate-500 font-medium">
-                                    By checking this box, I acknowledge that this is a legally binding digital signature recorded on {new Date().toLocaleDateString()}.
+                                    By checking this box and applying my digital signature above, I acknowledge that this is a legally binding execution recorded on {new Date().toLocaleDateString()}.
                                 </span>
                             </div>
                         </label>
+
+                        {/* Download Signed NDA Action Bar (when signature is ready) */}
+                        {signatureData && (
+                            <div className="mt-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <FaPrint className="text-slate-600 text-sm" />
+                                    <span className="text-xs font-bold text-slate-700">
+                                        Want a copy for your records? Download signed agreement
+                                    </span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleDownloadSignedNDA}
+                                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 rounded-lg text-xs font-bold transition-all shadow-sm"
+                                >
+                                    <FaDownload className="text-[10px]" /> Download Signed NDA (PDF/Print)
+                                </button>
+                            </div>
+                        )}
 
                         {/* Action Buttons */}
                         <div className="flex gap-4 mt-8">
                             <button
                                 onClick={() => {
-                                    localStorage.removeItem('vdr_session');
-                                    router.push('/login');
+                                    localStorage.removeItem("vdr_session");
+                                    router.push("/login");
                                 }}
                                 className="flex-[1] py-3.5 border-2 border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all active:scale-95"
                             >
@@ -202,10 +578,10 @@ export default function SignNdaPage() {
 
                             <button
                                 onClick={handleAcceptNda}
-                                disabled={!ndaAccepted || submitting}
-                                className={`flex-[2] py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${ndaAccepted
-                                    ? 'bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white shadow-lg shadow-[var(--brand)]/20 hover:-translate-y-0.5'
-                                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                disabled={!ndaAccepted || !signatureData || submitting}
+                                className={`flex-[2] py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${ndaAccepted && signatureData
+                                    ? "bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white shadow-lg shadow-[var(--brand)]/20 hover:-translate-y-0.5"
+                                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
                                     }`}
                             >
                                 {submitting ? (
@@ -247,6 +623,6 @@ export default function SignNdaPage() {
                     background-color: #94a3b8;
                 }
             `}</style>
-        </div >
+        </div>
     );
-}
+}

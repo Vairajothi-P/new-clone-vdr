@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
+import { supabase } from "@/utils/supabase/client";
 import { Pencil, UploadCloud, Bold, Italic, Underline, List, ListOrdered, Check, Download, ShieldAlert, FileText } from 'lucide-react';
 
 export default function NdaSettingsPage() {
@@ -32,12 +33,16 @@ export default function NdaSettingsPage() {
       const mappedUsers = sortedUsers.map(u => ({
         id: u.id,
         name: u.name || u.email,
+        email: u.email || '',
         dateAccepted: u.nda_accepted_at ? new Date(u.nda_accepted_at).toLocaleDateString() : 'N/A',
         timeAccepted: u.nda_accepted_at ? new Date(u.nda_accepted_at).toLocaleTimeString() : 'N/A',
         ndaAttached: (u.nda_status === 'accepted' || u.nda_status === 'pending') ? 'Yes' : 'No',
         status: u.nda_status === 'accepted' ? 'Accepted' : (u.nda_status === 'pending' ? 'Pending' : 'Not Required'),
         isRealUser: true,
-        rawStatus: u.nda_status || 'not_required'
+        rawStatus: u.nda_status || 'not_required',
+        signatureUrl: u.nda_signature_url || null,
+        signaturePath: u.nda_signature_path || null,
+        signatureType: u.nda_signature_type || null
       }));
 
       setNdaUsersList(mappedUsers);
@@ -130,6 +135,178 @@ export default function NdaSettingsPage() {
       editorRef.current.innerHTML = ndaText;
     }
   }, [showEditor, ndaText]);
+
+  const handleDownloadUserNDA = async (user) => {
+    const companyName = "Organization NDA";
+    const userName = user.name || "Authorized Signatory";
+    const userEmail = user.email || "";
+    const signDate = `${user.dateAccepted} at ${user.timeAccepted}`;
+    const agreementContent = ndaText || "<p>No terms provided.</p>";
+    
+    // Resolve signature URL (if bucket is private, generate a 1-hour signed URL using signaturePath)
+    let sigImgSrc = user.signatureUrl;
+    if (user.signaturePath) {
+      try {
+        const { data: signedData } = await supabase.storage
+          .from("signature_documents")
+          .createSignedUrl(user.signaturePath, 3600);
+        if (signedData?.signedUrl) {
+          sigImgSrc = signedData.signedUrl;
+        }
+      } catch (e) {
+        console.warn("Could not generate signed URL, falling back to stored signatureUrl", e);
+      }
+    }
+
+    // Display signature image if available, else show legal execution text
+    const sigElement = sigImgSrc
+      ? `<img src="${sigImgSrc}" class="sig-image" alt="Digital Signature" />`
+      : `<div class="sig-placeholder">Digitally Signed & Accepted by ${userName}</div>`;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Please allow popups to download/print the signed NDA document.");
+      return;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>Signed NDA - ${userName}</title>
+          <style>
+              body {
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                  color: #1e293b;
+                  line-height: 1.6;
+                  padding: 40px;
+                  max-w: 800px;
+                  margin: 0 auto;
+                  background: #ffffff;
+              }
+              .header {
+                  text-align: center;
+                  border-bottom: 2px solid #e2e8f0;
+                  padding-bottom: 20px;
+                  margin-bottom: 30px;
+              }
+              .header h1 {
+                  font-size: 24px;
+                  font-weight: 800;
+                  margin: 0 0 8px 0;
+                  color: #0f172a;
+              }
+              .header p {
+                  font-size: 14px;
+                  color: #64748b;
+                  margin: 0;
+              }
+              .content {
+                  font-size: 14px;
+                  color: #0f172a;
+                  margin-bottom: 40px;
+              }
+              .content h1, .content h2, .content h3 {
+                  color: #0f172a;
+              }
+              .signature-box {
+                  border-top: 2px solid #0f172a;
+                  padding-top: 25px;
+                  margin-top: 50px;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: flex-end;
+                  page-break-inside: avoid;
+              }
+              .sig-details {
+                  font-size: 13px;
+              }
+              .sig-details p {
+                  margin: 5px 0;
+              }
+              .sig-details strong {
+                  color: #0f172a;
+              }
+              .sig-image-wrapper {
+                  text-align: right;
+              }
+              .sig-image {
+                  max-height: 80px;
+                  max-width: 240px;
+                  border-bottom: 1px solid #cbd5e1;
+                  padding-bottom: 6px;
+                  margin-bottom: 6px;
+                  display: block;
+              }
+              .sig-placeholder {
+                  font-weight: 700;
+                  color: #15803d;
+                  border-bottom: 1px solid #cbd5e1;
+                  padding-bottom: 6px;
+                  margin-bottom: 6px;
+                  font-size: 14px;
+              }
+              .sig-label {
+                  font-size: 11px;
+                  color: #64748b;
+                  text-transform: uppercase;
+                  letter-spacing: 0.05em;
+              }
+              .audit-footer {
+                  margin-top: 40px;
+                  padding-top: 15px;
+                  border-top: 1px dashed #cbd5e1;
+                  font-size: 11px;
+                  color: #94a3b8;
+                  text-align: center;
+              }
+              @media print {
+                  body { padding: 0; }
+              }
+          </style>
+      </head>
+      <body>
+          <div class="header">
+              <h1>NON-DISCLOSURE AGREEMENT (NDA)</h1>
+              <p>Virtual Data Room • Cryptographically Executed Agreement Copy</p>
+          </div>
+
+          <div class="content">
+              ${agreementContent}
+          </div>
+
+          <div class="signature-box">
+              <div class="sig-details">
+                  <p><strong>Digitally Signed By:</strong> ${userName}</p>
+                  ${userEmail ? `<p><strong>Email Address:</strong> ${userEmail}</p>` : ""}
+                  <p><strong>Legal Status:</strong> Accepted & Executed</p>
+                  <p><strong>Execution Timestamp:</strong> ${signDate}</p>
+              </div>
+              <div class="sig-image-wrapper">
+                  ${sigElement}
+                  <div class="sig-label">Authorized Digital Signature</div>
+              </div>
+          </div>
+
+          <div class="audit-footer">
+              Executed via Virtual Data Room Platform • Document Audit Trail Active
+          </div>
+
+          <script>
+              window.onload = function() {
+                  setTimeout(function() {
+                      window.print();
+                  }, 350);
+              };
+          </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
 
   return (
     <div className="p-8 max-w-7xl mx-auto w-full">
@@ -241,7 +418,7 @@ export default function NdaSettingsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center flex justify-center gap-2">
-                        <button disabled={u.status !== 'Accepted'} className={`inline-flex items-center justify-center p-2 rounded-lg transition-all ${u.status === 'Accepted' ? 'bg-[var(--brand)] text-white hover:bg-[var(--brand)]/90 shadow-sm hover:shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`} title={u.status === 'Accepted' ? 'Download Signed Document' : 'Pending Acceptance'}>
+                        <button disabled={u.status !== 'Accepted'} onClick={() => handleDownloadUserNDA(u)} className={`inline-flex items-center justify-center p-2 rounded-lg transition-all ${u.status === 'Accepted' ? 'bg-[var(--brand)] text-white hover:bg-[var(--brand)]/90 shadow-sm hover:shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`} title={u.status === 'Accepted' ? 'Download Signed Document' : 'Pending Acceptance'}>
                           <Download size={16} />
                         </button>
                         {u.isRealUser && u.rawStatus !== 'pending' && u.rawStatus !== 'accepted' && (

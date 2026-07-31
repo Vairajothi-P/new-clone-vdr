@@ -14,7 +14,7 @@ export async function POST(req) {
         if (action === 'fetch_users') {
             const { data, error } = await supabase
                 .from('users')
-                .select('id, name, email, created_at, nda_status, nda_accepted_at')
+                .select('*')
                 .eq('company_id', compId);
             if (error) throw error;
             return NextResponse.json({ success: true, users: data || [] });
