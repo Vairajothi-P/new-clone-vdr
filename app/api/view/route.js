@@ -79,14 +79,36 @@ export async function POST(req) {
 
         const fileExt = doc.name.split('.').pop().toLowerCase();
 
+        // Extract client IP address
+        const forwarded = req.headers.get('x-forwarded-for');
+        const realIp = req.headers.get('x-real-ip');
+        const clientIp = forwarded ? forwarded.split(',')[0].trim() : (realIp || '127.0.0.1');
+
         // 4. Log document view
-        const { error: logErr } = await supabase
+        const { data: logRes, error: logErr } = await supabase
             .from('document_access_logs')
-            .insert({ user_id: session.id, document_id: docId, opened_at: new Date().toISOString() });
+            .insert({ user_id: session.id, document_id: docId, opened_at: new Date().toISOString() })
+            .select('id')
+            .single();
             
         if (logErr) {
             console.error('[VIEW API] Log failed:', logErr);
         }
+
+        const accessLogId = logRes?.id || null;
+
+        // Also record VIEW entry in document_edit_logs with IP address
+        await supabase.from('document_edit_logs').insert([{
+            user_id: session.id,
+            document_id: docId,
+            action_type: 'VIEW',
+            metadata: {
+                ip_address: clientIp,
+                file_name: doc.name,
+                folder_id: doc.folder_id
+            },
+            changed_at: new Date().toISOString()
+        }]);
 
         // 5. Fetch Watermark & Branding Settings
         let brandLogo = null;
@@ -128,7 +150,9 @@ export async function POST(req) {
             fileExt: fileExt,
             base64Data: decryptedBase64,
             watermarkSettings: watermarkSettings,
-            brandLogo: brandLogo
+            brandLogo: brandLogo,
+            accessLogId: accessLogId,
+            clientIp: clientIp
         });
 
     } catch (err) {

@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { FaEye, FaEdit, FaUpload, FaShieldAlt, FaDownload, FaTrash } from 'react-icons/fa';
+import BulkUploadModal from '@/components/documents/BulkUploadModal';
 
 export default function DocumentsPage() {
     return (
@@ -34,6 +35,13 @@ function UnifiedWorkspace() {
     const [downloading, setDownloading] = useState({});
     const [toast, setToast] = useState(null);
     const [isDraggingOverScreen, setIsDraggingOverScreen] = useState(false);
+    const [retentionDays, setRetentionDays] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('vdr_trash_retention_days');
+            return saved ? parseInt(saved, 10) : 30;
+        }
+        return 30;
+    });
 
     // Modals & Dropdowns
     const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
@@ -47,6 +55,7 @@ function UnifiedWorkspace() {
     const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
     const [movingToFolderId, setMovingToFolderId] = useState(null);
     const [uploadQueue, setUploadQueue] = useState([]);
+    const [initialUploadFiles, setInitialUploadFiles] = useState([]);
 
     const fileInputRef = useRef(null);
 
@@ -276,6 +285,81 @@ function UnifiedWorkspace() {
         } catch (err) { showToast('Delete failed', 'error'); }
     };
 
+    const calculateRemainingDays = (deletedAtStr, totalDays) => {
+        if (!deletedAtStr || deletedAtStr === '--') return { daysLeft: totalDays, status: 'Safe', percentage: 100 };
+        const delDate = new Date(deletedAtStr);
+        if (isNaN(delDate.getTime())) return { daysLeft: totalDays, status: 'Safe', percentage: 100 };
+        
+        const now = new Date();
+        const diffTime = now.getTime() - delDate.getTime();
+        const elapsedDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+        const daysLeft = Math.max(0, totalDays - elapsedDays);
+        const percentage = Math.max(0, Math.min(100, Math.round((daysLeft / totalDays) * 100)));
+        
+        let status = 'Safe';
+        if (daysLeft === 0) status = 'Expired';
+        else if (daysLeft <= 5) status = 'Expiring Soon';
+        
+        return { daysLeft, status, percentage };
+    };
+
+    const handleUpdateRetention = (newDays) => {
+        setRetentionDays(newDays);
+        localStorage.setItem('vdr_trash_retention_days', newDays.toString());
+        showToast(`Trash retention policy updated to ${newDays} days`);
+    };
+
+    const handlePurgeExpired = async () => {
+        const expiredItems = currentItems.filter(item => {
+            const { daysLeft } = calculateRemainingDays(item.deletedAt, retentionDays);
+            return daysLeft === 0;
+        });
+
+        if (expiredItems.length === 0) {
+            showToast("No expired items found based on current retention policy.", "info");
+            return;
+        }
+
+        const expiredDocs = expiredItems.filter(i => i.type !== 'folder').map(i => i.id);
+        const expiredFolders = expiredItems.filter(i => i.type === 'folder').map(i => i.id);
+
+        try {
+            await executeBackendAction('permanent_delete', { docIds: expiredDocs, folderIds: expiredFolders });
+            setFiles(prev => prev.filter(f => !expiredDocs.includes(f.id) && !expiredFolders.includes(f.id)));
+            setDeletedIds(prev => {
+                const next = new Set(prev);
+                expiredDocs.forEach(id => next.delete(id));
+                expiredFolders.forEach(id => next.delete(id));
+                return next;
+            });
+            showToast(`Permanently purged ${expiredItems.length} expired item(s).`);
+        } catch (err) {
+            showToast("Failed to purge expired items: " + err.message, "error");
+        }
+    };
+
+    const executeRecoverSingle = async (item) => {
+        try {
+            const docIds = item.type !== 'folder' ? [item.id] : [];
+            const folderIds = item.type === 'folder' ? [item.id] : [];
+            await executeBackendAction('recover', { docIds, folderIds });
+            await loadData();
+            await executeRebuildIndex();
+            showToast(`Recovered "${item.name}"`);
+        } catch (err) { showToast('Recover failed', 'error'); }
+    };
+
+    const executePermanentDeleteSingle = async (item) => {
+        try {
+            const docIds = item.type !== 'folder' ? [item.id] : [];
+            const folderIds = item.type === 'folder' ? [item.id] : [];
+            await executeBackendAction('permanent_delete', { docIds, folderIds });
+            await loadData();
+            await executeRebuildIndex();
+            showToast(`Permanently deleted "${item.name}"`);
+        } catch (err) { showToast('Permanent delete failed', 'error'); }
+    };
+
     const executeMoveToFolder = async () => {
         try {
             const docIds = [...selectedIds].filter(id => files.find(f => f.id === id)?.type !== 'folder');
@@ -342,7 +426,11 @@ function UnifiedWorkspace() {
     };
 
     const handleFileChange = async (e) => {
-        processFilesForUpload(Array.from(e.target.files));
+        if (e.target.files && e.target.files.length > 0) {
+            setInitialUploadFiles(Array.from(e.target.files));
+            setIsUploadModalOpen(true);
+            e.target.value = '';
+        }
     };
 
     // ── DOWNLOADS (Hitting the new Download API) ─────────────────────────────
@@ -403,7 +491,8 @@ function UnifiedWorkspace() {
         e.preventDefault();
         setIsDraggingOverScreen(false);
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            processFilesForUpload(Array.from(e.dataTransfer.files));
+            setInitialUploadFiles(Array.from(e.dataTransfer.files));
+            setIsUploadModalOpen(true);
         }
     };
 
@@ -623,7 +712,7 @@ function UnifiedWorkspace() {
                 <div className="flex items-center px-6 py-4 bg-white border-b border-slate-200">
                     <div className="flex items-center gap-3">
                         {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canUploadHere && (
-                            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-brand-soft hover:text-brand rounded-lg transition-colors">
+                            <button onClick={() => { setInitialUploadFiles([]); setIsUploadModalOpen(true); }} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-brand-soft hover:text-brand rounded-lg transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                                 Upload
                             </button>
@@ -738,12 +827,14 @@ function UnifiedWorkspace() {
                                         <>
                                             <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deleted By</th>
                                             <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deleted At</th>
+                                            <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Days Left</th>
                                         </>
                                     ) : (
                                         <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Created At</th>
                                     )}
                                     <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Size</th>
                                     {currentView !== 'trash' && <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Permission Details</th>}
+                                    {currentView === 'trash' && <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -818,6 +909,16 @@ function UnifiedWorkspace() {
                                                 <>
                                                     <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.deletedBy}</td>
                                                     <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.deletedAt}</td>
+                                                    <td className="py-4 px-3 text-center">
+                                                        {(() => {
+                                                            const { daysLeft } = calculateRemainingDays(item.deletedAt, 30);
+                                                            return (
+                                                                <span className="text-[13px] font-medium text-slate-500">
+                                                                    {daysLeft} days
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </td>
                                                 </>
                                             ) : (
                                                 <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.dateCreated}</td>
@@ -917,6 +1018,34 @@ function UnifiedWorkspace() {
                                                     </div>
                                                 </td>
                                             )}
+                                            {currentView === 'trash' && (
+                                                <td className="py-4 px-3 text-center">
+                                                    <div className="flex items-center justify-center gap-5">
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2.2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            className="w-4 h-4 text-slate-600 cursor-pointer hover:text-[var(--brand)] transition-colors"
+                                                            title="Restore from Trash"
+                                                            onClick={(e) => { e.stopPropagation(); executeRecoverSingle(item); }}
+                                                        >
+                                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                                            <path d="M3 3v5h5" />
+                                                        </svg>
+                                                        {isGod && (
+                                                            <FaTrash
+                                                                className="text-slate-600 cursor-pointer hover:text-red-500 transition-colors text-[14px]"
+                                                                title="Permanently Purge"
+                                                                onClick={(e) => { e.stopPropagation(); executePermanentDeleteSingle(item); }}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })}
@@ -990,27 +1119,25 @@ function UnifiedWorkspace() {
                 </Modal>
             )}
 
-            {isUploadModalOpen && (
-                <Modal onClose={() => setIsUploadModalOpen(false)}>
-                    <h3 className="text-[16px] font-black text-slate-800 mb-5">Secure Upload</h3>
-                    <div onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-3 p-10 border-2 border-dashed border-slate-200 bg-brand-soft rounded-2xl cursor-pointer hover:bg-slate-100">
-                        <span className="text-[13px] font-bold text-slate-700">Click to Browse Files</span>
-                        <span className="text-[11px] text-slate-400">Files are AES-256 Encrypted on upload</span>
-                    </div>
-                    {uploadQueue.length > 0 && (
-                        <div className="mt-4 space-y-2 max-h-48 overflow-auto">
-                            {uploadQueue.map(item => (
-                                <div key={item.id} className="flex items-center gap-3 p-3 bg-brand-soft rounded-xl border border-slate-100">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[12px] font-semibold text-slate-700 truncate">{item.name}</p>
-                                    </div>
-                                    {item.status === 'completed' ? <span className="text-emerald-500 text-xs font-bold">Done</span> : <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </Modal>
-            )}
+            {/* Bulk Upload Progress Tracking Modal */}
+            <BulkUploadModal
+                isOpen={isUploadModalOpen}
+                onClose={() => {
+                    setIsUploadModalOpen(false);
+                    setInitialUploadFiles([]);
+                }}
+                session={session}
+                currentFolderId={currentFolderId}
+                files={files}
+                deletedIds={deletedIds}
+                getActiveDisplayIndex={getActiveDisplayIndex}
+                onUploadSuccess={async () => {
+                    await loadData();
+                    await executeRebuildIndex();
+                }}
+                showToast={showToast}
+                initialFiles={initialUploadFiles}
+            />
         </div>
     );
 }

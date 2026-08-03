@@ -36,6 +36,8 @@ export default function NdaSettingsPage() {
         email: u.email || '',
         dateAccepted: u.nda_accepted_at ? new Date(u.nda_accepted_at).toLocaleDateString() : 'N/A',
         timeAccepted: u.nda_accepted_at ? new Date(u.nda_accepted_at).toLocaleTimeString() : 'N/A',
+        ipAddress: u.nda_ip_address || u.ip_address || (u.nda_accepted_at ? 'Logged (Protected)' : 'N/A'),
+        userId: u.id,
         ndaAttached: (u.nda_status === 'accepted' || u.nda_status === 'pending') ? 'Yes' : 'No',
         status: u.nda_status === 'accepted' ? 'Accepted' : (u.nda_status === 'pending' ? 'Pending' : 'Not Required'),
         isRealUser: true,
@@ -279,6 +281,8 @@ export default function NdaSettingsPage() {
               <div class="sig-details">
                   <p><strong>Digitally Signed By:</strong> ${userName}</p>
                   ${userEmail ? `<p><strong>Email Address:</strong> ${userEmail}</p>` : ""}
+                  <p><strong>User ID (Audit):</strong> ${user.id}</p>
+                  <p><strong>Client IP Address:</strong> ${user.ipAddress || "Logged in DB Audit Trail"}</p>
                   <p><strong>Legal Status:</strong> Accepted & Executed</p>
                   <p><strong>Execution Timestamp:</strong> ${signDate}</p>
               </div>
@@ -390,42 +394,51 @@ export default function NdaSettingsPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50/80 border-b border-gray-200">
-                    <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider">S.No</th>
-                    <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider">Date Accepted</th>
-                    <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider">Time Accepted</th>
-                    <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider">NDA Attached</th>
-                    <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-[13px] font-bold text-gray-600 uppercase tracking-wider text-center">Action</th>
+                    <th className="px-4 py-3.5 text-[12.5px] font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">S.No</th>
+                    <th className="px-4 py-3.5 text-[12.5px] font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Name</th>
+                    <th className="px-4 py-3.5 text-[12.5px] font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Date Accepted</th>
+                    <th className="px-4 py-3.5 text-[12.5px] font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Time Accepted</th>
+                    <th className="px-4 py-3.5 text-[12.5px] font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Audit IP / ID</th>
+                    <th className="px-4 py-3.5 text-[12.5px] font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">NDA Attached</th>
+                    <th className="px-4 py-3.5 text-[12.5px] font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Status</th>
+                    <th className="px-4 py-3.5 text-[12.5px] font-bold text-gray-600 uppercase tracking-wider text-center whitespace-nowrap">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {loadingUsers ? (
-                    <tr><td colSpan="6" className="text-center py-8 text-gray-500">Loading users...</td></tr>
+                    <tr><td colSpan="8" className="text-center py-8 text-gray-500">Loading users...</td></tr>
                   ) : ndaUsersList.map((u, index) => (
                     <tr key={u.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4 text-[14px] text-gray-500 font-medium">{index + 1}</td>
-                      <td className="px-6 py-4"><span className="text-[14px] font-semibold text-gray-900">{u.name}</span></td>
-                      <td className="px-6 py-4 text-[14px] text-gray-600">{u.dateAccepted}</td>
-                      <td className="px-6 py-4 text-[14px] text-gray-600">{u.timeAccepted}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-[13.5px] text-gray-500 font-medium">{index + 1}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap"><span className="text-[14px] font-semibold text-gray-900">{u.name}</span></td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-[13.5px] text-gray-600">{u.dateAccepted}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-[13.5px] text-gray-600">{u.timeAccepted}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-[13.5px] font-medium text-gray-900">{u.ipAddress || 'Logged (Protected)'}</span>
+                          <span className="text-[11.5px] text-gray-400" title={`User ID: ${u.id}`}>ID: {u.id?.slice(0, 8)}...</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[12px] font-semibold ${u.ndaAttached === 'Yes' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>{u.ndaAttached}</span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-bold ${u.status === 'Accepted' ? 'bg-green-100 text-green-700' : u.status === 'Pending' || u.status === 'Pending Invite' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
                           {u.status === 'Accepted' && <Check size={12} strokeWidth={3} />}
                           {u.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center flex justify-center gap-2">
-                        <button disabled={u.status !== 'Accepted'} onClick={() => handleDownloadUserNDA(u)} className={`inline-flex items-center justify-center p-2 rounded-lg transition-all ${u.status === 'Accepted' ? 'bg-[var(--brand)] text-white hover:bg-[var(--brand)]/90 shadow-sm hover:shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`} title={u.status === 'Accepted' ? 'Download Signed Document' : 'Pending Acceptance'}>
-                          <Download size={16} />
-                        </button>
-                        {u.isRealUser && u.rawStatus !== 'pending' && u.rawStatus !== 'accepted' && (
-                          <button onClick={() => handleRequireNdaForUser(u.id)} className="inline-flex items-center gap-1 px-3 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-xs font-bold transition-all shadow-sm" title="Force old user to sign NDA on next login">
-                            <ShieldAlert size={14} /> Require NDA
+                      <td className="px-4 py-3.5 whitespace-nowrap text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button disabled={u.status !== 'Accepted'} onClick={() => handleDownloadUserNDA(u)} className={`inline-flex items-center justify-center p-2 rounded-lg transition-all ${u.status === 'Accepted' ? 'bg-[var(--brand)] text-white hover:bg-[var(--brand)]/90 shadow-sm hover:shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`} title={u.status === 'Accepted' ? 'Download Signed Document' : 'Pending Acceptance'}>
+                            <Download size={16} />
                           </button>
-                        )}
+                          {u.isRealUser && u.rawStatus !== 'pending' && u.rawStatus !== 'accepted' && (
+                            <button onClick={() => handleRequireNdaForUser(u.id)} className="inline-flex items-center gap-1 px-3 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-xs font-bold transition-all shadow-sm" title="Force old user to sign NDA on next login">
+                              <ShieldAlert size={14} /> Require NDA
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

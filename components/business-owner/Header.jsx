@@ -47,7 +47,18 @@ export default function Header({ onOpenSidebar }) {
     return () => clearInterval(interval);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const s = localStorage.getItem('vdr_session');
+      const session = s ? JSON.parse(s) : null;
+      if (session) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session, reason: 'Business Owner logout' })
+        }).catch(() => {});
+      }
+    } catch (_) {}
     localStorage.removeItem('vdr_session');
     document.cookie = "vdr_super_admin=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC";
     router.push('/business-owner/login');

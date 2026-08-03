@@ -52,6 +52,10 @@ export default function SecureViewer({ params }) {
     const devtoolsRef = useRef(false);
     const shieldDivRef = useRef(null); // direct DOM ref — synchronous, no React delay
 
+    const accessLogIdRef = useRef(null);
+    const activeSecondsRef = useRef(0);
+    const heartbeatIntervalRef = useRef(null);
+
     const userInfoRef = useRef(userInfo);
     const clientIpRef = useRef(clientIp);
     const watermarkSettingsRef = useRef(null);
@@ -70,6 +74,7 @@ export default function SecureViewer({ params }) {
             if (raw) {
                 const s = JSON.parse(raw);
                 setUserInfo({
+                    id: s.id || '',
                     name: s.name || '',
                     email: s.email || '',
                     sessionId: (s.id || '').slice(0, 8),
@@ -92,6 +97,46 @@ export default function SecureViewer({ params }) {
         }
     }, [loading, docPayload]);
 
+    // ── Heartbeat Ping Engine ──────────────────────────────────────────────────
+    useEffect(() => {
+        if (!loading && docPayload) {
+            const sendHeartbeat = (final = false) => {
+                if (!accessLogIdRef.current) return;
+                const payload = JSON.stringify({
+                    accessLogId: accessLogIdRef.current,
+                    durationSeconds: activeSecondsRef.current
+                });
+                if (final && typeof navigator !== 'undefined' && navigator.sendBeacon) {
+                    const blob = new Blob([payload], { type: 'application/json' });
+                    navigator.sendBeacon('/api/view/heartbeat', blob);
+                } else {
+                    fetch('/api/view/heartbeat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: payload,
+                        keepalive: true
+                    }).catch(() => {});
+                }
+            };
+
+            heartbeatIntervalRef.current = setInterval(() => {
+                if (document.hasFocus() && !document.hidden) {
+                    activeSecondsRef.current += 5;
+                    sendHeartbeat(false);
+                }
+            }, 5000);
+
+            const handleUnload = () => sendHeartbeat(true);
+            window.addEventListener('beforeunload', handleUnload);
+
+            return () => {
+                if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+                window.removeEventListener('beforeunload', handleUnload);
+                sendHeartbeat(true);
+            };
+        }
+    }, [loading, docPayload]);
+
     // ── Security Engine ───────────────────────────────────────────────────────
     useEffect(() => {
 
@@ -109,8 +154,19 @@ export default function SecureViewer({ params }) {
                 setCountdown(secs);
                 if (secs <= 0) {
                     clearInterval(countdownRef.current);
-                    localStorage.removeItem('vdr_session');
-                    window.location.href = '/login';
+                    fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session: userInfoRef.current,
+                            userId: userInfoRef.current?.id || userInfoRef.current?.sessionId,
+                            email: userInfoRef.current?.email,
+                            reason: `Security violation: ${msg}`
+                        })
+                    }).catch(() => {}).finally(() => {
+                        localStorage.removeItem('vdr_session');
+                        window.location.href = '/login';
+                    });
                 }
             }, 1000);
         };
@@ -285,6 +341,8 @@ export default function SecureViewer({ params }) {
             }
 
             setDocName(data.docName);
+            if (data.accessLogId) accessLogIdRef.current = data.accessLogId;
+            if (data.clientIp) setClientIp(data.clientIp);
 
             if (data.brandLogo) setBrandLogo(data.brandLogo);
             if (data.watermarkSettings) {
@@ -489,6 +547,37 @@ export default function SecureViewer({ params }) {
                 txtPages.forEach(p => {
                     appendWatermarkToElement(p, userInfoRef.current, clientIpRef.current);
                 });
+            } else if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) {
+                container.style.display = 'flex';
+                container.style.alignItems = 'center';
+                container.style.justifyContent = 'center';
+                container.style.height = '100%';
+                
+                const blob = new Blob([bytes]);
+                const url = URL.createObjectURL(blob);
+                
+                const imgWrapper = document.createElement('div');
+                imgWrapper.style.position = 'relative';
+                imgWrapper.style.maxWidth = '100%';
+                imgWrapper.style.maxHeight = '100%';
+                imgWrapper.style.display = 'flex';
+                imgWrapper.style.alignItems = 'center';
+                imgWrapper.style.justifyContent = 'center';
+                
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.maxWidth = '90vw';
+                img.style.maxHeight = '80vh';
+                img.style.objectFit = 'contain';
+                img.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+                img.style.borderRadius = '8px';
+                img.style.userSelect = 'none';
+                img.style.pointerEvents = 'none';
+                
+                imgWrapper.appendChild(img);
+                container.appendChild(imgWrapper);
+                
+                appendWatermarkToElement(imgWrapper, userInfoRef.current, clientIpRef.current);
             } else {
                 container.innerHTML = '<div class="text-white text-center mt-20 font-bold text-xl">Unsupported Format</div>';
             }
