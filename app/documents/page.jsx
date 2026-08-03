@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { FaEye, FaEdit, FaUpload, FaShieldAlt, FaDownload, FaTrash } from 'react-icons/fa';
+import BulkUploadModal from '@/components/documents/BulkUploadModal';
 
 export default function DocumentsPage() {
     return (
@@ -54,6 +55,7 @@ function UnifiedWorkspace() {
     const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
     const [movingToFolderId, setMovingToFolderId] = useState(null);
     const [uploadQueue, setUploadQueue] = useState([]);
+    const [initialUploadFiles, setInitialUploadFiles] = useState([]);
 
     const fileInputRef = useRef(null);
 
@@ -424,7 +426,11 @@ function UnifiedWorkspace() {
     };
 
     const handleFileChange = async (e) => {
-        processFilesForUpload(Array.from(e.target.files));
+        if (e.target.files && e.target.files.length > 0) {
+            setInitialUploadFiles(Array.from(e.target.files));
+            setIsUploadModalOpen(true);
+            e.target.value = '';
+        }
     };
 
     // ── DOWNLOADS (Hitting the new Download API) ─────────────────────────────
@@ -485,7 +491,8 @@ function UnifiedWorkspace() {
         e.preventDefault();
         setIsDraggingOverScreen(false);
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            processFilesForUpload(Array.from(e.dataTransfer.files));
+            setInitialUploadFiles(Array.from(e.dataTransfer.files));
+            setIsUploadModalOpen(true);
         }
     };
 
@@ -705,7 +712,7 @@ function UnifiedWorkspace() {
                 <div className="flex items-center px-6 py-4 bg-white border-b border-slate-200">
                     <div className="flex items-center gap-3">
                         {!['trash', 'bookmarks', 'downloads'].includes(currentView) && canUploadHere && (
-                            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-brand-soft hover:text-brand rounded-lg transition-colors">
+                            <button onClick={() => { setInitialUploadFiles([]); setIsUploadModalOpen(true); }} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-brand-soft hover:text-brand rounded-lg transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                                 Upload
                             </button>
@@ -1112,27 +1119,25 @@ function UnifiedWorkspace() {
                 </Modal>
             )}
 
-            {isUploadModalOpen && (
-                <Modal onClose={() => setIsUploadModalOpen(false)}>
-                    <h3 className="text-[16px] font-black text-slate-800 mb-5">Secure Upload</h3>
-                    <div onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-3 p-10 border-2 border-dashed border-slate-200 bg-brand-soft rounded-2xl cursor-pointer hover:bg-slate-100">
-                        <span className="text-[13px] font-bold text-slate-700">Click to Browse Files</span>
-                        <span className="text-[11px] text-slate-400">Files are AES-256 Encrypted on upload</span>
-                    </div>
-                    {uploadQueue.length > 0 && (
-                        <div className="mt-4 space-y-2 max-h-48 overflow-auto">
-                            {uploadQueue.map(item => (
-                                <div key={item.id} className="flex items-center gap-3 p-3 bg-brand-soft rounded-xl border border-slate-100">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[12px] font-semibold text-slate-700 truncate">{item.name}</p>
-                                    </div>
-                                    {item.status === 'completed' ? <span className="text-emerald-500 text-xs font-bold">Done</span> : <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </Modal>
-            )}
+            {/* Bulk Upload Progress Tracking Modal */}
+            <BulkUploadModal
+                isOpen={isUploadModalOpen}
+                onClose={() => {
+                    setIsUploadModalOpen(false);
+                    setInitialUploadFiles([]);
+                }}
+                session={session}
+                currentFolderId={currentFolderId}
+                files={files}
+                deletedIds={deletedIds}
+                getActiveDisplayIndex={getActiveDisplayIndex}
+                onUploadSuccess={async () => {
+                    await loadData();
+                    await executeRebuildIndex();
+                }}
+                showToast={showToast}
+                initialFiles={initialUploadFiles}
+            />
         </div>
     );
 }
