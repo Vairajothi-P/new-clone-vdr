@@ -449,9 +449,39 @@ export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPa
                     }
                     container.innerHTML = html;
                 } 
+                else if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(SECURE_DATA.fileExt)) {
+                    container.style.display = 'flex';
+                    container.style.alignItems = 'center';
+                    container.style.justifyContent = 'center';
+                    container.style.height = '100%';
+                    
+                    const blob = new Blob([bytes]);
+                    const url = URL.createObjectURL(blob);
+                    
+                    const imgWrapper = document.createElement('div');
+                    imgWrapper.style.position = 'relative';
+                    imgWrapper.style.maxWidth = '100%';
+                    imgWrapper.style.maxHeight = '100%';
+                    imgWrapper.style.display = 'flex';
+                    imgWrapper.style.alignItems = 'center';
+                    imgWrapper.style.justifyContent = 'center';
+                    
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.style.maxWidth = '90vw';
+                    img.style.maxHeight = '80vh';
+                    img.style.objectFit = 'contain';
+                    img.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+                    img.style.borderRadius = '8px';
+                    img.style.userSelect = 'none';
+                    img.style.pointerEvents = 'none';
+                    
+                    imgWrapper.appendChild(img);
+                    container.appendChild(imgWrapper);
+                }
                 else {
                     container.style.display = 'flex';
-                    container.innerHTML = \`<div style="color: white; padding: 40px;">Unsupported Format: \${SECURE_DATA.fileExt}</div>\`;
+                    container.innerHTML = `<div style="color: white; padding: 40px;">Unsupported Format: ${SECURE_DATA.fileExt}</div>`;
                 }
 
             } catch(e) {

@@ -547,6 +547,37 @@ export default function SecureViewer({ params }) {
                 txtPages.forEach(p => {
                     appendWatermarkToElement(p, userInfoRef.current, clientIpRef.current);
                 });
+            } else if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) {
+                container.style.display = 'flex';
+                container.style.alignItems = 'center';
+                container.style.justifyContent = 'center';
+                container.style.height = '100%';
+                
+                const blob = new Blob([bytes]);
+                const url = URL.createObjectURL(blob);
+                
+                const imgWrapper = document.createElement('div');
+                imgWrapper.style.position = 'relative';
+                imgWrapper.style.maxWidth = '100%';
+                imgWrapper.style.maxHeight = '100%';
+                imgWrapper.style.display = 'flex';
+                imgWrapper.style.alignItems = 'center';
+                imgWrapper.style.justifyContent = 'center';
+                
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.maxWidth = '90vw';
+                img.style.maxHeight = '80vh';
+                img.style.objectFit = 'contain';
+                img.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+                img.style.borderRadius = '8px';
+                img.style.userSelect = 'none';
+                img.style.pointerEvents = 'none';
+                
+                imgWrapper.appendChild(img);
+                container.appendChild(imgWrapper);
+                
+                appendWatermarkToElement(imgWrapper, userInfoRef.current, clientIpRef.current);
             } else {
                 container.innerHTML = '<div class="text-white text-center mt-20 font-bold text-xl">Unsupported Format</div>';
             }
