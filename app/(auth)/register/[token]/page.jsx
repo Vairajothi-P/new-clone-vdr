@@ -28,6 +28,10 @@ export default function TokenRegisterPage() {
     const [mobileError, setMobileError] = useState("");
     const [passwordError, setPasswordError] = useState("");
 
+    const [isExistingUser, setIsExistingUser] = useState(false);
+    const [sessionUser, setSessionUser] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
+
     // Invitation Details Storage
     const [invitationDetails, setInvitationDetails] = useState(null);
 
@@ -69,6 +73,28 @@ export default function TokenRegisterPage() {
                     ...prev,
                     email: invitation.email,
                 }));
+
+                // Check session
+                const sessionString = localStorage.getItem('vdr_session');
+                let currentSessionUser = null;
+                if (sessionString) {
+                    try {
+                        currentSessionUser = JSON.parse(sessionString);
+                        setSessionUser(currentSessionUser);
+                    } catch (e) {
+                        console.error("Error parsing session", e);
+                    }
+                }
+
+                // Check user exists if not logged in
+                if (!currentSessionUser || currentSessionUser.email !== invitation.email) {
+                    const res = await fetch(`/api/user/check?email=${encodeURIComponent(invitation.email)}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setIsExistingUser(data.exists);
+                    }
+                }
+
             } catch (err) {
                 console.error("Check invitation error:", err);
                 setErrorState("An error occurred while verifying the invitation.");
@@ -109,6 +135,42 @@ export default function TokenRegisterPage() {
             setPasswordError("");
         }
     }, [formData.password, formData.confirmPassword]);
+
+    const handleAcceptExisting = async () => {
+        setSubmitting(true);
+        try {
+            if (!sessionUser) throw new Error("You must be logged in to accept this invitation.");
+
+            const targetRole = invitationDetails?.groups?.role || "external_user";
+
+            const assignRes = await fetch("/api/invite/accept", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id: sessionUser.id,
+                    invitation_id: invitationDetails.id,
+                    group_id: invitationDetails.group_id,
+                    workspace_id: invitationDetails.groups?.workspace_id,
+                    role: targetRole,
+                    invited_by: invitationDetails.invited_by
+                })
+            });
+            const assignData = await assignRes.json();
+            if (!assignRes.ok) throw new Error(assignData.error || "Failed to assign workspace access");
+
+            if (invitationDetails.requires_nda) {
+                sessionUser.nda_status = "pending";
+                localStorage.setItem('vdr_session', JSON.stringify(sessionUser));
+                router.push("/sign-nda");
+            } else {
+                router.push("/workspace");
+            }
+        } catch (err) {
+            console.error("Accept error:", err);
+            alert("Failed to accept invitation. Please try again.");
+            setSubmitting(false);
+        }
+    };
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -437,6 +499,43 @@ export default function TokenRegisterPage() {
 
                 <div className="bg-white rounded-3xl shadow-2xl p-8">
                     {step === 1 && (
+                        sessionUser && sessionUser.email === invitationDetails?.email ? (
+                            <div className="text-center py-6 space-y-5">
+                                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto text-blue-500">
+                                    <FaUser className="text-3xl" />
+                                </div>
+                                <h2 className="text-xl font-bold text-slate-900">Welcome back, {sessionUser.name}!</h2>
+                                <p className="text-slate-600 text-sm">
+                                    You are currently logged in. Click below to accept the invitation and join the workspace.
+                                </p>
+                                <button
+                                    onClick={handleAcceptExisting}
+                                    disabled={submitting}
+                                    className="w-full py-3 bg-brand hover:bg-brand-dark text-white font-semibold rounded-xl transition flex items-center justify-center gap-2"
+                                >
+                                    {submitting ? "Accepting..." : "Accept Invitation"}
+                                </button>
+                            </div>
+                        ) : isExistingUser ? (
+                            <div className="text-center py-6 space-y-5">
+                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-500">
+                                    <FaLock className="text-3xl" />
+                                </div>
+                                <h2 className="text-xl font-bold text-slate-900">Account Already Exists</h2>
+                                <p className="text-slate-600 text-sm">
+                                    An account with the email <strong>{invitationDetails?.email}</strong> is already registered. Please log in to accept this invitation.
+                                </p>
+                                <button
+                                    onClick={() => {
+                                        sessionStorage.setItem("vdr_redirect_url", `/register/${token}`);
+                                        router.push("/login");
+                                    }}
+                                    className="w-full py-3 bg-brand hover:bg-brand-dark text-white font-semibold rounded-xl transition"
+                                >
+                                    Log In to Accept
+                                </button>
+                            </div>
+                        ) : (
                         <div className="space-y-5">
                             <div>
                                 <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -569,6 +668,7 @@ export default function TokenRegisterPage() {
                                 Verify & Create Account
                             </button>
                         </div>
+                        )
                     )}
 
                     {step === 2 && (

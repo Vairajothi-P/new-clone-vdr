@@ -17,6 +17,8 @@ function InviteRegisterContent({ token }) {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isExistingUser, setIsExistingUser] = useState(false);
+  const [sessionUser, setSessionUser] = useState(null);
 
   const [inviteData, setInviteData] = useState(null);
   const [companyData, setCompanyData] = useState(null);
@@ -50,6 +52,28 @@ function InviteRegisterContent({ token }) {
           .single();
 
         if (company) setCompanyData(company);
+
+        // Check if user is already logged in
+        const sessionString = localStorage.getItem('vdr_session');
+        let currentSessionUser = null;
+        if (sessionString) {
+          try {
+            currentSessionUser = JSON.parse(sessionString);
+            setSessionUser(currentSessionUser);
+          } catch (e) {
+            console.error("Error parsing session", e);
+          }
+        }
+
+        // If not logged in or email doesn't match, check if user exists in DB
+        if (!currentSessionUser || currentSessionUser.email !== invite.email) {
+          const res = await fetch(`/api/user/check?email=${encodeURIComponent(invite.email)}`);
+          if (res.ok) {
+            const data = await res.json();
+            setIsExistingUser(data.exists);
+          }
+        }
+
       } catch (err) {
         console.error(err);
         setErrorMsg(err.message);
@@ -60,6 +84,44 @@ function InviteRegisterContent({ token }) {
 
     fetchInvite();
   }, [token]);
+
+  const handleAcceptExisting = async () => {
+    setErrorMsg("");
+    setSubmitting(true);
+    try {
+      if (!sessionUser) throw new Error("You must be logged in to accept this invitation.");
+
+      const targetRole = inviteData.groups?.role || "external_user";
+
+      const assignRes = await fetch("/api/invite/accept", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+              user_id: sessionUser.id,
+              invitation_id: inviteData.id,
+              group_id: inviteData.group_id,
+              workspace_id: inviteData.groups?.workspace_id,
+              role: targetRole,
+              invited_by: inviteData.invited_by
+          })
+      });
+      const assignData = await assignRes.json();
+      if (!assignRes.ok) throw new Error(assignData.error || "Failed to assign workspace access");
+
+      // Update session if NDA is required for this new workspace
+      if (inviteData.requires_nda) {
+        sessionUser.nda_status = "pending";
+        localStorage.setItem('vdr_session', JSON.stringify(sessionUser));
+        router.push("/sign-nda");
+      } else {
+        router.push("/workspace");
+      }
+    } catch (err) {
+      console.error("Accept error:", err);
+      setErrorMsg(err.message || "Failed to accept invitation. Please try again.");
+      setSubmitting(false);
+    }
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -221,13 +283,54 @@ function InviteRegisterContent({ token }) {
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
               <span className="text-red-500 mt-0.5">⚠️</span>
               <div>
-                <p className="text-red-800 font-medium text-sm">Registration Error</p>
+                <p className="text-red-800 font-medium text-sm">Error</p>
                 <p className="text-red-700 text-xs mt-0.5">{errorMsg}</p>
               </div>
             </div>
           )}
 
-          <form onSubmit={handleRegister} className="space-y-4">
+          {sessionUser && sessionUser.email === inviteData?.email ? (
+            <div className="text-center py-6">
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500">
+                <FaUser className="text-3xl" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 mb-2">Welcome back, {sessionUser.name}!</h2>
+              <p className="text-slate-600 text-sm mb-6">
+                You are currently logged in. Click below to accept the invitation and join the workspace.
+              </p>
+              <button
+                onClick={handleAcceptExisting}
+                disabled={submitting}
+                className="w-full py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-semibold rounded-xl transition-all duration-300 shadow-lg flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <span>Accept Invitation</span>
+                )}
+              </button>
+            </div>
+          ) : isExistingUser ? (
+            <div className="text-center py-6">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-500">
+                <FaLock className="text-3xl" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 mb-2">Account Already Exists</h2>
+              <p className="text-slate-600 text-sm mb-6">
+                An account with the email <strong>{inviteData?.email}</strong> is already registered. Please log in to accept this invitation.
+              </p>
+              <button
+                onClick={() => {
+                  sessionStorage.setItem("vdr_redirect_url", `/register?token=${token}`);
+                  router.push("/login");
+                }}
+                className="w-full py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-semibold rounded-xl transition-all duration-300 shadow-lg"
+              >
+                Log In to Accept
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleRegister} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name</label>
               <div className="relative">
@@ -321,6 +424,7 @@ function InviteRegisterContent({ token }) {
               )}
             </button>
           </form>
+          )}
 
           <div className="mt-6 pt-4 border-t border-gray-100 text-center">
             <p className="text-sm text-gray-600">
