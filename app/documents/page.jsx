@@ -34,6 +34,13 @@ function UnifiedWorkspace() {
     const [downloading, setDownloading] = useState({});
     const [toast, setToast] = useState(null);
     const [isDraggingOverScreen, setIsDraggingOverScreen] = useState(false);
+    const [retentionDays, setRetentionDays] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('vdr_trash_retention_days');
+            return saved ? parseInt(saved, 10) : 30;
+        }
+        return 30;
+    });
 
     // Modals & Dropdowns
     const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
@@ -274,6 +281,81 @@ function UnifiedWorkspace() {
             setIsPermDeleteModalOpen(false);
             showToast('Deleted permanently');
         } catch (err) { showToast('Delete failed', 'error'); }
+    };
+
+    const calculateRemainingDays = (deletedAtStr, totalDays) => {
+        if (!deletedAtStr || deletedAtStr === '--') return { daysLeft: totalDays, status: 'Safe', percentage: 100 };
+        const delDate = new Date(deletedAtStr);
+        if (isNaN(delDate.getTime())) return { daysLeft: totalDays, status: 'Safe', percentage: 100 };
+        
+        const now = new Date();
+        const diffTime = now.getTime() - delDate.getTime();
+        const elapsedDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+        const daysLeft = Math.max(0, totalDays - elapsedDays);
+        const percentage = Math.max(0, Math.min(100, Math.round((daysLeft / totalDays) * 100)));
+        
+        let status = 'Safe';
+        if (daysLeft === 0) status = 'Expired';
+        else if (daysLeft <= 5) status = 'Expiring Soon';
+        
+        return { daysLeft, status, percentage };
+    };
+
+    const handleUpdateRetention = (newDays) => {
+        setRetentionDays(newDays);
+        localStorage.setItem('vdr_trash_retention_days', newDays.toString());
+        showToast(`Trash retention policy updated to ${newDays} days`);
+    };
+
+    const handlePurgeExpired = async () => {
+        const expiredItems = currentItems.filter(item => {
+            const { daysLeft } = calculateRemainingDays(item.deletedAt, retentionDays);
+            return daysLeft === 0;
+        });
+
+        if (expiredItems.length === 0) {
+            showToast("No expired items found based on current retention policy.", "info");
+            return;
+        }
+
+        const expiredDocs = expiredItems.filter(i => i.type !== 'folder').map(i => i.id);
+        const expiredFolders = expiredItems.filter(i => i.type === 'folder').map(i => i.id);
+
+        try {
+            await executeBackendAction('permanent_delete', { docIds: expiredDocs, folderIds: expiredFolders });
+            setFiles(prev => prev.filter(f => !expiredDocs.includes(f.id) && !expiredFolders.includes(f.id)));
+            setDeletedIds(prev => {
+                const next = new Set(prev);
+                expiredDocs.forEach(id => next.delete(id));
+                expiredFolders.forEach(id => next.delete(id));
+                return next;
+            });
+            showToast(`Permanently purged ${expiredItems.length} expired item(s).`);
+        } catch (err) {
+            showToast("Failed to purge expired items: " + err.message, "error");
+        }
+    };
+
+    const executeRecoverSingle = async (item) => {
+        try {
+            const docIds = item.type !== 'folder' ? [item.id] : [];
+            const folderIds = item.type === 'folder' ? [item.id] : [];
+            await executeBackendAction('recover', { docIds, folderIds });
+            await loadData();
+            await executeRebuildIndex();
+            showToast(`Recovered "${item.name}"`);
+        } catch (err) { showToast('Recover failed', 'error'); }
+    };
+
+    const executePermanentDeleteSingle = async (item) => {
+        try {
+            const docIds = item.type !== 'folder' ? [item.id] : [];
+            const folderIds = item.type === 'folder' ? [item.id] : [];
+            await executeBackendAction('permanent_delete', { docIds, folderIds });
+            await loadData();
+            await executeRebuildIndex();
+            showToast(`Permanently deleted "${item.name}"`);
+        } catch (err) { showToast('Permanent delete failed', 'error'); }
     };
 
     const executeMoveToFolder = async () => {
@@ -738,12 +820,14 @@ function UnifiedWorkspace() {
                                         <>
                                             <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deleted By</th>
                                             <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deleted At</th>
+                                            <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Days Left</th>
                                         </>
                                     ) : (
                                         <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Created At</th>
                                     )}
                                     <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Size</th>
                                     {currentView !== 'trash' && <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Permission Details</th>}
+                                    {currentView === 'trash' && <th className="py-4 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -818,6 +902,16 @@ function UnifiedWorkspace() {
                                                 <>
                                                     <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.deletedBy}</td>
                                                     <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.deletedAt}</td>
+                                                    <td className="py-4 px-3 text-center">
+                                                        {(() => {
+                                                            const { daysLeft } = calculateRemainingDays(item.deletedAt, 30);
+                                                            return (
+                                                                <span className="text-[13px] font-medium text-slate-500">
+                                                                    {daysLeft} days
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </td>
                                                 </>
                                             ) : (
                                                 <td className="py-4 px-3 text-[12px] font-medium text-slate-500">{item.dateCreated}</td>
@@ -913,6 +1007,34 @@ function UnifiedWorkspace() {
                                                             <FaTrash className="text-slate-600 cursor-pointer hover:text-red-500 transition-colors text-[14px]" title="Delete" onClick={(e) => { e.stopPropagation(); setSelectedIds(new Set([item.id])); setIsDeleteModalOpen(true); }} />
                                                         ) : (
                                                             <FaTrash className="text-slate-200 text-[14px]" title="No Delete Access" />
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            )}
+                                            {currentView === 'trash' && (
+                                                <td className="py-4 px-3 text-center">
+                                                    <div className="flex items-center justify-center gap-5">
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2.2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            className="w-4 h-4 text-slate-600 cursor-pointer hover:text-[var(--brand)] transition-colors"
+                                                            title="Restore from Trash"
+                                                            onClick={(e) => { e.stopPropagation(); executeRecoverSingle(item); }}
+                                                        >
+                                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                                            <path d="M3 3v5h5" />
+                                                        </svg>
+                                                        {isGod && (
+                                                            <FaTrash
+                                                                className="text-slate-600 cursor-pointer hover:text-red-500 transition-colors text-[14px]"
+                                                                title="Permanently Purge"
+                                                                onClick={(e) => { e.stopPropagation(); executePermanentDeleteSingle(item); }}
+                                                            />
                                                         )}
                                                     </div>
                                                 </td>

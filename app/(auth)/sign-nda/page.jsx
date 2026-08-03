@@ -87,6 +87,27 @@ export default function SignNdaPage() {
         setErrorMsg("");
 
         try {
+            // 1. Fetch Client IP Address for Audit Trail
+            const fetchIpWithTimeout = async (url) => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2500);
+                try {
+                    const res = await fetch(url, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    const data = await res.json();
+                    return data?.ip || null;
+                } catch (e) {
+                    clearTimeout(timeoutId);
+                    return null;
+                }
+            };
+
+            const clientIp = await fetchIpWithTimeout("https://api.ipify.org?format=json")
+                || await fetchIpWithTimeout("https://ipapi.co/json/")
+                || "Recorded-Client-IP";
+
+            const acceptTimestamp = new Date().toISOString();
+
             // Helper to convert base64 DataURL to Blob for Supabase storage upload
             const dataURLtoBlob = (dataurl) => {
                 const arr = dataurl.split(",");
@@ -124,13 +145,15 @@ export default function SignNdaPage() {
 
             const storageUrl = publicUrlData?.publicUrl || signatureData;
 
-            // Prepare update payload
+            // Prepare update payload including IP address and timestamp audit data
             const updatePayload = {
                 nda_status: "accepted",
-                nda_accepted_at: new Date().toISOString(),
+                nda_accepted_at: acceptTimestamp,
                 nda_signature_path: signaturePath,
                 nda_signature_url: storageUrl,
-                nda_signature_type: sigMode
+                nda_signature_type: sigMode,
+                nda_ip_address: clientIp,
+                nda_user_id: sessionData.id
             };
 
             // Update the user's status in the database to record the legal acceptance
@@ -145,7 +168,8 @@ export default function SignNdaPage() {
                     .from("users")
                     .update({
                         nda_status: "accepted",
-                        nda_accepted_at: new Date().toISOString()
+                        nda_accepted_at: acceptTimestamp,
+                        nda_ip_address: clientIp
                     })
                     .eq("id", sessionData.id);
 
@@ -154,13 +178,48 @@ export default function SignNdaPage() {
                 }
             }
 
+            // Record exact timestamp, user ID, and client IP address in database audit log tables
+            try {
+                await supabase.from("audit_logs").insert({
+                    user_id: sessionData.id,
+                    company_id: sessionData.company_id,
+                    action: "NDA_ACCEPTED",
+                    ip_address: clientIp,
+                    details: JSON.stringify({
+                        timestamp: acceptTimestamp,
+                        user_id: sessionData.id,
+                        client_ip: clientIp,
+                        signature_type: sigMode,
+                        signature_path: signaturePath
+                    }),
+                    created_at: acceptTimestamp
+                });
+            } catch (auditErr) {
+                console.warn("audit_logs insert note:", auditErr);
+            }
+
+            try {
+                await supabase.from("nda_audit_logs").insert({
+                    user_id: sessionData.id,
+                    company_id: sessionData.company_id,
+                    accepted_at: acceptTimestamp,
+                    ip_address: clientIp,
+                    signature_type: sigMode,
+                    signature_url: storageUrl
+                });
+            } catch (ndaAuditErr) {
+                console.warn("nda_audit_logs insert note:", ndaAuditErr);
+            }
+
             // Update the local storage session so they don't get trapped in a loop
             const updatedSession = {
                 ...sessionData,
                 nda_status: "accepted",
+                nda_accepted_at: acceptTimestamp,
                 nda_signature_path: signaturePath,
                 nda_signature_url: storageUrl,
-                nda_signature_type: sigMode
+                nda_signature_type: sigMode,
+                nda_ip_address: clientIp
             };
             localStorage.setItem("vdr_session", JSON.stringify(updatedSession));
 
@@ -184,6 +243,8 @@ export default function SignNdaPage() {
         const companyName = companyData?.name || "Organization";
         const userName = sessionData?.name || sessionData?.email || "Authorized Signatory";
         const userEmail = sessionData?.email || "";
+        const userId = sessionData?.id || "N/A";
+        const clientIp = sessionData?.nda_ip_address || sessionData?.ip_address || "Recorded in Audit Log";
         const signDate = new Date().toLocaleString();
         const agreementContent = companyData?.nda_text || "<p>No terms provided.</p>";
 
@@ -295,6 +356,8 @@ export default function SignNdaPage() {
                     <div class="sig-details">
                         <p><strong>Digitally Signed By:</strong> ${userName}</p>
                         ${userEmail ? `<p><strong>Email Address:</strong> ${userEmail}</p>` : ""}
+                        <p><strong>User ID (Audit):</strong> ${userId}</p>
+                        <p><strong>Client IP Address:</strong> ${clientIp}</p>
                         <p><strong>Legal Status:</strong> Accepted & Executed</p>
                         <p><strong>Execution Timestamp:</strong> ${signDate}</p>
                     </div>
