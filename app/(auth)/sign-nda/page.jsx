@@ -178,39 +178,6 @@ export default function SignNdaPage() {
                 }
             }
 
-            // Record exact timestamp, user ID, and client IP address in database audit log tables
-            try {
-                await supabase.from("audit_logs").insert({
-                    user_id: sessionData.id,
-                    company_id: sessionData.company_id,
-                    action: "NDA_ACCEPTED",
-                    ip_address: clientIp,
-                    details: JSON.stringify({
-                        timestamp: acceptTimestamp,
-                        user_id: sessionData.id,
-                        client_ip: clientIp,
-                        signature_type: sigMode,
-                        signature_path: signaturePath
-                    }),
-                    created_at: acceptTimestamp
-                });
-            } catch (auditErr) {
-                console.warn("audit_logs insert note:", auditErr);
-            }
-
-            try {
-                await supabase.from("nda_audit_logs").insert({
-                    user_id: sessionData.id,
-                    company_id: sessionData.company_id,
-                    accepted_at: acceptTimestamp,
-                    ip_address: clientIp,
-                    signature_type: sigMode,
-                    signature_url: storageUrl
-                });
-            } catch (ndaAuditErr) {
-                console.warn("nda_audit_logs insert note:", ndaAuditErr);
-            }
-
             // Update the local storage session so they don't get trapped in a loop
             const updatedSession = {
                 ...sessionData,
@@ -707,4 +674,4 @@ export default function SignNdaPage() {
             `}</style>
         </div>
     );
-}
+}
