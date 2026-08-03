@@ -74,6 +74,25 @@ export async function POST(req) {
 
         if (dbErr) throw new Error("Database sync failed: " + dbErr.message);
 
+        // 6. Log UPLOAD activity with IP address
+        const forwarded = req.headers.get('x-forwarded-for');
+        const realIp = req.headers.get('x-real-ip');
+        const clientIp = forwarded ? forwarded.split(',')[0].trim() : (realIp || '127.0.0.1');
+
+        if (uploaded_by) {
+            await supabase.from('document_edit_logs').insert([{
+                user_id: uploaded_by,
+                document_id: docData.id,
+                action_type: 'UPLOAD',
+                metadata: {
+                    ip_address: clientIp,
+                    file_name: file.name,
+                    folder_id: folder_id
+                },
+                changed_at: new Date().toISOString()
+            }]);
+        }
+
         return NextResponse.json({ success: true, id: docData.id });
 
     } catch (e) {

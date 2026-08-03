@@ -46,6 +46,30 @@ export async function POST(req) {
       .delete()
       .eq('email', email);
 
+    // 5. Log LOGIN activity with IP address
+    const forwarded = req.headers.get('x-forwarded-for');
+    const realIp = req.headers.get('x-real-ip');
+    const clientIp = forwarded ? forwarded.split(',')[0].trim() : (realIp || '127.0.0.1');
+
+    const { data: userRec } = await supabaseAdmin
+      .from('users')
+      .select('id, email')
+      .eq('email', email)
+      .single();
+
+    if (userRec?.id) {
+      await supabaseAdmin.from('document_edit_logs').insert([{
+        user_id: userRec.id,
+        document_id: null,
+        action_type: 'LOGIN',
+        metadata: {
+          ip_address: clientIp,
+          email: userRec.email
+        },
+        changed_at: new Date().toISOString()
+      }]);
+    }
+
     return NextResponse.json({ success: true, message: "OTP Verified" });
   } catch (err) {
     console.error("Error verifying OTP:", err);

@@ -15,6 +15,10 @@ export async function POST(req) {
         const companyId = session.company_id;
         const userId = session.id;
 
+        const forwarded = req.headers.get('x-forwarded-for');
+        const realIp = req.headers.get('x-real-ip');
+        const clientIp = forwarded ? forwarded.split(',')[0].trim() : (realIp || '127.0.0.1');
+
         switch (action) {
             case 'create_folder':
                 const { parentId, name, index } = payload;
@@ -44,7 +48,18 @@ export async function POST(req) {
 
             case 'trash':
                 const { docIds: tDocs, folderIds: tFolders } = payload;
-                if (tDocs.length > 0) await supabase.from('documents').update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: userId }).in('id', tDocs);
+                if (tDocs.length > 0) {
+                    await supabase.from('documents').update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: userId }).in('id', tDocs);
+                    for (const dId of tDocs) {
+                        await supabase.from('document_edit_logs').insert([{
+                            user_id: userId,
+                            document_id: dId,
+                            action_type: 'DELETE',
+                            metadata: { ip_address: clientIp, mode: 'trash' },
+                            changed_at: new Date().toISOString()
+                        }]);
+                    }
+                }
                 if (tFolders.length > 0) await supabase.from('folders').update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: userId }).in('id', tFolders);
                 break;
 
@@ -56,7 +71,18 @@ export async function POST(req) {
 
             case 'permanent_delete':
                 const { docIds: pDocs, folderIds: pFolders } = payload;
-                if (pDocs.length > 0) await supabase.from('documents').delete().in('id', pDocs);
+                if (pDocs.length > 0) {
+                    for (const dId of pDocs) {
+                        await supabase.from('document_edit_logs').insert([{
+                            user_id: userId,
+                            document_id: dId,
+                            action_type: 'DELETE',
+                            metadata: { ip_address: clientIp, mode: 'permanent' },
+                            changed_at: new Date().toISOString()
+                        }]);
+                    }
+                    await supabase.from('documents').delete().in('id', pDocs);
+                }
                 if (pFolders.length > 0) await supabase.from('folders').delete().in('id', pFolders);
                 break;
 

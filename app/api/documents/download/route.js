@@ -41,6 +41,10 @@ export async function POST(req) {
 
         const fileExt = doc.name.split('.').pop().toLowerCase();
 
+        const forwarded = req.headers.get('x-forwarded-for');
+        const realIp = req.headers.get('x-real-ip');
+        const clientIp = forwarded ? forwarded.split(',')[0].trim() : (realIp || '127.0.0.1');
+
         // 2. Handle ORIGINAL Download
         if (actionType === 'original') {
             if (!doc.original_file_path) throw new Error("Original file not available.");
@@ -56,7 +60,8 @@ export async function POST(req) {
             await supabase.from('document_edit_logs').insert([{
                 user_id: session.id,
                 document_id: doc.id,
-                action_type: 'DOWNLOAD_ORIGINAL'
+                action_type: 'DOWNLOAD_ORIGINAL',
+                metadata: { ip_address: clientIp, file_name: doc.name, folder_id: doc.folder_id }
             }]);
 
             let buffer = Buffer.from(await data.arrayBuffer());
@@ -112,7 +117,8 @@ export async function POST(req) {
             await supabase.from('document_edit_logs').insert([{
                 user_id: session.id,
                 document_id: doc.id,
-                action_type: 'DOWNLOAD_PDF'
+                action_type: 'DOWNLOAD_SECURE',
+                metadata: { ip_address: clientIp, file_name: doc.name, folder_id: doc.folder_id }
             }]);
 
             

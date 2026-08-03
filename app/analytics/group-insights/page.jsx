@@ -496,7 +496,7 @@ export default function GroupInsightsPage() {
                 .from("document_edit_logs")
                 .select("user_id, document_id, action_type, changed_at")
                 .in("user_id", userIds)
-                .in("action_type", ["DOWNLOAD_PDF", "DOWNLOAD_ORIGINAL"]);
+                .in("action_type", ["DOWNLOAD_PDF", "DOWNLOAD_SECURE", "DOWNLOAD_ORIGINAL", "DOWNLOAD"]);
 
             if (dateFrom) dlQuery = dlQuery.gte("changed_at", dateFrom + "T00:00:00");
             if (dateTo) dlQuery = dlQuery.lte("changed_at", dateTo + "T23:59:59");
