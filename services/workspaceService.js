@@ -36,10 +36,15 @@ function writeFallbackStore(requests) {
  * Map a company record from the companies table to the request object shape needed by admin UI
  */
 function mapCompanyToRequest(company) {
-  let s = company.status || 'pending';
-  if (s === 'active' || s === 'approved') s = 'approved';
-  else if (s === 'rejected' || s === 'suspended') s = 'rejected';
-  else s = 'pending';
+  const rawStatus = String(company.status || 'pending').toLowerCase().trim();
+  let s = 'pending';
+  if (['active', 'approved', 'trial', 'enabled'].includes(rawStatus)) {
+    s = 'approved';
+  } else if (['rejected', 'suspended', 'disabled', 'cancelled', 'inactive'].includes(rawStatus)) {
+    s = 'rejected';
+  } else {
+    s = 'pending';
+  }
 
   return {
     id: company.id,
@@ -219,50 +224,35 @@ export async function createWorkspaceRequest({ companyName, adminName, adminEmai
  * Get all pending workspace requests from companies table
  */
 export async function getPendingWorkspaceRequests() {
-  try {
-    const { data, error } = await db
-      .from('companies')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      return data.map(mapCompanyToRequest);
-    }
-  } catch (e) {
-    console.warn("[WorkspaceService] Supabase getPending error, falling back to local store:", e.message);
-  }
-
-  const store = readFallbackStore();
-  return store.filter(r => r.status === 'pending').map(mapCompanyToRequest);
+  return getWorkspaceRequestsByStatus('pending');
 }
 
 /**
  * Get workspace requests filtered by status (pending, approved, rejected) from companies table
  */
 export async function getWorkspaceRequestsByStatus(status) {
+  let allCompanies = [];
   try {
-    let query = db.from('companies').select('*').order('created_at', { ascending: false });
-
-    if (status === 'pending') {
-      query = query.eq('status', 'pending');
-    } else if (status === 'approved') {
-      query = query.in('status', ['active', 'approved']);
-    } else if (status === 'rejected') {
-      query = query.in('status', ['rejected', 'suspended']);
-    }
-
-    const { data, error } = await query;
+    const { data, error } = await db
+      .from('companies')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (!error && data) {
-      return data.map(mapCompanyToRequest);
+      allCompanies = data;
     }
   } catch (e) {
     console.warn("[WorkspaceService] Supabase getWorkspaceRequestsByStatus error, falling back to local store:", e.message);
   }
 
   const store = readFallbackStore();
-  return store
+  const mergedMap = new Map();
+  store.forEach(item => mergedMap.set(item.id, item));
+  allCompanies.forEach(item => mergedMap.set(item.id, { ...mergedMap.get(item.id), ...item }));
+
+  const mergedList = Array.from(mergedMap.values()).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+  return mergedList
     .map(mapCompanyToRequest)
     .filter(r => r.status === status);
 }
@@ -271,6 +261,7 @@ export async function getWorkspaceRequestsByStatus(status) {
  * Get all workspace requests (for admin filtering) from companies table
  */
 export async function getAllWorkspaceRequests() {
+  let allCompanies = [];
   try {
     const { data, error } = await db
       .from('companies')
@@ -278,14 +269,20 @@ export async function getAllWorkspaceRequests() {
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      return data.map(mapCompanyToRequest);
+      allCompanies = data;
     }
   } catch (e) {
     console.warn("[WorkspaceService] Supabase getAll error, falling back to local store:", e.message);
   }
 
   const store = readFallbackStore();
-  return store.map(mapCompanyToRequest);
+  const mergedMap = new Map();
+  store.forEach(item => mergedMap.set(item.id, item));
+  allCompanies.forEach(item => mergedMap.set(item.id, { ...mergedMap.get(item.id), ...item }));
+
+  const mergedList = Array.from(mergedMap.values()).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+  return mergedList.map(mapCompanyToRequest);
 }
 
 /**
