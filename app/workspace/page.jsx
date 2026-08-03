@@ -16,16 +16,18 @@ export default function WorkspacePage() {
   const [toastMessage, setToastMessage] = useState("");
   const [userRole, setUserRole] = useState("User");
   const [workspaces, setWorkspaces] = useState([]);
+  const [companyDetails, setCompanyDetails] = useState(null);
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
   const router = useRouter();
-  
+
   useEffect(() => {
     const fetchCompanyData = async () => {
       const sessionData = localStorage.getItem('vdr_session');
       if (sessionData) {
         const session = JSON.parse(sessionData);
         setUserRole(session.role || "User");
-        
+
         if (session.company_id) {
           try {
             const res = await fetch(`/api/companies/${session.company_id}`);
@@ -33,6 +35,7 @@ export default function WorkspacePage() {
             if (data.company) {
               setCompanyName(data.company.name);
               setCompanyStatus(data.company.status || "active");
+              setCompanyDetails(data.company);
             } else {
               setCompanyName("My Workspace");
             }
@@ -101,7 +104,7 @@ export default function WorkspacePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-10 flex flex-col items-center">
-      
+
       {/* Warning Modal */}
       {toastMessage && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity duration-300">
@@ -117,8 +120,8 @@ export default function WorkspacePage() {
             </div>
             <h3 className="text-xl font-bold text-slate-800 mb-2">Access Denied</h3>
             <p className="text-slate-600 font-medium text-[15px] mb-6">{toastMessage}</p>
-            <button 
-              onClick={() => setToastMessage("")} 
+            <button
+              onClick={() => setToastMessage("")}
               className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-colors duration-200"
             >
               Okie
@@ -129,7 +132,7 @@ export default function WorkspacePage() {
 
       {/* Top Actions */}
       <div className="w-full max-w-6xl flex justify-end mb-4 md:mb-6">
-        <button 
+        <button
           onClick={handleLogout}
           title="Logout"
           className="flex items-center justify-center w-16 h-16 bg-gradient-to-tr from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full hover:opacity-90 transition-opacity shadow-lg"
@@ -140,10 +143,10 @@ export default function WorkspacePage() {
 
       {/* Main App Container */}
       <div className="w-full max-w-6xl bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        
+
         {/* Header Section */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-6 md:p-8 bg-white border-b border-gray-100">
-          
+
           {/* Left: Organization Name & Badge */}
           <div className="flex items-center gap-4 mb-4 md:mb-0">
             <h1 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">
@@ -156,10 +159,10 @@ export default function WorkspacePage() {
 
           {/* Right: Controls & Storage */}
           <div className="flex flex-wrap items-center gap-6 md:gap-8 w-full md:w-auto justify-between md:justify-end">
-            
+
             {/* Status Dropdown */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors shadow-sm min-w-[110px] justify-between"
               >
@@ -170,14 +173,14 @@ export default function WorkspacePage() {
               {/* Dropdown Menu */}
               {isDropdownOpen && (
                 <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10">
-                  <button 
+                  <button
                     onClick={() => { setSelectedStatus("Active"); setIsDropdownOpen(false); }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between"
                   >
                     Active
                     {selectedStatus === "Active" && <FaCheck className="text-emerald-500 text-xs" />}
                   </button>
-                  <button 
+                  <button
                     onClick={() => { setSelectedStatus("Inactive"); setIsDropdownOpen(false); }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between"
                   >
@@ -214,19 +217,19 @@ export default function WorkspacePage() {
 
         {/* Content Section: Workspaces Grid */}
         <div className="p-6 md:p-8 bg-slate-50/50 min-h-[400px]">
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            
+
             {/* 1. Add New Workspace Card */}
             {userRole === 'super_admin' && selectedStatus === 'Active' && (
-              <button 
+              <button
                 onClick={() => {
                   if (companyStatus === 'pending') {
                     setToastMessage("Your package is not assign in business owner pls wait....");
                   } else {
                     setIsModalOpen(true);
                   }
-                }} 
+                }}
                 className="group w-full h-full text-left focus:outline-none"
               >
                 <div className="h-48 border-2 border-dashed border-gray-300 rounded-xl bg-transparent hover:bg-white hover:border-[var(--brand)] hover:shadow-lg transition-all duration-300 flex flex-col items-center justify-center cursor-pointer">
@@ -245,67 +248,66 @@ export default function WorkspacePage() {
               const wsStatus = ws.status || 'active';
               return selectedStatus === 'Active' ? wsStatus === 'active' : wsStatus === 'inactive';
             }).map((ws) => (
-              <div 
-                key={ws.id} 
+              <div
+                key={ws.id}
                 onClick={() => handleWorkspaceClick(ws.id)}
                 className="group cursor-pointer"
               >
                 <div className="h-48 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col relative">
                   {/* Top Row: Badge & Menu */}
                   <div className="flex justify-between items-start mb-4 relative">
-                    <span className={`px-2.5 py-1 text-[10px] font-bold rounded uppercase tracking-wider ${
-                      (ws.status || 'active') === 'active' 
-                        ? 'bg-emerald-50 text-emerald-600' 
+                    <span className={`px-2.5 py-1 text-[10px] font-bold rounded uppercase tracking-wider ${(ws.status || 'active') === 'active'
+                        ? 'bg-emerald-50 text-emerald-600'
                         : 'bg-gray-100 text-gray-600'
-                    }`}>
+                      }`}>
                       {ws.status || 'active'}
                     </span>
-                    
+
                     <div className="relative">
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setOpenMenuId(openMenuId === ws.id ? null : ws.id);
-                        }} 
+                        }}
                         className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-full hover:bg-gray-100"
                       >
                         <FaEllipsisV size={14} />
                       </button>
-                      
+
                       {openMenuId === ws.id && (
-                        <div 
+                        <div
                           className="absolute right-0 top-full w-32 bg-white rounded-lg shadow-[0_4px_20px_rgb(0,0,0,0.08)] border border-gray-100 z-10 py-1 overflow-hidden"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <button 
+                          <button
                             className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                             onClick={async (e) => {
                               e.stopPropagation();
                               setOpenMenuId(null);
                               const newStatus = (ws.status || 'active') === 'active' ? 'inactive' : 'active';
                               setWorkspaces(workspaces.map(w => w.id === ws.id ? { ...w, status: newStatus } : w));
-                              
+
                               try {
                                 await fetch(`/api/workspaces/${ws.id}`, {
                                   method: 'PUT',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({ status: newStatus })
                                 });
-                              } catch(e) {}
+                              } catch (e) { }
                             }}
                           >
                             {(ws.status || 'active') === 'active' ? 'Make Inactive' : 'Make Active'}
                           </button>
-                          <button 
+                          <button
                             className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                             onClick={async (e) => {
                               e.stopPropagation();
                               setWorkspaces(workspaces.filter(w => w.id !== ws.id));
                               setOpenMenuId(null);
-                              
+
                               try {
                                 await fetch(`/api/workspaces/${ws.id}`, { method: 'DELETE' });
-                              } catch(e) {}
+                              } catch (e) { }
                             }}
                           >
                             Delete
@@ -314,7 +316,7 @@ export default function WorkspacePage() {
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Center Icon & Title */}
                   <div className="flex-1 flex flex-col items-center justify-center -mt-2">
                     <div className="text-slate-800 mb-2 opacity-90 group-hover:opacity-100 transition-opacity">
@@ -332,11 +334,67 @@ export default function WorkspacePage() {
         </div>
       </div>
 
-      <WorkspaceModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSubmit={handleCreateWorkspace} 
+      <WorkspaceModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateWorkspace}
       />
+
+      {/* Subscription Details Modal */}
+      {isSubscriptionModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 max-w-sm w-full flex flex-col animate-[popIn_0.3s_cubic-bezier(0.16,1,0.3,1)]">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <FaCalendarAlt className="text-[var(--brand)]" /> Subscription
+              </h2>
+              <button onClick={() => setIsSubscriptionModalOpen(false)} className="text-gray-400 hover:text-gray-700 transition-colors">
+                <FaTimes size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex justify-between border-b border-gray-100 pb-2">
+                <span className="text-gray-600 font-medium">Plan</span>
+                <span className="text-slate-800 font-bold uppercase text-sm tracking-wide">
+                  {companyDetails?.subscription?.plan_name || 'Custom Plan'}
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-gray-100 pb-2">
+                <span className="text-gray-600 font-medium">Start Date</span>
+                <span className="text-slate-800 font-semibold">
+                  {companyDetails?.subscription?.start_date ? new Date(companyDetails.subscription.start_date).toLocaleDateString() : 'N/A'}
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-gray-100 pb-2">
+                <span className="text-gray-600 font-medium">Expiry Date</span>
+                <span className="text-slate-800 font-semibold">
+                  {companyDetails?.subscription?.expiry_date ? new Date(companyDetails.subscription.expiry_date).toLocaleDateString() : 'Lifetime'}
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-gray-100 pb-2">
+                <span className="text-gray-600 font-medium">Storage Limit</span>
+                <span className="text-slate-800 font-semibold">
+                  {companyDetails?.subscription?.storage_limit_mb ? `${companyDetails.subscription.storage_limit_mb} MB` : 'Unlimited'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600 font-medium">Users Limit</span>
+                <span className="text-slate-800 font-semibold">
+                  {companyDetails?.subscription?.max_users || 'Unlimited'}
+                </span>
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => setIsSubscriptionModalOpen(false)} 
+              className="mt-8 w-full py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-bold rounded-xl transition-colors duration-200 shadow-md"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

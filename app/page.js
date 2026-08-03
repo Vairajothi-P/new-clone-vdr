@@ -73,14 +73,11 @@ export default function Home() {
         
         
         <div className="hidden md:flex gap-4 items-center">
-          <Link href="/business-owner/login" className="px-5 py-2 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full font-semibold shadow-md shadow-[var(--brand)]/25 hover:from-[var(--brand-dark)] hover:to-[var(--brand-secondary)] hover:shadow-lg hover:shadow-[var(--brand)]/35 hover:scale-102 transition-all duration-300 flex items-center gap-2">
+          <Link href="/business-owner/login" className="btn-bo-hover px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold flex items-center gap-2 transition-all duration-700">
             <i className="fas fa-chart-line"></i> Business Owner
           </Link>
-          <Link href="/documents" className="px-5 py-2 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full font-semibold shadow-md shadow-[var(--brand)]/25 hover:from-[var(--brand-dark)] hover:to-[var(--brand-secondary)] hover:shadow-lg hover:shadow-[var(--brand)]/35 hover:scale-102 transition-all duration-300 flex items-center gap-2">
-            <i className="fas fa-chart-line"></i> Dashboard
-          </Link>
-          <a href="/login" className="px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300">Login</a>
-          <Link href="/register" className="px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300">Register</Link>
+          <a href="/login" className="btn-bo-hover px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold transition-all duration-700">Login</a>
+          <Link href="/register" className="btn-bo-hover px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold transition-all duration-700">Register</Link>
         </div>
         
         <button 
@@ -94,11 +91,8 @@ export default function Home() {
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="fixed top-[68px] left-0 w-full bg-white shadow-md z-40 flex flex-col p-6 md:hidden gap-4 border-t border-gray-100 animate-fade-in">
-          <Link href="/documents" className="w-full text-center px-5 py-3 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full font-semibold shadow-md flex justify-center items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-            <i className="fas fa-chart-line"></i> Dashboard
-          </Link>
-          <a href="/login" className="w-full text-center px-5 py-3 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold" onClick={() => setIsMobileMenuOpen(false)}>Login</a>
-          <Link href="/register" className="w-full text-center px-5 py-3 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold" onClick={() => setIsMobileMenuOpen(false)}>Register</Link>
+          <a href="/login" className="btn-bo-hover w-full text-center px-5 py-3 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold transition-all duration-700" onClick={() => setIsMobileMenuOpen(false)}>Login</a>
+          <Link href="/register" className="btn-bo-hover w-full text-center px-5 py-3 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold transition-all duration-700" onClick={() => setIsMobileMenuOpen(false)}>Register</Link>
         </div>
       )}
 
@@ -108,7 +102,7 @@ export default function Home() {
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-800 leading-tight mb-6">Secure Your Business Data with Smart VDR Platform</h1>
           <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-8">IPO, Due Diligence, Legal Docs — All in One Place. Enterprise-grade security meets intelligent collaboration.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-            <Link href="/documents" className="w-full sm:w-auto px-8 py-3 bg-[var(--brand)] text-white rounded-full font-semibold shadow-lg hover:bg-[var(--brand-dark)] hover:shadow-xl hover:scale-102 transition-all duration-300 flex items-center justify-center gap-2">Get Started <i className="fas fa-arrow-right"></i></Link>
+            <Link href="/login" className="w-full sm:w-auto px-8 py-3 bg-[var(--brand)] text-white rounded-full font-semibold shadow-lg hover:bg-[var(--brand-dark)] hover:shadow-xl hover:scale-102 transition-all duration-300 flex items-center justify-center gap-2">Get Started <i className="fas fa-arrow-right"></i></Link>
             <button className="w-full sm:w-auto px-8 py-3 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold hover:bg-[var(--brand)]/10 transition-all duration-300 flex items-center justify-center gap-2">Request Demo <i className="fas fa-play"></i></button>
           </div>
         </div>
@@ -311,24 +305,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Badges */}
-      <section className="py-20 px-4 md:px-16 bg-white">
-        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center text-gray-800 mb-12">Trusted & Compliant Worldwide</h2>
-        <div className="flex flex-wrap justify-center gap-6 max-w-4xl mx-auto" data-aos="fade-up">
-          <div className="bg-gray-100 px-6 py-3 rounded-full flex items-center gap-2 font-semibold text-gray-700 shadow-sm" data-aos="flip-down" data-aos-delay="0">
-            <i className="fas fa-shield-alt"></i> SOC 2 Type II
-          </div>
-          <div className="bg-gray-100 px-6 py-3 rounded-full flex items-center gap-2 font-semibold text-gray-700 shadow-sm" data-aos="flip-down" data-aos-delay="100">
-            <i className="fas fa-euro-sign"></i> GDPR Compliant
-          </div>
-          <div className="bg-gray-100 px-6 py-3 rounded-full flex items-center gap-2 font-semibold text-gray-700 shadow-sm" data-aos="flip-down" data-aos-delay="200">
-            <i className="fas fa-laptop-code"></i> ISO 27001
-          </div>
-          <div className="bg-gray-100 px-6 py-3 rounded-full flex items-center gap-2 font-semibold text-gray-700 shadow-sm" data-aos="flip-down" data-aos-delay="300">
-            <i className="fas fa-cloud-upload-alt"></i> HIPAA Ready
-          </div>
-        </div>
-      </section>
+
 
       {/* Pricing */}
       <section className="py-20 px-4 md:px-16 bg-gray-50">
@@ -441,6 +418,34 @@ export default function Home() {
         #scrollTopBtn.show {
           opacity: 1 !important;
           visibility: visible !important;
+        }
+
+        .btn-bo-hover {
+          position: relative;
+          z-index: 1;
+        }
+        .btn-bo-hover::before {
+          content: "";
+          position: absolute;
+          top: -2px; bottom: -2px; left: -2px; right: -2px;
+          border-radius: inherit;
+          background: linear-gradient(to right, var(--brand), var(--brand-secondary));
+          z-index: -1;
+          transition: clip-path 0.8s ease-out;
+          clip-path: circle(0% at 50% 100%);
+        }
+        .btn-bo-hover:hover::before {
+          clip-path: circle(150% at 50% 100%);
+        }
+        .btn-bo-hover:hover {
+          color: white !important;
+          border-color: transparent !important;
+        }
+        .btn-bo-hover i {
+          transition: color 0.8s ease-out;
+        }
+        .btn-bo-hover:hover i {
+          color: white !important;
         }
       `}</style>
     </main>
