@@ -67,7 +67,6 @@ export default function SecureViewer({ params }) {
     useEffect(() => { brandLogoRef.current = brandLogo; }, [brandLogo]);
     // ─────────────────────────────────────────────────────────────────────────
 
-    // ── Load user info & IP for watermark ─────────────────────────────────────
     useEffect(() => {
         try {
             const raw = localStorage.getItem('vdr_session');
