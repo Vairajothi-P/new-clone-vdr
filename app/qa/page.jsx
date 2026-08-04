@@ -25,6 +25,9 @@ function QAPageContent() {
   const [answerText, setAnswerText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [admins, setAdmins] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
+  const [myGroupNames, setMyGroupNames] = useState([]);
   const [selectedAssignee, setSelectedAssignee] = useState("");
 
   // For viewing/answering a specific thread
@@ -119,7 +122,9 @@ function QAPageContent() {
         const currentUser = session.name || session.email || "User";
         const askedByStr = firstMsg?.sender || "Unknown";
         const isMyQuestion = (askedByStr === currentUser);
-        const isAssignedToMe = assigneeStr === "N/A" || assigneeStr === currentUser;
+        const isAdmin = session.role === 'super_admin' || session.role === 'admin';
+        const isGroupAssigned = myGroupNames.some(gName => assigneeStr === gName || assigneeStr === `Group: ${gName}`);
+        const isAssignedToMe = assigneeStr === "N/A" || assigneeStr === currentUser || assigneeStr === session.email || isAdmin || isGroupAssigned;
         
         let actionStr = "Answer / Assign";
         if (t.status === "Answered") actionStr = "View";
@@ -152,24 +157,70 @@ function QAPageContent() {
 
   useEffect(() => {
     fetchSidebarData();
-    fetchAdmins();
+    fetchAssignees();
   }, []);
 
-  const fetchAdmins = async () => {
+  const fetchAssignees = async () => {
     try {
       const sessionStr = localStorage.getItem('vdr_session');
       if (!sessionStr) return;
       const session = JSON.parse(sessionStr);
-      const { data } = await supabase.from('users').select('id, name, role').eq('company_id', session.company_id).eq('workspace_id', session.active_workspace_id).in('role', ['admin', 'super_admin']);
-      if (data) setAdmins(data);
+
+      const [usersRes, groupsRes, ugRes] = await Promise.all([
+        supabase
+          .from('users')
+          .select('id, name, email, role, workspace_id')
+          .eq('company_id', session.company_id),
+        supabase
+          .from('groups')
+          .select('id, name, role, workspace_id')
+          .eq('company_id', session.company_id),
+        supabase
+          .from('user_groups')
+          .select('user_id, group_id')
+      ]);
+
+      const usersList = usersRes.data || [];
+      const groupsList = (groupsRes.data || []).filter(g => !g.workspace_id || !session.active_workspace_id || g.workspace_id === session.active_workspace_id);
+      const ugList = ugRes.data || [];
+
+      // Map users with their assigned groups
+      const mappedUsers = usersList.map(user => {
+        const userGroupIds = ugList
+          .filter(ug => ug.user_id === user.id)
+          .map(ug => ug.group_id);
+        const userGroups = groupsList.filter(g => userGroupIds.includes(g.id));
+        return {
+          ...user,
+          groupIds: userGroupIds,
+          groups: userGroups
+        };
+      });
+
+      // Filter for active workspace or all company users
+      const workspaceUsers = mappedUsers.filter(u => 
+        !u.workspace_id || !session.active_workspace_id || u.workspace_id === session.active_workspace_id || u.groups.length > 0
+      );
+
+      // Separate admins
+      const adminList = workspaceUsers.filter(u => ['super_admin', 'admin'].includes(u.role));
+      
+      // Find current user's groups
+      const currentLoggedIn = mappedUsers.find(u => u.id === session.id || u.email === session.email);
+      const userGroupNames = currentLoggedIn ? currentLoggedIn.groups.map(g => g.name) : [];
+
+      setAdmins(adminList);
+      setGroups(groupsList);
+      setAllUsers(workspaceUsers);
+      setMyGroupNames(userGroupNames);
     } catch (err) {
-      console.error("Error fetching admins:", err);
+      console.error("Error fetching assignees:", err);
     }
   };
 
   useEffect(() => {
     fetchQAData();
-  }, [activeDocId]); // Refetch when active doc changes
+  }, [activeDocId, myGroupNames]); // Refetch when active doc or user group context changes
 
   const handleSidebarClick = (item) => {
     if (item.type === 'file') {
@@ -343,7 +394,13 @@ function QAPageContent() {
 
   const filteredQaData = qaData.filter(item => {
     if (filterStatus !== 'all' && item.status !== filterStatus) return false;
-    if (filterAssignee !== 'all' && item.assignee !== filterAssignee) return false;
+    if (filterAssignee !== 'all') {
+      if (filterAssignee === 'N/A') {
+        if (item.assignee !== 'N/A' && item.assignee !== '' && item.assignee !== null) return false;
+      } else if (item.assignee !== filterAssignee) {
+        return false;
+      }
+    }
     
     if (filterDateRange !== 'all') {
       const itemDate = new Date(item.rawDate);
@@ -584,12 +641,49 @@ function QAPageContent() {
             <select 
               value={filterAssignee}
               onChange={(e) => setFilterAssignee(e.target.value)}
-              className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] cursor-pointer"
+              className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] cursor-pointer max-w-[200px]"
             >
               <option value="all">All Assignees</option>
-              {admins.map(admin => (
-                <option key={admin.id} value={admin.name}>{admin.name}</option>
-              ))}
+              <option value="N/A">Without Assignee</option>
+              {admins.length > 0 && (
+                <optgroup label="Administrators">
+                  {admins.map(admin => (
+                    <option key={admin.id} value={admin.name}>{admin.name}</option>
+                  ))}
+                </optgroup>
+              )}
+              {groups.map(group => {
+                const groupMembers = allUsers.filter(u => u.groupIds?.includes(group.id));
+                return (
+                  <optgroup key={group.id} label={`Group: ${group.name}`}>
+                    <option value={`Group: ${group.name}`}>Group: {group.name}</option>
+                    {groupMembers.map(member => (
+                      <option key={`${group.id}-${member.id}`} value={member.name}>{member.name}</option>
+                    ))}
+                  </optgroup>
+                );
+              })}
+              {(() => {
+                const knownAssignees = new Set([
+                  ...admins.map(a => a.name),
+                  ...groups.map(g => `Group: ${g.name}`),
+                  ...groups.map(g => g.name),
+                  ...allUsers.map(u => u.name),
+                  'all', 'N/A'
+                ]);
+                const extraAssignees = qaData
+                  .map(item => item.assignee)
+                  .filter(a => a && !knownAssignees.has(a));
+                const uniqueExtra = Array.from(new Set(extraAssignees));
+                if (uniqueExtra.length === 0) return null;
+                return (
+                  <optgroup label="Other Assignees">
+                    {uniqueExtra.map(a => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </optgroup>
+                );
+              })()}
             </select>
 
             <button onClick={fetchQAData} className="p-2 text-slate-400 hover:text-[var(--brand)] hover:bg-[var(--brand)]/10 rounded-lg transition-all" title="Refresh Data">
@@ -703,9 +797,46 @@ function QAPageContent() {
                 className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] bg-white"
               >
                 <option value="">Without Assignee (Anyone can answer)</option>
-                {admins.map(admin => (
-                  <option key={admin.id} value={admin.name}>{admin.name} ({admin.role})</option>
-                ))}
+                
+                {admins.length > 0 && (
+                  <optgroup label="Administrators">
+                    {admins.map(admin => (
+                      <option key={admin.id} value={admin.name}>
+                        {admin.name} ({admin.role === 'super_admin' ? 'Super Admin' : 'Admin'})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+
+                {groups.map(group => {
+                  const groupMembers = allUsers.filter(u => u.groupIds?.includes(group.id));
+                  return (
+                    <optgroup key={group.id} label={`Group: ${group.name}`}>
+                      <option value={`Group: ${group.name}`}>Entire Group ({group.name})</option>
+                      {groupMembers.map(member => (
+                        <option key={`${group.id}-${member.id}`} value={member.name}>
+                          {member.name} ({group.name})
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
+
+                {(() => {
+                  const groupUserIds = new Set(allUsers.filter(u => u.groupIds?.length > 0).map(u => u.id));
+                  const adminIds = new Set(admins.map(a => a.id));
+                  const otherUsers = allUsers.filter(u => !groupUserIds.has(u.id) && !adminIds.has(u.id));
+                  if (otherUsers.length === 0) return null;
+                  return (
+                    <optgroup label="Other Members">
+                      {otherUsers.map(user => (
+                        <option key={user.id} value={user.name}>
+                          {user.name} ({user.role || 'Member'})
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })()}
               </select>
             </div>
 
@@ -827,7 +958,9 @@ function QAPageContent() {
                   const session = sessionStr ? JSON.parse(sessionStr) : {};
                   const senderName = session.name || session.email || "User";
                   const isMyQuestion = selectedThread.askedBy === senderName;
-                  const isAssignedToMe = selectedThread.assignee === "N/A" || selectedThread.assignee === senderName;
+                  const isAdmin = session.role === 'super_admin' || session.role === 'admin';
+                  const isGroupAssigned = myGroupNames.some(gName => selectedThread.assignee === gName || selectedThread.assignee === `Group: ${gName}`);
+                  const isAssignedToMe = selectedThread.assignee === "N/A" || selectedThread.assignee === senderName || selectedThread.assignee === session.email || isAdmin || isGroupAssigned;
 
                   if (!isMyQuestion && !isAssignedToMe) {
                     return (
