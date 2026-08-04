@@ -450,11 +450,11 @@ function AccessPageContent() {
 
                                         {displayFolders.map(folder => {
                                             const toggles = [
-                                                { field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand-dark' },
-                                                { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' },
-                                                { field: 'can_download_original', color: 'bg-orange-500' },
-                                                { field: 'can_delete', color: 'bg-red-600' },
-                                                { field: 'can_redact', color: 'bg-slate-800' },
+                                                { field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand' },
+                                                { field: 'can_upload', color: 'bg-brand' }, { field: 'can_download_secure', color: 'bg-brand' },
+                                                { field: 'can_download_original', color: 'bg-brand' },
+                                                { field: 'can_delete', color: 'bg-brand' },
+                                                { field: 'can_redact', color: 'bg-brand' },
                                             ];
 
                                             return (
@@ -513,7 +513,7 @@ function AccessPageContent() {
                                                         </div>
                                                     </td>
 
-                                                    {[{ field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand-dark' }, { field: 'can_upload', color: 'bg-purple-600' }, { field: 'can_download_secure', color: 'bg-emerald-600' }, { field: 'can_download_original', color: 'bg-orange-500' }, { field: 'can_delete', color: 'bg-red-600' }, { field: 'can_redact', color: 'bg-slate-800' }].map(({ field, color }) => {
+                                                    {[{ field: 'can_view', color: 'bg-brand' }, { field: 'can_edit', color: 'bg-brand' }, { field: 'can_upload', color: 'bg-brand' }, { field: 'can_download_secure', color: 'bg-brand' }, { field: 'can_download_original', color: 'bg-brand' }, { field: 'can_delete', color: 'bg-brand' }, { field: 'can_redact', color: 'bg-brand' }].map(({ field, color }) => {
                                                         if (field === 'can_upload') {
                                                             return (
                                                                 <td key={field} className="py-3.5 px-3 text-center">
