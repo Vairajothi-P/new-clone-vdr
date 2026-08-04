@@ -1,9 +1,460 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
 import { supabase } from "@/utils/supabase/client";
-import { FaFilter, FaDownload, FaSyncAlt, FaSearch, FaChevronRight, FaRegFolder, FaRegFileAlt, FaCheckCircle, FaExclamationCircle, FaPaperclip } from "react-icons/fa";
+import { 
+  FaFilter, 
+  FaDownload, 
+  FaSyncAlt, 
+  FaSearch, 
+  FaChevronRight, 
+  FaRegFolder, 
+  FaRegFileAlt, 
+  FaCheckCircle, 
+  FaExclamationCircle, 
+  FaPaperclip,
+  FaUserShield,
+  FaUsers,
+  FaUser,
+  FaGlobeAmericas,
+  FaTimes
+} from "react-icons/fa";
+
+// ── CUSTOM CLEAN ASSIGNEE SELECTOR (FOR MODAL) ───────────────────────────
+function CustomAssigneeSelect({ value, onChange, admins = [], groups = [], allUsers = [] }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const query = search.trim().toLowerCase();
+
+  // Filter admins
+  const filteredAdmins = admins.filter(a => 
+    a.name?.toLowerCase().includes(query) || 
+    a.email?.toLowerCase().includes(query) || 
+    a.role?.toLowerCase().includes(query)
+  );
+
+  // Filter groups and their members
+  const groupUserIds = new Set();
+  const filteredGroups = groups.map(g => {
+    const members = (allUsers || []).filter(u => u.groupIds?.includes(g.id));
+    members.forEach(m => groupUserIds.add(m.id));
+    const isGroupMatch = g.name?.toLowerCase().includes(query);
+    const matchedMembers = members.filter(m => 
+      isGroupMatch || 
+      m.name?.toLowerCase().includes(query) || 
+      m.email?.toLowerCase().includes(query)
+    );
+    return {
+      ...g,
+      members: query ? matchedMembers : members,
+      showGroup: (query ? matchedMembers.length > 0 : members.length > 0)
+    };
+  }).filter(g => g.showGroup);
+
+  // Filter other users
+  const adminIds = new Set(admins.map(a => a.id));
+  const otherUsers = (allUsers || []).filter(u => !groupUserIds.has(u.id) && !adminIds.has(u.id));
+  const filteredOtherUsers = otherUsers.filter(u => 
+    u.name?.toLowerCase().includes(query) || 
+    u.email?.toLowerCase().includes(query) ||
+    u.role?.toLowerCase().includes(query)
+  );
+
+  const selectedUserObj = (allUsers || []).find(u => u.name === value) || admins.find(a => a.name === value);
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between p-2.5 px-3 text-sm bg-white border rounded-xl transition-all cursor-pointer ${
+          isOpen 
+            ? "border-[var(--brand)] ring-1 ring-[var(--brand)] shadow-xs" 
+            : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
+        }`}
+      >
+        <div className="flex items-center gap-2.5 truncate text-left">
+          {!value ? (
+            <div className="flex items-center gap-2.5 text-slate-600">
+              <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                <FaGlobeAmericas className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-medium text-slate-700 text-xs">Without Assignee</span>
+                <span className="text-[10px] text-slate-400">Open to anyone</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-semibold text-xs flex-shrink-0">
+                {selectedUserObj?.name?.charAt(0).toUpperCase() || value.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-slate-800 text-xs">{value}</span>
+                  {selectedUserObj?.role && (
+                    <span className="px-1.5 py-0.2 rounded text-[9px] text-slate-500 bg-slate-100 border border-slate-200/60">
+                      {selectedUserObj.role === 'super_admin' ? 'Super Admin' : selectedUserObj.role === 'admin' ? 'Admin' : selectedUserObj.role}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] text-slate-400">{selectedUserObj?.email || "Member"}</span>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-1.5 text-slate-400 flex-shrink-0">
+          {value && (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("");
+              }}
+              className="p-1 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+              title="Clear selection"
+            >
+              <FaTimes className="w-3 h-3" />
+            </span>
+          )}
+          <FaChevronRight className={`w-3 h-3 transition-transform duration-150 ${isOpen ? '-rotate-90 text-slate-600' : 'rotate-90'}`} />
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl shadow-lg border border-slate-200 z-50 overflow-hidden flex flex-col max-h-[300px] animate-in fade-in duration-100">
+          {/* Search Header */}
+          <div className="p-2 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10">
+            <div className="relative flex items-center">
+              <FaSearch className="absolute left-2.5 w-3 h-3 text-slate-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search member..."
+                className="w-full pl-7 pr-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 placeholder:text-slate-400"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {/* List options */}
+          <div className="overflow-y-auto p-1 flex flex-col gap-0.5">
+            {/* Without assignee */}
+            <button
+              type="button"
+              onClick={() => { onChange(""); setIsOpen(false); }}
+              className={`flex items-center justify-between p-2 rounded-lg text-left transition-colors cursor-pointer ${
+                !value 
+                  ? "bg-slate-100 text-slate-900 font-semibold" 
+                  : "hover:bg-slate-50 text-slate-700"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-500 flex items-center justify-center text-xs">
+                  <FaGlobeAmericas className="w-3 h-3" />
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-slate-800">Without Assignee</div>
+                  <div className="text-[10px] text-slate-400">Open for anyone to answer</div>
+                </div>
+              </div>
+              {!value && <FaCheckCircle className="w-3.5 h-3.5 text-slate-700" />}
+            </button>
+
+            {/* Administrators */}
+            {filteredAdmins.length > 0 && (
+              <div className="mt-1">
+                <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Administrators</span>
+                  <span className="text-slate-400 font-normal">{filteredAdmins.length}</span>
+                </div>
+                {filteredAdmins.map(admin => {
+                  const isSelected = value === admin.name;
+                  return (
+                    <button
+                      key={admin.id}
+                      type="button"
+                      onClick={() => { onChange(admin.name); setIsOpen(false); }}
+                      className={`w-full flex items-center justify-between p-1.5 px-2 rounded-lg text-left transition-colors cursor-pointer ${
+                        isSelected 
+                          ? "bg-slate-100 text-slate-900 font-semibold" 
+                          : "hover:bg-slate-50 text-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[9px]">
+                          {admin.name?.charAt(0).toUpperCase() || 'A'}
+                        </div>
+                        <span className="text-xs text-slate-800">{admin.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.2 rounded border border-slate-200/50">
+                          {admin.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                        </span>
+                        {isSelected && <FaCheckCircle className="w-3 h-3 text-slate-700" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Groups and Members */}
+            {filteredGroups.map(group => (
+              <div key={group.id} className="mt-1 border-t border-slate-100 pt-1">
+                <div className="px-2 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1">🏢 {group.name}</span>
+                  <span className="text-slate-400 font-normal">{group.members.length}</span>
+                </div>
+
+                {/* Individual members */}
+                {group.members.map(member => {
+                  const isSelected = value === member.name;
+                  return (
+                    <button
+                      key={`${group.id}-${member.id}`}
+                      type="button"
+                      onClick={() => { onChange(member.name); setIsOpen(false); }}
+                      className={`w-full flex items-center justify-between p-1.5 px-2 rounded-lg text-left transition-colors cursor-pointer ${
+                        isSelected 
+                          ? "bg-slate-100 text-slate-900 font-semibold" 
+                          : "hover:bg-slate-50 text-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[9px]">
+                          {member.name?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                        <span className="text-xs text-slate-800">{member.name}</span>
+                      </div>
+                      {isSelected && <FaCheckCircle className="w-3 h-3 text-slate-700" />}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+
+            {/* Other Users */}
+            {filteredOtherUsers.length > 0 && (
+              <div className="mt-1 border-t border-slate-100 pt-1">
+                <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Other Members</span>
+                  <span className="text-slate-400 font-normal">{filteredOtherUsers.length}</span>
+                </div>
+                {filteredOtherUsers.map(user => {
+                  const isSelected = value === user.name;
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => { onChange(user.name); setIsOpen(false); }}
+                      className={`w-full flex items-center justify-between p-1.5 px-2 rounded-lg text-left transition-colors cursor-pointer ${
+                        isSelected 
+                          ? "bg-slate-100 text-slate-900 font-semibold" 
+                          : "hover:bg-slate-50 text-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[9px]">
+                          {user.name?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                        <span className="text-xs text-slate-800">{user.name}</span>
+                      </div>
+                      {isSelected && <FaCheckCircle className="w-3 h-3 text-slate-700" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {filteredAdmins.length === 0 && filteredGroups.length === 0 && filteredOtherUsers.length === 0 && (
+              <div className="py-4 text-center text-xs text-slate-400">
+                No matching members found.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── CUSTOM CLEAN ASSIGNEE FILTER (FOR TABLE TOOLBAR) ─────────────────────
+function CustomAssigneeFilter({ value, onChange, admins = [], groups = [], allUsers = [], qaData = [] }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const query = search.trim().toLowerCase();
+
+  const knownAssignees = new Set([
+    ...admins.map(a => a.name),
+    ...allUsers.map(u => u.name),
+    'all', 'N/A'
+  ]);
+  const extraAssignees = Array.from(new Set(
+    qaData.map(item => item.assignee).filter(a => a && !knownAssignees.has(a))
+  ));
+
+  const filteredAdmins = admins.filter(a => a.name?.toLowerCase().includes(query));
+  const filteredGroups = groups.map(g => {
+    const members = (allUsers || []).filter(u => u.groupIds?.includes(g.id));
+    const isGroupMatch = g.name?.toLowerCase().includes(query);
+    const matchedMembers = members.filter(m => isGroupMatch || m.name?.toLowerCase().includes(query));
+    return { ...g, members: query ? matchedMembers : members, show: (query ? matchedMembers.length > 0 : members.length > 0) };
+  }).filter(g => g.show);
+
+  const displayLabel = value === 'all' 
+    ? 'All Assignees' 
+    : value === 'N/A' 
+    ? 'Without Assignee' 
+    : value;
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition-all cursor-pointer ${
+          value !== 'all'
+            ? "bg-slate-100 text-slate-900 border-slate-300 font-bold"
+            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 font-semibold"
+        }`}
+      >
+        <FaUser className="w-3 h-3 text-slate-400" />
+        <span className="max-w-[140px] truncate">{displayLabel}</span>
+        <FaChevronRight className={`w-2.5 h-2.5 transition-transform duration-150 ${isOpen ? '-rotate-90 text-slate-600' : 'rotate-90 text-slate-400'}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-xl shadow-lg border border-slate-200 z-50 overflow-hidden flex flex-col max-h-[300px] animate-in fade-in duration-100">
+          <div className="p-2 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10">
+            <div className="relative flex items-center">
+              <FaSearch className="absolute left-2.5 w-3 h-3 text-slate-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Filter assignees..."
+                className="w-full pl-7 pr-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 placeholder:text-slate-400"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <div className="overflow-y-auto p-1 flex flex-col gap-0.5">
+            <button
+              type="button"
+              onClick={() => { onChange('all'); setIsOpen(false); }}
+              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                value === 'all' ? "bg-slate-100 text-slate-900 font-bold" : "hover:bg-slate-50 text-slate-700"
+              }`}
+            >
+              <span>All Assignees</span>
+              {value === 'all' && <FaCheckCircle className="w-3 h-3 text-slate-700" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { onChange('N/A'); setIsOpen(false); }}
+              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                value === 'N/A' ? "bg-slate-100 text-slate-900 font-bold" : "hover:bg-slate-50 text-slate-700"
+              }`}
+            >
+              <span>Without Assignee</span>
+              {value === 'N/A' && <FaCheckCircle className="w-3 h-3 text-slate-700" />}
+            </button>
+
+            {filteredAdmins.length > 0 && (
+              <div className="mt-1 pt-1 border-t border-slate-100">
+                <div className="px-2 py-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">Administrators</div>
+                {filteredAdmins.map(admin => (
+                  <button
+                    key={admin.id}
+                    type="button"
+                    onClick={() => { onChange(admin.name); setIsOpen(false); }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                      value === admin.name ? "bg-slate-100 text-slate-900 font-bold" : "hover:bg-slate-50 text-slate-700"
+                    }`}
+                  >
+                    <span className="truncate">{admin.name}</span>
+                    {value === admin.name && <FaCheckCircle className="w-3 h-3 text-slate-700" />}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {filteredGroups.map(group => (
+              <div key={group.id} className="mt-1 pt-1 border-t border-slate-100">
+                <div className="px-2 py-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">🏢 {group.name}</div>
+                {group.members.map(member => (
+                  <button
+                    key={`${group.id}-${member.id}`}
+                    type="button"
+                    onClick={() => { onChange(member.name); setIsOpen(false); }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                      value === member.name ? "bg-slate-100 text-slate-900 font-bold" : "hover:bg-slate-50 text-slate-700"
+                    }`}
+                  >
+                    <span className="truncate">{member.name}</span>
+                    {value === member.name && <FaCheckCircle className="w-3 h-3 text-slate-700" />}
+                  </button>
+                ))}
+              </div>
+            ))}
+
+            {extraAssignees.length > 0 && (
+              <div className="mt-1 pt-1 border-t border-slate-100">
+                <div className="px-2 py-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider">Other Assignees</div>
+                {extraAssignees.map(a => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => { onChange(a); setIsOpen(false); }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                      value === a ? "bg-slate-100 text-slate-900 font-bold" : "hover:bg-slate-50 text-slate-700"
+                    }`}
+                  >
+                    <span className="truncate">{a}</span>
+                    {value === a && <FaCheckCircle className="w-3 h-3 text-slate-700" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function QAPageContent() {
   const searchParams = useSearchParams();
@@ -22,7 +473,6 @@ function QAPageContent() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [questionText, setQuestionText] = useState("");
-  const [answerText, setAnswerText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [admins, setAdmins] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -256,7 +706,7 @@ function QAPageContent() {
         .insert({
           file_id: activeDocId || null,
           subject: finalQuestionText,
-          status: answerText.trim() ? 'Answered' : 'Open'
+          status: 'Open'
         })
         .select()
         .single();
@@ -267,16 +717,12 @@ function QAPageContent() {
       const msgs = [
         { thread_id: threadData.id, sender: senderName, text: finalQuestionText + attachmentStr, is_user: true }
       ];
-      if (answerText.trim()) {
-        msgs.push({ thread_id: threadData.id, sender: senderName, text: answerText, is_user: false });
-      }
 
       const { error: msgErr } = await supabase.from('qna_messages').insert(msgs);
       if (msgErr) throw msgErr;
 
       // Reset and refresh
       setQuestionText("");
-      setAnswerText("");
       setAskFile(null);
       setIsModalOpen(false);
       fetchQAData();
@@ -305,23 +751,32 @@ function QAPageContent() {
         attachmentStr = `|ATTACHMENT|${replyFile.name}|${uploadData.path}`;
       }
 
-      const isMyQuestion = selectedThread.askedBy === senderName;
+      const userEmail = session.email || "";
+      const isMyQuestion = (
+        selectedThread.askedBy === senderName ||
+        (userEmail && selectedThread.askedBy === userEmail) ||
+        (session.name && selectedThread.askedBy?.toLowerCase() === session.name?.toLowerCase()) ||
+        (session.email && selectedThread.askedBy?.toLowerCase() === session.email?.toLowerCase())
+      );
+
+      if (isMyQuestion) {
+        alert("You cannot answer your own question.");
+        return;
+      }
 
       // 1. Insert Reply
       const { error: msgErr } = await supabase.from('qna_messages').insert([{
         thread_id: selectedThread.id,
         sender: senderName,
         text: replyText + attachmentStr,
-        is_user: isMyQuestion
+        is_user: false
       }]);
 
       if (msgErr) throw msgErr;
 
       // 2. Update status
-      if (!isMyQuestion && selectedThread.status !== 'Answered') {
+      if (selectedThread.status !== 'Answered') {
         await supabase.from('qna_threads').update({ status: 'Answered' }).eq('id', selectedThread.id);
-      } else if (isMyQuestion && selectedThread.status === 'Answered') {
-        await supabase.from('qna_threads').update({ status: 'Submitted' }).eq('id', selectedThread.id);
       }
 
       setReplyText("");
@@ -638,53 +1093,14 @@ function QAPageContent() {
               </div>
             )}
             
-            <select 
+            <CustomAssigneeFilter 
               value={filterAssignee}
-              onChange={(e) => setFilterAssignee(e.target.value)}
-              className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] cursor-pointer max-w-[200px]"
-            >
-              <option value="all">All Assignees</option>
-              <option value="N/A">Without Assignee</option>
-              {admins.length > 0 && (
-                <optgroup label="Administrators">
-                  {admins.map(admin => (
-                    <option key={admin.id} value={admin.name}>{admin.name}</option>
-                  ))}
-                </optgroup>
-              )}
-              {groups.map(group => {
-                const groupMembers = allUsers.filter(u => u.groupIds?.includes(group.id));
-                return (
-                  <optgroup key={group.id} label={`Group: ${group.name}`}>
-                    <option value={`Group: ${group.name}`}>Group: {group.name}</option>
-                    {groupMembers.map(member => (
-                      <option key={`${group.id}-${member.id}`} value={member.name}>{member.name}</option>
-                    ))}
-                  </optgroup>
-                );
-              })}
-              {(() => {
-                const knownAssignees = new Set([
-                  ...admins.map(a => a.name),
-                  ...groups.map(g => `Group: ${g.name}`),
-                  ...groups.map(g => g.name),
-                  ...allUsers.map(u => u.name),
-                  'all', 'N/A'
-                ]);
-                const extraAssignees = qaData
-                  .map(item => item.assignee)
-                  .filter(a => a && !knownAssignees.has(a));
-                const uniqueExtra = Array.from(new Set(extraAssignees));
-                if (uniqueExtra.length === 0) return null;
-                return (
-                  <optgroup label="Other Assignees">
-                    {uniqueExtra.map(a => (
-                      <option key={a} value={a}>{a}</option>
-                    ))}
-                  </optgroup>
-                );
-              })()}
-            </select>
+              onChange={setFilterAssignee}
+              admins={admins}
+              groups={groups}
+              allUsers={allUsers}
+              qaData={qaData}
+            />
 
             <button onClick={fetchQAData} className="p-2 text-slate-400 hover:text-[var(--brand)] hover:bg-[var(--brand)]/10 rounded-lg transition-all" title="Refresh Data">
               <FaSyncAlt className="w-3.5 h-3.5" />
@@ -733,7 +1149,26 @@ function QAPageContent() {
                         {item.askedBy}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm text-slate-400 italic whitespace-nowrap">{item.assignee}</td>
+                    <td className="px-4 py-4 text-sm whitespace-nowrap">
+                      {item.assignee === "N/A" || !item.assignee ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium text-slate-400 bg-slate-50 border border-slate-200/50">
+                          <FaGlobeAmericas className="w-3 h-3 text-slate-400" />
+                          Anyone
+                        </span>
+                      ) : item.assignee.startsWith("Group:") ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
+                          <FaUsers className="w-3 h-3 text-slate-500" />
+                          {item.assignee}
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px] font-bold">
+                            {item.assignee.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-medium text-slate-800 text-xs">{item.assignee}</span>
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-4 text-sm text-slate-600 font-semibold whitespace-nowrap">
                       {item.answeredBy !== "-" ? (
                         <div className="flex items-center gap-2">
@@ -791,53 +1226,13 @@ function QAPageContent() {
             
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold text-slate-600">Assign To (Optional)</label>
-              <select
+              <CustomAssigneeSelect 
                 value={selectedAssignee}
-                onChange={(e) => setSelectedAssignee(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] bg-white"
-              >
-                <option value="">Without Assignee (Anyone can answer)</option>
-                
-                {admins.length > 0 && (
-                  <optgroup label="Administrators">
-                    {admins.map(admin => (
-                      <option key={admin.id} value={admin.name}>
-                        {admin.name} ({admin.role === 'super_admin' ? 'Super Admin' : 'Admin'})
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-
-                {groups.map(group => {
-                  const groupMembers = allUsers.filter(u => u.groupIds?.includes(group.id));
-                  return (
-                    <optgroup key={group.id} label={`Group: ${group.name}`}>
-                      <option value={`Group: ${group.name}`}>Entire Group ({group.name})</option>
-                      {groupMembers.map(member => (
-                        <option key={`${group.id}-${member.id}`} value={member.name}>
-                          {member.name} ({group.name})
-                        </option>
-                      ))}
-                    </optgroup>
-                  );
-                })}
-
-                {(() => {
-                  const groupUserIds = new Set(allUsers.filter(u => u.groupIds?.length > 0).map(u => u.id));
-                  const adminIds = new Set(admins.map(a => a.id));
-                  const otherUsers = allUsers.filter(u => !groupUserIds.has(u.id) && !adminIds.has(u.id));
-                  if (otherUsers.length === 0) return null;
-                  return (
-                    <optgroup label="Other Members">
-                      {otherUsers.map(user => (
-                        <option key={user.id} value={user.name}>
-                          {user.name} ({user.role || 'Member'})
-                        </option>
-                      ))}
-                    </optgroup>
-                  );
-                })()}
-              </select>
+                onChange={setSelectedAssignee}
+                admins={admins}
+                groups={groups}
+                allUsers={allUsers}
+              />
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -846,16 +1241,6 @@ function QAPageContent() {
                 value={questionText}
                 onChange={(e) => setQuestionText(e.target.value)}
                 placeholder="Type your question here..."
-                className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] min-h-[80px]"
-              />
-            </div>
-            
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-slate-600">Answer (Optional)</label>
-              <textarea 
-                value={answerText}
-                onChange={(e) => setAnswerText(e.target.value)}
-                placeholder="Provide an answer if already known..."
                 className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] min-h-[80px]"
               />
             </div>
@@ -957,19 +1342,31 @@ function QAPageContent() {
                   const sessionStr = localStorage.getItem('vdr_session');
                   const session = sessionStr ? JSON.parse(sessionStr) : {};
                   const senderName = session.name || session.email || "User";
-                  const isMyQuestion = selectedThread.askedBy === senderName;
+                  const userEmail = session.email || "";
+
+                  const isMyQuestion = (
+                    selectedThread.askedBy === senderName ||
+                    (userEmail && selectedThread.askedBy === userEmail) ||
+                    (session.name && selectedThread.askedBy?.toLowerCase() === session.name?.toLowerCase()) ||
+                    (session.email && selectedThread.askedBy?.toLowerCase() === session.email?.toLowerCase())
+                  );
                   const isAdmin = session.role === 'super_admin' || session.role === 'admin';
                   const isGroupAssigned = myGroupNames.some(gName => selectedThread.assignee === gName || selectedThread.assignee === `Group: ${gName}`);
-                  const isAssignedToMe = selectedThread.assignee === "N/A" || selectedThread.assignee === senderName || selectedThread.assignee === session.email || isAdmin || isGroupAssigned;
+                  const isAssignedToMe = selectedThread.assignee === "N/A" || selectedThread.assignee === senderName || selectedThread.assignee === userEmail || isAdmin || isGroupAssigned;
 
-                  if (!isMyQuestion && !isAssignedToMe) {
+                  // 1. Asker cannot answer their own question
+                  if (isMyQuestion) {
                     return (
-                      <div className="text-center text-sm text-slate-500 font-medium py-3 flex flex-col items-center">
-                        This question is assigned to {selectedThread.assignee}. You can only view.
-                        <div className="mt-3 w-full flex justify-end">
+                      <div className="text-center text-sm text-slate-500 font-medium py-3 flex flex-col items-center gap-1">
+                        <span>You asked this question. Waiting for assignee to answer.</span>
+                        <div className="mt-2 w-full flex justify-end">
                           <button 
-                            onClick={() => setSelectedThread(null)}
-                            className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                            onClick={() => {
+                              setSelectedThread(null);
+                              setReplyFile(null);
+                              setReplyText("");
+                            }}
+                            className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
                           >
                             Close
                           </button>
@@ -978,12 +1375,34 @@ function QAPageContent() {
                     );
                   }
 
+                  // 2. If assigned to someone else
+                  if (!isAssignedToMe) {
+                    return (
+                      <div className="text-center text-sm text-slate-500 font-medium py-3 flex flex-col items-center gap-1">
+                        <span>This question is assigned to {selectedThread.assignee}. You can only view.</span>
+                        <div className="mt-2 w-full flex justify-end">
+                          <button 
+                            onClick={() => {
+                              setSelectedThread(null);
+                              setReplyFile(null);
+                              setReplyText("");
+                            }}
+                            className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // 3. Authorized assignee / admin answering
                   return (
                     <>
                       <textarea 
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Type your reply or answer..."
+                        placeholder="Type your answer..."
                         className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] min-h-[80px]"
                       />
                       <div className="flex items-center justify-between mt-2">
@@ -1004,16 +1423,16 @@ function QAPageContent() {
                               setReplyFile(null);
                               setReplyText("");
                             }}
-                            className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                            className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
                           >
                             Close
                           </button>
                           <button 
                             onClick={handleReply}
                             disabled={isReplying || (!replyText.trim() && !replyFile)}
-                            className="px-4 py-2 text-sm font-bold text-white bg-[var(--brand)] hover:bg-[var(--brand-secondary)] rounded-xl transition-colors disabled:opacity-50"
+                            className="px-4 py-2 text-sm font-bold text-white bg-[var(--brand)] hover:bg-[var(--brand-secondary)] rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
                           >
-                            {isReplying ? "Sending..." : "Send"}
+                            {isReplying ? "Sending..." : "Submit Answer"}
                           </button>
                         </div>
                       </div>
