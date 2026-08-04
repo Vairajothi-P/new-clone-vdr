@@ -527,7 +527,7 @@ export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPa
                 }
                 else {
                     container.style.display = 'flex';
-                    container.innerHTML = `<div style="color: white; padding: 40px;">Unsupported Format: ${SECURE_DATA.fileExt}</div>`;
+                    container.innerHTML = '<div style="color: white; padding: 40px;">Unsupported Format: ' + SECURE_DATA.fileExt + '</div>';
                 }
 
             } catch(e) {

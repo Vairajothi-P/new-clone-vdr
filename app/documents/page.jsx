@@ -4,6 +4,7 @@ import React, { useState, useMemo, useRef, useEffect, Suspense, useCallback } fr
 import { useSearchParams, useRouter } from 'next/navigation';
 import { FaEye, FaEdit, FaUpload, FaShieldAlt, FaDownload, FaTrash } from 'react-icons/fa';
 import BulkUploadModal from '@/components/documents/BulkUploadModal';
+import { exportIndexToExcel, exportIndexToPDF } from '@/utils/exportIndexService';
 
 export default function DocumentsPage() {
     return (
@@ -45,6 +46,7 @@ function UnifiedWorkspace() {
 
     // Modals & Dropdowns
     const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
+    const [isExportIndexMenuOpen, setIsExportIndexMenuOpen] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
@@ -723,6 +725,50 @@ function UnifiedWorkspace() {
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
                                 Add Folder
                             </button>
+                        )}
+
+                        {!['trash', 'bookmarks', 'downloads'].includes(currentView) && (
+                            <div className="relative" onMouseLeave={() => setIsExportIndexMenuOpen(false)}>
+                                <button
+                                    onClick={() => setIsExportIndexMenuOpen(!isExportIndexMenuOpen)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-brand-soft hover:text-brand rounded-lg transition-colors"
+                                    title="Export complete Document Compliance Index hierarchy"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                    Export Index
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform ${isExportIndexMenuOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9" /></svg>
+                                </button>
+                                {isExportIndexMenuOpen && (
+                                    <div className="absolute top-full left-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50">
+                                        <button
+                                            onClick={() => {
+                                                setIsExportIndexMenuOpen(false);
+                                                exportIndexToExcel(files, deletedIds, session?.companyName || session?.workspaceName || session?.name || 'PIBI VDR • CONFIDENTIAL DATA ROOM');
+                                                showToast("Document Index Exported as Excel (.xlsx)");
+                                            }}
+                                            className="w-full text-left px-4 py-2.5 text-[12px] font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2.5 transition-colors"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="text-emerald-600"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
+                                            Excel (.xlsx)
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                setIsExportIndexMenuOpen(false);
+                                                try {
+                                                    await exportIndexToPDF(files, deletedIds, session?.companyName || session?.workspaceName || session?.name || 'PIBI VDR • CONFIDENTIAL DATA ROOM');
+                                                    showToast("Document Index Exported as PDF");
+                                                } catch (err) {
+                                                    showToast("PDF export error: " + err.message, "error");
+                                                }
+                                            }}
+                                            className="w-full text-left px-4 py-2.5 text-[12px] font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-700 flex items-center gap-2.5 transition-colors"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="text-rose-600"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12v5"/><path d="M14 12v5"/></svg>
+                                            PDF
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         )}
                         
                         {!['trash', 'bookmarks', 'downloads'].includes(currentView) && (
