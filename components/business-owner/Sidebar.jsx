@@ -48,7 +48,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 shadow-[4px_0_24px_rgba(28,127,159,0.04)] ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 h-screen shrink-0 overflow-y-auto bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 shadow-[4px_0_24px_rgba(28,127,159,0.04)] ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

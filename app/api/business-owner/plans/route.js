@@ -131,9 +131,19 @@ export async function PATCH(request) {
       if (!orgId || !planName) {
         return NextResponse.json({ error: 'orgId and planName are required' }, { status: 400 });
       }
-      // Note: organizations are still using the dummy store for now.
+      const supabase = getSupabaseAdmin();
+      const { data, error } = await supabase
+        .from('companies')
+        .update({ plan_name: planName })
+        .eq('id', orgId)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Could not update company plan in Supabase:', error);
+      }
       const updatedOrg = await assignPlanToOrganization(orgId, planName);
-      return NextResponse.json({ success: true, organization: updatedOrg });
+      return NextResponse.json({ success: true, organization: data || updatedOrg });
     }
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {

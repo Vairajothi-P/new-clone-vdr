@@ -55,12 +55,12 @@ export default function BusinessOwnerLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex overflow-hidden">
+    <div className="h-screen w-full bg-[#F8FAFC] text-slate-900 flex overflow-hidden">
       {/* Responsive Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main Content Column */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <Header onOpenSidebar={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-6 lg:p-8 bg-[#F8FAFC]">
           <div className="max-w-6xl mx-auto space-y-6">
