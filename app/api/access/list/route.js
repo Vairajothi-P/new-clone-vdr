@@ -20,7 +20,7 @@ export async function POST(req) {
             supabase.from('documents').select('id, name, folder_id, index, uploaded_by, creator_revoked').eq('company_id', session.company_id).eq('workspace_id', session.active_workspace_id).eq('is_deleted', false).order('created_at', { ascending: true }),
             supabase.from('permissions').select('id, document_id, folder_id, scope, group_id, can_view, can_edit, can_upload, can_download_secure, can_download_original, can_delete, can_redact').eq('company_id', session.company_id),
             supabase.from('user_groups').select('user_id, group_id'),
-            supabase.from('users').select('id, name, email').eq('workspace_id', session.active_workspace_id)
+            supabase.from('users').select('id, name, email').eq('company_id', session.company_id)
         ]);
 
         // 🔥 CALCULATE ACCESS (Exactly like your old code, but super fast on the server)
