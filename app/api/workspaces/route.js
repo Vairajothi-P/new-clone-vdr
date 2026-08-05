@@ -46,6 +46,7 @@ export async function GET(req) {
                 .from('workspaces')
                 .select('*')
                 .in('id', workspaceIds)
+                .eq('status', 'Active')
                 .order('created_at', { ascending: false });
             
             if (error) throw error;

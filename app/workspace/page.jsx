@@ -245,25 +245,30 @@ export default function WorkspacePage() {
 
             {/* Render Filtered Workspaces */}
             {workspaces.filter(ws => {
-              const wsStatus = ws.status || 'active';
-              return selectedStatus === 'Active' ? wsStatus === 'active' : wsStatus === 'inactive';
+              const wsStatus = ws.status || 'Active';
+              return selectedStatus === 'Active' ? wsStatus === 'Active' : wsStatus === 'Inactive';
             }).map((ws) => (
               <div
                 key={ws.id}
-                onClick={() => handleWorkspaceClick(ws.id)}
-                className="group cursor-pointer"
+                onClick={() => {
+                  if ((ws.status || 'Active') === 'Active') {
+                    handleWorkspaceClick(ws.id);
+                  }
+                }}
+                className={`group ${(ws.status || 'Active') === 'Active' ? 'cursor-pointer' : 'cursor-default'}`}
               >
                 <div className="h-48 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col relative">
                   {/* Top Row: Badge & Menu */}
                   <div className="flex justify-between items-start mb-4 relative">
-                    <span className={`px-2.5 py-1 text-[10px] font-bold rounded uppercase tracking-wider ${(ws.status || 'active') === 'active'
+                    <span className={`px-2.5 py-1 text-[10px] font-bold rounded uppercase tracking-wider ${(ws.status || 'Active') === 'Active'
                         ? 'bg-emerald-50 text-emerald-600'
                         : 'bg-gray-100 text-gray-600'
                       }`}>
-                      {ws.status || 'active'}
+                      {ws.status || 'Active'}
                     </span>
 
-                    <div className="relative">
+                    {userRole !== 'external_user' && (
+                      <div className="relative">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -284,7 +289,7 @@ export default function WorkspacePage() {
                             onClick={async (e) => {
                               e.stopPropagation();
                               setOpenMenuId(null);
-                              const newStatus = (ws.status || 'active') === 'active' ? 'inactive' : 'active';
+                              const newStatus = (ws.status || 'Active') === 'Active' ? 'Inactive' : 'Active';
                               setWorkspaces(workspaces.map(w => w.id === ws.id ? { ...w, status: newStatus } : w));
 
                               try {
@@ -296,7 +301,7 @@ export default function WorkspacePage() {
                               } catch (e) { }
                             }}
                           >
-                            {(ws.status || 'active') === 'active' ? 'Make Inactive' : 'Make Active'}
+                            {(ws.status || 'Active') === 'Active' ? 'Make Inactive' : 'Make Active'}
                           </button>
                           <button
                             className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
@@ -315,6 +320,7 @@ export default function WorkspacePage() {
                         </div>
                       )}
                     </div>
+                    )}
                   </div>
 
                   {/* Center Icon & Title */}
