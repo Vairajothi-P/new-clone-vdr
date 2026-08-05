@@ -21,7 +21,6 @@ const NAV_ITEMS = [
   { name: 'Organizations', href: '/business-owner/organizations', icon: FaBuilding },
   { name: 'Storage', href: '/business-owner/storage', icon: FaDatabase },
   { name: 'Plans', href: '/business-owner/plans', icon: FaTags },
-  { name: 'Purchase', href: '/business-owner/purchase', icon: FaShoppingCart },
   { name: 'Email Templates', href: '/business-owner/email-templates', icon: FaEnvelopeOpenText },
   { name: 'Settings', href: '/business-owner/settings', icon: FaCog },
 ];

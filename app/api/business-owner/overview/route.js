@@ -70,7 +70,20 @@ export async function GET() {
     } else if (totalLimitMb === 0) {
       totalLimitMb = 100000;
     }
-    const storageLimitGb = Math.max(1, Math.round(totalLimitMb / 1024));
+    
+    // Fetch global limit from users table
+    const { data: globalUsers } = await supabase
+      .from('businessowners_users')
+      .select('global_storage_limit_gb')
+      .not('global_storage_limit_gb', 'is', null)
+      .limit(1);
+      
+    let dbGlobalLimit = null;
+    if (globalUsers && globalUsers.length > 0) {
+      dbGlobalLimit = globalUsers[0].global_storage_limit_gb;
+    }
+
+    const storageLimitGb = dbGlobalLimit !== null ? dbGlobalLimit : Math.max(1, Math.round(totalLimitMb / 1024));
     const storagePercentage = Math.min(100, Math.round((storageUsedGb / storageLimitGb) * 100));
 
     // 6. Generate real recent activity stream from recently created/updated companies

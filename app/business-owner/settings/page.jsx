@@ -38,6 +38,16 @@ export default function SettingsPage() {
         console.error('Session error:', e);
       }
     }
+    
+    const sysSettings = localStorage.getItem('vdr_sys_settings');
+    if (sysSettings) {
+      try {
+        const parsed = JSON.parse(sysSettings);
+        if (parsed.maintenanceMode !== undefined) setMaintenanceMode(parsed.maintenanceMode);
+        if (parsed.defaultTrialDays !== undefined) setDefaultTrialDays(parsed.defaultTrialDays);
+        if (parsed.require2fa !== undefined) setRequire2fa(parsed.require2fa);
+      } catch (e) {}
+    }
   }, []);
 
   const handleSaveProfile = (e) => {
@@ -73,6 +83,11 @@ export default function SettingsPage() {
     e.preventDefault();
     setIsSaving(true);
     setTimeout(() => {
+      localStorage.setItem('vdr_sys_settings', JSON.stringify({
+        maintenanceMode,
+        defaultTrialDays,
+        require2fa
+      }));
       setIsSaving(false);
       setToast('Global system security & trial settings applied.');
       setTimeout(() => setToast(''), 4000);

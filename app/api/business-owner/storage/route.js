@@ -32,7 +32,19 @@ export async function GET() {
     } else if (totalLimitMb === 0) {
       totalLimitMb = 100000;
     }
-    const storageLimitGb = Math.max(1, Math.round(totalLimitMb / 1024));
+    
+    const { data: globalUsers } = await supabase
+      .from('businessowners_users')
+      .select('global_storage_limit_gb')
+      .not('global_storage_limit_gb', 'is', null)
+      .limit(1);
+      
+    let dbGlobalLimit = null;
+    if (globalUsers && globalUsers.length > 0) {
+      dbGlobalLimit = globalUsers[0].global_storage_limit_gb;
+    }
+    
+    const storageLimitGb = dbGlobalLimit !== null ? dbGlobalLimit : Math.max(1, Math.round(totalLimitMb / 1024));
 
     return NextResponse.json({
       storageUsedGb,
@@ -44,5 +56,30 @@ export async function GET() {
       { error: 'Failed to fetch storage stats' },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(req) {
+  try {
+    const { globalStorageLimitGb } = await req.json();
+    if (globalStorageLimitGb === undefined) {
+      return NextResponse.json({ error: 'Missing globalStorageLimitGb' }, { status: 400 });
+    }
+
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase
+      .from('businessowners_users')
+      .update({ global_storage_limit_gb: globalStorageLimitGb })
+      .not('id', 'is', null);
+
+    if (error) {
+      console.error('Error updating global storage limit:', error);
+      return NextResponse.json({ error: 'Failed to update limit' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
