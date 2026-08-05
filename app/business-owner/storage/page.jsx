@@ -18,6 +18,8 @@ export default function BusinessOwnerStoragePage() {
   // Modal control
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState(null);
+  const [globalStorageInput, setGlobalStorageInput] = useState('');
+  const [isEditingGlobal, setIsEditingGlobal] = useState(false);
 
   const fetchStorageData = async () => {
     try {
@@ -29,6 +31,7 @@ export default function BusinessOwnerStoragePage() {
       if (storageRes.ok) {
         const sData = await storageRes.json();
         setStorageData(sData);
+        setGlobalStorageInput(sData.storageLimitGb || '');
       }
       if (orgsRes.ok) {
         const oData = await orgsRes.json();
@@ -44,6 +47,30 @@ export default function BusinessOwnerStoragePage() {
   useEffect(() => {
     fetchStorageData();
   }, []);
+
+  const handleSaveGlobalLimit = async () => {
+    const val = Number(globalStorageInput);
+    if (!isNaN(val) && val > 0) {
+      try {
+        const res = await fetch('/api/business-owner/storage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ globalStorageLimitGb: val }),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to update global limit');
+        }
+
+        setStorageData(prev => ({ ...prev, storageLimitGb: val }));
+        setIsEditingGlobal(false);
+        alert('Global storage limit updated in Database successfully!');
+      } catch (err) {
+        console.error('Error saving global limit:', err);
+        alert('Failed to update global storage limit');
+      }
+    }
+  };
 
   const handleOpenLimitModal = (org) => {
     setSelectedOrg(org);
@@ -92,11 +119,53 @@ export default function BusinessOwnerStoragePage() {
               <FaDatabase />
             </div>
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">
                 Total System Storage Allocated
               </span>
-              <div className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
-                {totalUsedGb} GB <span className="text-slate-400 font-normal text-lg">/ {totalLimitGb} GB</span>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                  {totalUsedGb} GB <span className="text-slate-400 font-normal text-lg">/</span>
+                </div>
+                {isEditingGlobal ? (
+                  <>
+                    <input
+                      type="number"
+                      min="1"
+                      value={globalStorageInput}
+                      onChange={(e) => setGlobalStorageInput(e.target.value)}
+                      className="w-24 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-lg font-bold text-slate-900 focus:outline-none focus:border-[var(--brand)]"
+                    />
+                    <span className="text-slate-400 font-normal text-lg">GB</span>
+                    <button
+                      onClick={handleSaveGlobalLimit}
+                      className="px-3 py-1.5 bg-[var(--brand)] text-white text-xs font-bold rounded-lg hover:bg-[var(--brand-dark)] transition-colors"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setIsEditingGlobal(false)}
+                      className="px-3 py-1.5 bg-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-300 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                      <span className="text-slate-400 font-normal text-lg">{totalLimitGb} GB</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setGlobalStorageInput(totalLimitGb);
+                        setIsEditingGlobal(true);
+                      }}
+                      className="ml-1 w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 hover:text-[var(--brand)] hover:bg-brand-soft transition-colors"
+                      title="Edit Global Limit"
+                    >
+                      <FaEdit />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
