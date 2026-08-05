@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FaCog, FaPlus, FaTimes, FaShieldAlt, FaCheck, FaDatabase, FaUsers, FaPowerOff, FaEllipsisV } from "react-icons/fa";
+import { FaCog, FaPlus, FaTimes, FaShieldAlt, FaCheck, FaDatabase, FaUsers, FaPowerOff, FaEllipsisV, FaExclamationTriangle } from "react-icons/fa";
 import { FiChevronDown } from "react-icons/fi";
 import WorkspaceModal from "@/components/workspaces/WorkspaceModal";
 
@@ -14,11 +14,13 @@ export default function WorkspacePage() {
   const [companyName, setCompanyName] = useState("Loading...");
   const [companyStatus, setCompanyStatus] = useState("active");
   const [toastMessage, setToastMessage] = useState("");
+  const [notification, setNotification] = useState({ show: false, message: "", type: "success" });
   const [userRole, setUserRole] = useState("User");
   const [workspaces, setWorkspaces] = useState([]);
   const [companyDetails, setCompanyDetails] = useState(null);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [workspaceToDelete, setWorkspaceToDelete] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -78,12 +80,16 @@ export default function WorkspacePage() {
       if (result.success) {
         setWorkspaces((prev) => [result.workspace, ...prev]);
         setIsModalOpen(false);
+        setNotification({ show: true, message: "Workspace created successfully", type: "success" });
+        setTimeout(() => setNotification({ show: false, message: "", type: "success" }), 3000);
       } else {
-        alert("Error: " + result.error);
+        setNotification({ show: true, message: result.error, type: "error" });
+        setTimeout(() => setNotification({ show: false, message: "", type: "error" }), 3000);
       }
     } catch (err) {
       console.error("Failed to create workspace", err);
-      alert("Failed to create workspace");
+      setNotification({ show: true, message: "Failed to create workspace", type: "error" });
+      setTimeout(() => setNotification({ show: false, message: "", type: "error" }), 3000);
     }
   };
 
@@ -100,6 +106,20 @@ export default function WorkspacePage() {
   const handleLogout = () => {
     localStorage.removeItem('vdr_session');
     router.push('/login');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!workspaceToDelete) return;
+    const wsId = workspaceToDelete.id;
+    setWorkspaces(workspaces.filter(w => w.id !== wsId));
+    setWorkspaceToDelete(null);
+    setOpenMenuId(null);
+
+    try {
+      await fetch(`/api/workspaces/${wsId}`, { method: 'DELETE' });
+    } catch (e) {
+      console.error("Failed to delete workspace:", e);
+    }
   };
 
   return (
@@ -130,14 +150,30 @@ export default function WorkspacePage() {
         </div>
       )}
 
+      {/* Floating Notification */}
+      {notification.show && (
+        <div className={`fixed top-6 right-6 z-[200] px-6 py-4 rounded-xl shadow-lg border flex items-center gap-3 transition-all animate-[popIn_0.3s_cubic-bezier(0.16,1,0.3,1)] ${
+          notification.type === 'success' 
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+            : 'bg-rose-50 border-rose-200 text-rose-800'
+        }`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+            notification.type === 'success' ? 'bg-emerald-200 text-emerald-700' : 'bg-rose-200 text-rose-700'
+          }`}>
+            {notification.type === 'success' ? <FaCheck size={14} /> : <FaTimes size={14} />}
+          </div>
+          <p className="font-bold text-sm tracking-wide">{notification.message}</p>
+        </div>
+      )}
+
       {/* Top Actions */}
       <div className="w-full max-w-6xl flex justify-end mb-4 md:mb-6">
         <button
           onClick={handleLogout}
           title="Logout"
-          className="flex items-center justify-center w-16 h-16 bg-gradient-to-tr from-[var(--brand)] to-[var(--brand-secondary)] text-white rounded-full hover:opacity-90 transition-opacity shadow-lg"
+          className="flex items-center justify-center w-10 h-10 border border-rose-300 text-rose-500 bg-transparent rounded-full hover:bg-rose-50 hover:border-rose-400 transition-colors shadow-sm"
         >
-          <FaPowerOff size={28} />
+          <FaPowerOff size={16} />
         </button>
       </div>
 
@@ -208,7 +244,10 @@ export default function WorkspacePage() {
             </div>
 
             {/* Settings Icon */}
-            <button className="text-gray-400 hover:text-gray-700 transition-colors p-2 rounded-full hover:bg-gray-100">
+            <button 
+              onClick={() => router.push('/workspace_setting')}
+              className="text-gray-400 hover:text-gray-700 transition-colors p-2 rounded-full hover:bg-gray-100"
+            >
               <FaCog size={20} />
             </button>
 
@@ -307,12 +346,8 @@ export default function WorkspacePage() {
                             className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                             onClick={async (e) => {
                               e.stopPropagation();
-                              setWorkspaces(workspaces.filter(w => w.id !== ws.id));
+                              setWorkspaceToDelete(ws);
                               setOpenMenuId(null);
-
-                              try {
-                                await fetch(`/api/workspaces/${ws.id}`, { method: 'DELETE' });
-                              } catch (e) { }
                             }}
                           >
                             Delete
@@ -344,7 +379,37 @@ export default function WorkspacePage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleCreateWorkspace}
+        workspaces={workspaces}
       />
+
+      {/* Delete Confirmation Modal */}
+      {workspaceToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 max-w-sm w-full flex flex-col items-center text-center animate-[popIn_0.3s_cubic-bezier(0.16,1,0.3,1)]">
+            <div className="w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center mb-4 shadow-inner">
+              <FaExclamationTriangle className="text-rose-500 text-3xl" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Delete Workspace</h3>
+            <p className="text-slate-600 font-medium text-[14px] mb-6">
+              Are you sure you want to delete this workspace? This action will move it to the trash.
+            </p>
+            <div className="flex items-center gap-3 w-full">
+              <button
+                onClick={() => setWorkspaceToDelete(null)}
+                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-colors duration-200 shadow-md"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Subscription Details Modal */}
       {isSubscriptionModalOpen && (

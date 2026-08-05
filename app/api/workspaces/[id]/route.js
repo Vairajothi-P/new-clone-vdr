@@ -42,7 +42,7 @@ export async function DELETE(req, { params }) {
 
         const { error } = await supabaseAdmin
             .from('workspaces')
-            .delete()
+            .update({ status: 'Deleted' })
             .eq('id', id);
 
         if (error) throw error;

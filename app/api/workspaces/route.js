@@ -26,6 +26,15 @@ export async function GET(req) {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
+
+            for (let ws of data) {
+                const { count } = await supabaseAdmin
+                    .from('workspace_members')
+                    .select('user_id', { count: 'exact', head: true })
+                    .eq('workspace_id', ws.id);
+                ws.user_count = count || 0;
+            }
+
             return NextResponse.json({ workspaces: data, success: true });
         } else {
             // Normal users see only workspaces they are members of
@@ -50,6 +59,15 @@ export async function GET(req) {
                 .order('created_at', { ascending: false });
             
             if (error) throw error;
+
+            for (let ws of data) {
+                const { count } = await supabaseAdmin
+                    .from('workspace_members')
+                    .select('user_id', { count: 'exact', head: true })
+                    .eq('workspace_id', ws.id);
+                ws.user_count = count || 0;
+            }
+
             return NextResponse.json({ workspaces: data, success: true });
         }
     } catch (err) {
@@ -69,6 +87,22 @@ export async function POST(req) {
 
         if (!name || !company_id) {
             return NextResponse.json({ error: "Name and company_id are required" }, { status: 400 });
+        }
+
+        // Check if workspace name already exists in this company
+        const { data: existingWorkspaces, error: checkError } = await supabaseAdmin
+            .from('workspaces')
+            .select('id')
+            .eq('company_id', company_id)
+            .ilike('name', name)
+            .limit(1);
+
+        if (checkError) {
+            console.error('Failed to check existing workspaces:', checkError);
+        }
+
+        if (existingWorkspaces && existingWorkspaces.length > 0) {
+            return NextResponse.json({ error: "Workspace name is already used", success: false }, { status: 400 });
         }
 
         // Insert new workspace

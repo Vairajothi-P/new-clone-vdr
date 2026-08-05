@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { WORKSPACE_TYPES, DEAL_TYPES, CURRENCIES, DEFAULT_WORKSPACE_FORM } from "@/lib/workspaces/constants";
 import { validateWorkspaceForm } from "@/lib/workspaces/validation";
-import { FaTimes, FaShieldAlt, FaExclamationCircle } from "react-icons/fa";
+import { FaTimes, FaShieldAlt, FaExclamationCircle, FaCheckCircle } from "react-icons/fa";
 
 export default function WorkspaceModal({
   isOpen,
@@ -11,6 +11,7 @@ export default function WorkspaceModal({
   initialData = null,
   onClose,
   onSubmit,
+  workspaces = [],
 }) {
   const [formData, setFormData] = useState({
     type: "Virtual Data Room",
@@ -40,6 +41,9 @@ export default function WorkspaceModal({
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const isNameTaken = formData.name.trim() !== "" && workspaces.some(ws => ws.name.toLowerCase() === formData.name.trim().toLowerCase());
+  const isNameAvailable = formData.name.trim() !== "" && !isNameTaken;
+
   if (!isOpen) return null;
 
   const handleChange = (field, value) => {
@@ -57,8 +61,8 @@ export default function WorkspaceModal({
     setIsSubmitting(true);
 
     const validation = validateWorkspaceForm(formData);
-    if (!validation.isValid) {
-      setErrors(validation.errors);
+    if (!validation.isValid || isNameTaken) {
+      if (!isNameTaken) setErrors(validation.errors);
       setIsSubmitting(false);
       return;
     }
@@ -149,12 +153,28 @@ export default function WorkspaceModal({
               value={formData.name}
               onChange={(e) => handleChange("name", e.target.value)}
               className={`w-full h-10 px-3 bg-gray-50/50 border rounded-xl text-sm font-medium text-gray-800 placeholder-gray-400 focus:bg-white focus:ring-2 outline-none transition-all ${
-                errors.name
+                isNameTaken
+                  ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/10"
+                  : isNameAvailable 
+                  ? "border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500/10"
+                  : errors.name
                   ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/10"
                   : "border-gray-200 focus:border-[var(--brand)] focus:ring-[var(--brand)]/10"
               }`}
             />
-            {errors.name && (
+            {isNameTaken && (
+              <p className="mt-1 text-xs text-rose-600 font-medium flex items-center gap-1">
+                <FaExclamationCircle />
+                <span>Workspace name is already used</span>
+              </p>
+            )}
+            {isNameAvailable && (
+              <p className="mt-1 text-xs text-emerald-600 font-medium flex items-center gap-1">
+                <FaCheckCircle />
+                <span>Workspace name is available</span>
+              </p>
+            )}
+            {!isNameTaken && !isNameAvailable && errors.name && (
               <p className="mt-1 text-xs text-rose-600 font-medium flex items-center gap-1">
                 <FaExclamationCircle />
                 <span>{errors.name}</span>
