@@ -101,24 +101,37 @@ export default function BulkUploadModal({
         const fileArray = Array.from(newFilesList || []);
         if (fileArray.length === 0) return;
 
-        const newItems = fileArray.map((file, idx) => ({
-            id: `up-${Date.now()}-${Math.random().toString(36).substring(2, 9)}-${idx}`,
-            file,
-            name: file.name,
-            size: file.size,
-            sizeFormatted: formatFileSize(file.size),
-            progress: 0,
-            status: 'waiting', // 'waiting' | 'uploading' | 'completed' | 'failed' | 'cancelled'
-            error: null,
-            speed: 0,
-            speedFormatted: '',
-            etaFormatted: '',
-            loadedBytes: 0,
-            startTime: null
-        }));
+        const newItems = fileArray.map((file, idx) => {
+            // Check for conflict
+            const conflictFile = files.find(f => 
+                f.name === file.name && 
+                f.type !== 'folder' && 
+                f.parentId === currentFolderId && 
+                !deletedIds.has(f.id)
+            );
+
+            return {
+                id: `up-${Date.now()}-${Math.random().toString(36).substring(2, 9)}-${idx}`,
+                file,
+                name: file.name,
+                size: file.size,
+                sizeFormatted: formatFileSize(file.size),
+                progress: 0,
+                status: conflictFile ? 'conflict' : 'waiting', // 'conflict' | 'waiting' | 'uploading' | 'completed' | 'failed' | 'cancelled'
+                conflictDocId: conflictFile ? conflictFile.id : null,
+                isNewVersion: false,
+                uploadComment: '',
+                error: null,
+                speed: 0,
+                speedFormatted: '',
+                etaFormatted: '',
+                loadedBytes: 0,
+                startTime: null
+            };
+        });
 
         setQueue(prev => [...prev, ...newItems]);
-    }, []);
+    }, [files, currentFolderId, deletedIds]);
 
     // Upload a single file item with real-time XMLHttpRequest progress
     const uploadSingleItem = useCallback((item, fileIndexOffset = 0) => {
@@ -138,6 +151,12 @@ export default function BulkUploadModal({
             formData.append('folder_id', currentFolderId || '');
             formData.append('uploaded_by', session.id);
             formData.append('index', targetIndex);
+            
+            if (item.isNewVersion) {
+                formData.append('isNewVersion', 'true');
+                formData.append('upload_comment', item.uploadComment || '');
+                formData.append('existing_document_id', item.conflictDocId || '');
+            }
 
             const xhr = new XMLHttpRequest();
             xhrMapRef.current.set(item.id, xhr);
@@ -677,6 +696,51 @@ export default function BulkUploadModal({
                                                     )}
                                                 </div>
                                             </div>
+
+                                            {/* Conflict Resolution UI */}
+                                            {item.status === 'conflict' && (
+                                                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                                    <p className="text-xs font-semibold text-yellow-800 mb-2">
+                                                        A document with this name already exists in this folder.
+                                                    </p>
+                                                    <div className="flex flex-col gap-2">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Version Comment (optional, e.g., 'Updated financial data')"
+                                                            value={item.uploadComment || ''}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setQueue(prev => prev.map(q => q.id === item.id ? { ...q, uploadComment: val } : q));
+                                                            }}
+                                                            className="w-full px-3 py-1.5 text-xs border border-yellow-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                                        />
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'waiting', isNewVersion: true } : q));
+                                                                }}
+                                                                className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold rounded-md transition-colors"
+                                                            >
+                                                                Upload as New Version
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'waiting', isNewVersion: false, conflictDocId: null } : q));
+                                                                }}
+                                                                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold rounded-md transition-colors"
+                                                            >
+                                                                Upload as New Document
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleCancelItem(item.id)}
+                                                                className="px-3 py-1.5 text-slate-500 hover:text-slate-700 text-xs font-semibold transition-colors"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {/* Item Progress Bar (Clean Blue) */}
                                             <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">

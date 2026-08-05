@@ -14,18 +14,21 @@ export async function POST(req, context) {
         const docId = params.id;
 
         // The frontend sends the user info in the body
-        const { userId, role } = await req.json();
+        const { userId, role, isHistoricalVersion } = await req.json();
 
         if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         // 1. Get the document metadata
+        const tableName = isHistoricalVersion ? 'document_versions' : 'documents';
         const { data: doc, error: docErr } = await supabase
-            .from('documents')
+            .from(tableName)
             .select('*')
             .eq('id', docId)
             .single();
 
         if (docErr || !doc) return NextResponse.json({ error: "Document not found" }, { status: 404 });
+        
+        const targetDocumentId = isHistoricalVersion ? doc.document_id : docId;
 
         // 2. Iron Wall Security Check
         let hasAccess = false;
@@ -37,7 +40,7 @@ export async function POST(req, context) {
                 const groupIds = userGroups.map(g => g.group_id);
                 const { data: perms } = await supabase.from('permissions').select('can_view, scope, document_id, folder_id').in('group_id', groupIds);
 
-                const docPerms = perms.filter(p => p.scope === 'document' && p.document_id === docId);
+                const docPerms = perms.filter(p => p.scope === 'document' && p.document_id === targetDocumentId);
                 const folderPerms = perms.filter(p => p.scope === 'folder' && p.folder_id === doc.folder_id);
 
                 if (docPerms.some(p => p.can_view) || folderPerms.some(p => p.can_view)) hasAccess = true;

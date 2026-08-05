@@ -56,23 +56,79 @@ export async function POST(req) {
         // 5. Save all metadata to the Postgres Database
         if (folder_id === '') folder_id = null; // Clean up empty strings
 
-        const { data: docData, error: dbErr } = await supabase.from('documents').insert({
-            company_id: company_id,
-            workspace_id: workspace_id || null,
-            folder_id: folder_id,
-            uploaded_by: uploaded_by,
-            name: file.name,
-            file_path: secureStoragePath,
-            original_file_path: originalStoragePath,
-            mime_type: file.type || 'application/octet-stream',
-            file_size_bytes: file.size,
-            dek_ref: fernetKey,
-            index: index,
-            security: 'Fernet Encrypted',
-            version: 1
-        }).select('id').single();
+        const isNewVersion = formData.get('isNewVersion') === 'true';
+        const upload_comment = formData.get('upload_comment') || null;
+        const existing_document_id = formData.get('existing_document_id') || null;
+        
+        let docData;
+        
+        if (isNewVersion && existing_document_id) {
+            // Fetch existing document
+            const { data: existingDoc, error: fetchErr } = await supabase.from('documents').select('*').eq('id', existing_document_id).single();
+            if (fetchErr) throw new Error("Failed to fetch existing document: " + fetchErr.message);
+            
+            // 1. Copy to document_versions
+            const { error: versionErr } = await supabase.from('document_versions').insert({
+                document_id: existingDoc.id,
+                version_number: existingDoc.version || 1,
+                name: existingDoc.name,
+                file_path: existingDoc.file_path,
+                original_file_path: existingDoc.original_file_path,
+                storage_bucket: 'vault-files', 
+                mime_type: existingDoc.mime_type,
+                file_size_bytes: existingDoc.file_size_bytes,
+                workspace_id: existingDoc.workspace_id,
+                company_id: existingDoc.company_id,
+                folder_id: existingDoc.folder_id,
+                dek_ref: existingDoc.dek_ref,
+                security: existingDoc.security,
+                creator_revoked: existingDoc.creator_revoked,
+                is_redacted: existingDoc.is_redacted,
+                index: existingDoc.index,
+                file_data: existingDoc.file_data,
+                uploaded_by: existingDoc.uploaded_by,
+                created_at: existingDoc.created_at,
+                upload_comment: existingDoc.upload_comment
+            });
+            if (versionErr) throw new Error("Failed to save version history: " + versionErr.message);
+            
+            // 2. Update existing document
+            const { data: updatedDoc, error: updateErr } = await supabase.from('documents').update({
+                file_path: secureStoragePath,
+                original_file_path: originalStoragePath,
+                mime_type: file.type || 'application/octet-stream',
+                file_size_bytes: file.size,
+                dek_ref: fernetKey,
+                uploaded_by: uploaded_by,
+                version: (existingDoc.version || 1) + 1,
+                upload_comment: upload_comment,
+                updated_at: new Date().toISOString()
+            }).eq('id', existing_document_id).select('id').single();
+            if (updateErr) throw new Error("Database update failed: " + updateErr.message);
+            docData = updatedDoc;
+            
+        } else {
+            // Normal insert
+            const { data: newDoc, error: dbErr } = await supabase.from('documents').insert({
+                company_id: company_id,
+                workspace_id: workspace_id || null,
+                folder_id: folder_id,
+                uploaded_by: uploaded_by,
+                name: file.name,
+                file_path: secureStoragePath,
+                original_file_path: originalStoragePath,
+                mime_type: file.type || 'application/octet-stream',
+                file_size_bytes: file.size,
+                dek_ref: fernetKey,
+                index: index,
+                security: 'Fernet Encrypted',
+                version: 1,
+                upload_comment: upload_comment
+            }).select('id').single();
 
-        if (dbErr) throw new Error("Database sync failed: " + dbErr.message);
+            if (dbErr) throw new Error("Database sync failed: " + dbErr.message);
+            docData = newDoc;
+        }
 
         // 6. Log UPLOAD activity with IP address
         const forwarded = req.headers.get('x-forwarded-for');
