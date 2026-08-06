@@ -35,7 +35,33 @@ export async function POST(req) {
             .upload(originalStoragePath, buffer, { contentType: file.type || 'application/octet-stream' });
         if (origErr) throw new Error("Original Upload Failed: " + origErr.message);
 
-        // 3. Encrypt for the Secure Vault
+        // 3. Optional: Convert PPT/PPTX to PDF for Secure Vault
+        let bufferToEncrypt = buffer;
+        const fileExt = file.name.split('.').pop().toLowerCase();
+        
+        if (['ppt', 'pptx'].includes(fileExt) && process.env.CONVERTAPI_SECRET) {
+            try {
+                const convertapi = require('convertapi')(process.env.CONVERTAPI_SECRET);
+                const os = require('os');
+                const path = require('path');
+                const fs = require('fs').promises;
+                
+                const tempInputPath = path.join(os.tmpdir(), `temp_${timestamp}_${file.name}`);
+                await fs.writeFile(tempInputPath, buffer);
+                
+                const result = await convertapi.convert('pdf', { File: tempInputPath }, fileExt);
+                const pdfUrl = result.response.Files[0].Url;
+                const pdfResponse = await fetch(pdfUrl);
+                bufferToEncrypt = Buffer.from(await pdfResponse.arrayBuffer());
+                
+                await fs.unlink(tempInputPath).catch(() => {});
+            } catch (err) {
+                console.error("ConvertAPI error:", err);
+                throw new Error("PowerPoint to PDF conversion failed. Please check API key.");
+            }
+        }
+
+        // 4. Encrypt for the Secure Vault
         // Generate a true random 32-byte AES key
         const randomBytes = crypto.randomBytes(32);
         const fernetKey = randomBytes.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -43,8 +69,8 @@ export async function POST(req) {
         const secret = new fernet.Secret(fernetKey);
         const token = new fernet.Token({ secret: secret });
 
-        // Fernet requires Base64 text to encrypt, so we convert the raw buffer to Base64 first
-        const base64Data = buffer.toString('base64');
+        // Fernet requires Base64 text to encrypt, so we convert the buffer to Base64 first
+        const base64Data = bufferToEncrypt.toString('base64');
         const encryptedString = token.encode(base64Data);
 
         // 4. Upload Encrypted text to 'vault-files' bucket
