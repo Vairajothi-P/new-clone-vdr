@@ -36,13 +36,14 @@ export async function POST(req) {
         // 3. Fetch Permissions from DB
         const { data: dbPerms } = await supabase
             .from('permissions')
-            .select('can_access_settings, can_access_branding, can_access_watermarks')
+            .select('can_access_settings, can_access_branding, can_access_watermarks, can_access_nda')
             .eq('scope', 'workspace')
             .in('group_id', groupIds);
 
         const hasSettings = dbPerms?.some(p => p.can_access_settings);
         const hasBranding = dbPerms?.some(p => p.can_access_branding);
         const hasWatermark = dbPerms?.some(p => p.can_access_watermarks);
+        const hasNda = dbPerms?.some(p => p.can_access_nda);
 
         return NextResponse.json({
             success: true,
@@ -50,7 +51,7 @@ export async function POST(req) {
                 settings: !!hasSettings,
                 branding: !!hasBranding,
                 watermark: !!hasWatermark,
-                nda: !!hasSettings
+                nda: !!hasNda
             }
         });
 

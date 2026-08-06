@@ -36,6 +36,8 @@ export default function SettingsIndexPage() {
           router.replace('/settings/branding');
         } else if (data.perms.watermark) {
           router.replace('/settings/watermark');
+        } else if (data.perms.nda) {
+          router.replace('/settings/nda');
         } else {
           setLoading(false);
         }

@@ -43,6 +43,10 @@ export default function SettingsLayout({ children }) {
             router.push('/settings');
             return;
           }
+          if (pathname.includes('/nda') && !nda) {
+            router.push('/settings');
+            return;
+          }
 
           setPerms({ settings, branding, watermark, nda });
         } else {

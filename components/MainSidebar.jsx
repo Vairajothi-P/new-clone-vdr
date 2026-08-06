@@ -12,6 +12,7 @@ export default function MainSidebar() {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [hasGroupsAccess, setHasGroupsAccess] = useState(false);
   const [hasSettingsAccess, setHasSettingsAccess] = useState(false);
   const [hasQaAccess, setHasQaAccess] = useState(false);
   const [session, setSession] = useState(null);
@@ -29,6 +30,7 @@ export default function MainSidebar() {
     const checkModulePermissions = async () => {
       // 1. Super Admin gets automatic access to all modules
       if (sessionObj.role === 'super_admin') {
+        setHasGroupsAccess(true);
         setHasSettingsAccess(true);
         setHasQaAccess(true);
         return;
@@ -46,14 +48,16 @@ export default function MainSidebar() {
       // 3. Check workspace scope permissions
       const { data: perms } = await supabase
         .from('permissions')
-        .select('can_access_settings, can_access_qa')
+        .select('can_access_groups, can_access_settings, can_access_qa')
         .eq('scope', 'workspace')
         .in('group_id', groupIds);
 
       // 4. Set module access flags
+      const canAccessGroups = perms?.some(p => p.can_access_groups);
       const canAccessSettings = perms?.some(p => p.can_access_settings);
       const canAccessQa = perms?.some(p => p.can_access_qa);
 
+      setHasGroupsAccess(!!canAccessGroups);
       setHasSettingsAccess(!!canAccessSettings);
       setHasQaAccess(!!canAccessQa);
     };
@@ -76,6 +80,7 @@ export default function MainSidebar() {
       {/* Nav Items */}
       <div className="flex flex-col gap-1.5 flex-1">
         {NAV_ITEMS.map((item) => {
+          if (item.key === 'groups' && !hasGroupsAccess) return null;
           if (item.key === 'settings' && !hasSettingsAccess) return null;
           if (item.key === 'analytics' && !isAdmin && !isSuperAdmin) return null;
           if (item.key === 'qa' && !hasQaAccess) return null;
