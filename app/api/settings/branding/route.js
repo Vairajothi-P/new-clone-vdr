@@ -30,9 +30,42 @@ export async function POST(req) {
                 throw error;
             }
 
+            let defaultBrandName = session?.active_workspace_name || session?.workspaceName || '';
+            let defaultAdminName = session?.name || '';
+            let defaultAdminEmail = session?.email || '';
+            let defaultAdminPhone = session?.phone || '';
+
+            if (session?.active_workspace_id) {
+                const { data: wsDetails } = await supabase
+                    .from('workspaces')
+                    .select('name')
+                    .eq('id', session.active_workspace_id)
+                    .single();
+                if (wsDetails?.name) defaultBrandName = wsDetails.name;
+            }
+
+            if (session?.id) {
+                const { data: userDetails } = await supabase
+                    .from('users')
+                    .select('name, email, phone_number')
+                    .eq('id', session.id)
+                    .single();
+                if (userDetails) {
+                    if (userDetails.name) defaultAdminName = userDetails.name;
+                    if (userDetails.email) defaultAdminEmail = userDetails.email;
+                    if (userDetails.phone_number) defaultAdminPhone = userDetails.phone_number;
+                }
+            }
+
+            const responseData = wsData || {};
+            responseData.brand_name = responseData.brand_name || defaultBrandName;
+            responseData.admin_name = responseData.admin_name || defaultAdminName;
+            responseData.admin_email = responseData.admin_email || defaultAdminEmail;
+            responseData.admin_phone = responseData.admin_phone || defaultAdminPhone;
+
             return NextResponse.json({
                 success: true,
-                data: wsData || null
+                data: responseData
             });
         }
 
