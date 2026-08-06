@@ -91,8 +91,16 @@ export default function GroupsSidebar({ isOpen = true }) {
                 else query = query.is('workspace_id', null);
 
                 const { data } = await query;
+                let groups = data || [];
+                const roleOrder = { 'admin': 1, 'sub_admin': 2, 'external_user': 3 };
+                groups.sort((a, b) => {
+                    const orderA = roleOrder[a.role] || 99;
+                    const orderB = roleOrder[b.role] || 99;
+                    if (orderA !== orderB) return orderA - orderB;
+                    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+                });
 
-                setNavItems((data || []).map(g => ({
+                setNavItems(groups.map(g => ({
                     id: g.id, name: g.name, href: `/groups/${g.id}`, role: g.role || ''
                 })));
 
@@ -111,12 +119,12 @@ export default function GroupsSidebar({ isOpen = true }) {
                 let groups = data || [];
 
                 if (userRole === 'admin') {
-                    // Show groups that have sub_admin or external_user members
+                    // Show groups that have admin, sub_admin or external_user members
                     const { data: targetUsers } = await supabase
                         .from('users')
                         .select('id')
                         .eq('company_id', companyId)
-                        .in('role', ['sub_admin', 'external_user']);
+                        .in('role', ['admin', 'sub_admin', 'external_user']);
 
                     const targetUserIds = (targetUsers || []).map(u => u.id);
 
@@ -131,6 +139,7 @@ export default function GroupsSidebar({ isOpen = true }) {
                     } else {
                         groups = [];
                     }
+
 
                 } else if (userRole === 'sub_admin') {
                     // Show groups that have external_user members only
@@ -154,6 +163,14 @@ export default function GroupsSidebar({ isOpen = true }) {
                         groups = [];
                     }
                 }
+
+                const roleOrder = { 'admin': 1, 'sub_admin': 2, 'external_user': 3 };
+                groups.sort((a, b) => {
+                    const orderA = roleOrder[a.role] || 99;
+                    const orderB = roleOrder[b.role] || 99;
+                    if (orderA !== orderB) return orderA - orderB;
+                    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+                });
 
                 setNavItems(groups.map(g => ({
                     id: g.id, name: g.name, href: `/groups/${g.id}`, role: g.role || ''

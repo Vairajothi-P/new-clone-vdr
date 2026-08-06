@@ -66,8 +66,7 @@ export default function ManageUsersPage() {
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('*')
-        .eq('company_id', companyId)
-        .eq('workspace_id', activeWorkspaceId);
+        .eq('company_id', companyId);
 
       if (usersError) throw usersError;
 
@@ -93,9 +92,9 @@ export default function ManageUsersPage() {
         memberships = memData || [];
       }
 
-      // Map users with their groups and filter out administrators
+      // Map users with their groups and filter to only include external_user
       const mappedUsers = (usersData || [])
-        .filter(u => !['super_admin', 'admin', 'sub_admin'].includes(u.role))
+        .filter(u => u.role === 'external_user')
         .map(user => {
           const userGroupIds = memberships
             .filter(m => m.user_id === user.id)
@@ -220,11 +219,12 @@ export default function ManageUsersPage() {
       return;
     }
 
-    const headers = ['Name', 'Organization', 'Email', 'Mobile', 'Expiry Date', 'Status'];
+    const headers = ['Name', 'Organization', 'Email', 'Role', 'Mobile', 'Expiry Date', 'Status'];
     const rows = usersToExport.map(user => [
       user.name || '',
       user.company_name || companyName,
       user.email || '',
+      user.role === 'external_user' ? 'External User' : user.role,
       user.phone_number || '',
       formatExpiryDate(user.created_at),
       user.status === 'active' ? 'Active' : 'Inactive'
@@ -514,6 +514,7 @@ export default function ManageUsersPage() {
                     <th className="py-4 px-4">NAME</th>
                     <th className="py-4 px-6">ORGANIZATION</th>
                     <th className="py-4 px-6">EMAIL</th>
+                    <th className="py-4 px-6">ROLE</th>
                     <th className="py-4 px-6">MOBILE</th>
                     <th className="py-4 px-6">EXPIRY DATE</th>
                     <th className="py-4 px-6">
@@ -558,6 +559,11 @@ export default function ManageUsersPage() {
                         {/* Email */}
                         <td className="py-4.5 px-6 text-[13px] text-slate-500 font-medium">
                           {user.email}
+                        </td>
+
+                        {/* Role */}
+                        <td className="py-4.5 px-6 text-[13px] text-slate-500 font-medium capitalize">
+                          {user.role ? user.role.replace('_', ' ') : 'External User'}
                         </td>
 
                         {/* Mobile */}

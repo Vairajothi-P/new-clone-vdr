@@ -35,7 +35,7 @@ export default function GroupsPage() {
           if (groupIds.length > 0) {
             let query = supabase
               .from("groups")
-              .select("id")
+              .select("id, role, created_at")
               .in("id", groupIds)
               .eq("company_id", companyId);
               
@@ -48,7 +48,7 @@ export default function GroupsPage() {
         } else {
           let query = supabase
             .from("groups")
-            .select("id")
+            .select("id, role, created_at")
             .eq("company_id", companyId)
             .order("created_at", { ascending: false });
 
@@ -59,7 +59,28 @@ export default function GroupsPage() {
 
           groups = data || [];
 
-          if (userRole === "sub_admin") {
+          if (userRole === "admin") {
+            // Show groups that have admin, sub_admin or external_user members
+            const { data: targetUsers } = await supabase
+                .from('users')
+                .select('id')
+                .eq('company_id', companyId)
+                .in('role', ['admin', 'sub_admin', 'external_user']);
+
+            const targetUserIds = (targetUsers || []).map(u => u.id);
+
+            if (targetUserIds.length > 0) {
+                const { data: ugRows } = await supabase
+                    .from('user_groups')
+                    .select('group_id')
+                    .in('user_id', targetUserIds);
+
+                const validGroupIds = new Set((ugRows || []).map(r => r.group_id));
+                groups = groups.filter(g => validGroupIds.has(g.id));
+            } else {
+                groups = [];
+            }
+          } else if (userRole === "sub_admin") {
             const { data: extUsers } = await supabase
               .from("users")
               .select("id")
@@ -80,6 +101,14 @@ export default function GroupsPage() {
             }
           }
         }
+
+        const roleOrder = { 'admin': 1, 'sub_admin': 2, 'external_user': 3 };
+        groups.sort((a, b) => {
+            const orderA = roleOrder[a.role] || 99;
+            const orderB = roleOrder[b.role] || 99;
+            if (orderA !== orderB) return orderA - orderB;
+            return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        });
 
         if (groups && groups.length > 0) {
           router.replace(`/groups/${groups[0].id}`);

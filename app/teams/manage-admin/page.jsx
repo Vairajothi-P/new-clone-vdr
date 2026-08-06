@@ -222,11 +222,12 @@ export default function ManageAdminPage() {
       return;
     }
 
-    const headers = ['Name', 'Organization', 'Email', 'Mobile', 'Expiry Date', 'Status'];
+    const headers = ['Name', 'Organization', 'Email', 'Role', 'Mobile', 'Expiry Date', 'Status'];
     const rows = adminsToExport.map(admin => [
       admin.name || '',
       admin.company_name || companyName,
       admin.email || '',
+      admin.role ? admin.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Admin',
       admin.phone_number || '',
       formatExpiryDate(admin.created_at),
       admin.status === 'active' ? 'Active' : 'Inactive'
@@ -517,6 +518,7 @@ export default function ManageAdminPage() {
                     <th className="py-4 px-4">NAME</th>
                     <th className="py-4 px-6">ORGANIZATION</th>
                     <th className="py-4 px-6">EMAIL</th>
+                    <th className="py-4 px-6">ROLE</th>
                     <th className="py-4 px-6">MOBILE</th>
                     <th className="py-4 px-6">EXPIRY DATE</th>
                     <th className="py-4 px-6">
@@ -561,6 +563,11 @@ export default function ManageAdminPage() {
                         {/* Email */}
                         <td className="py-4.5 px-6 text-[13px] text-slate-500 font-medium">
                           {admin.email}
+                        </td>
+
+                        {/* Role */}
+                        <td className="py-4.5 px-6 text-[13px] text-slate-500 font-medium capitalize">
+                          {admin.role ? admin.role.replace('_', ' ') : 'Admin'}
                         </td>
 
                         {/* Mobile */}
