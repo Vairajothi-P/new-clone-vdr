@@ -18,7 +18,10 @@ export function buildHierarchicalIndexList(files = [], deletedIds = new Set()) {
 
     // 2. Sort function matching VDR index order
     const sortSiblings = (a, b) => {
-        if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+        const isAFolder = a.type === 'folder';
+        const isBFolder = b.type === 'folder';
+        if (isAFolder && !isBFolder) return -1;
+        if (!isAFolder && isBFolder) return 1;
         const partsA = (a.index || '999999').toString().split('.').map(n => parseInt(n, 10) || 0);
         const partsB = (b.index || '999999').toString().split('.').map(n => parseInt(n, 10) || 0);
         const len = Math.max(partsA.length, partsB.length);

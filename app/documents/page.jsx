@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { FaEye, FaEdit, FaUpload, FaShieldAlt, FaDownload, FaTrash } from 'react-icons/fa';
+import { FaEye, FaEdit, FaUpload, FaShieldAlt, FaDownload, FaTrash, FaGripVertical } from 'react-icons/fa';
 import BulkUploadModal from '@/components/documents/BulkUploadModal';
 import { exportIndexToExcel, exportIndexToPDF } from '@/utils/exportIndexService';
 
@@ -58,6 +58,7 @@ function UnifiedWorkspace() {
     const [movingToFolderId, setMovingToFolderId] = useState(null);
     const [uploadQueue, setUploadQueue] = useState([]);
     const [initialUploadFiles, setInitialUploadFiles] = useState([]);
+    const [dragMode, setDragMode] = useState(null);
 
     const fileInputRef = useRef(null);
 
@@ -153,7 +154,10 @@ function UnifiedWorkspace() {
     }, [files]);
 
     const sortItemsByIndex = (a, b) => {
-        if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+        const isAFolder = a.type === 'folder';
+        const isBFolder = b.type === 'folder';
+        if (isAFolder && !isBFolder) return -1;
+        if (!isAFolder && isBFolder) return 1;
         const compareIndexes = (idxA, idxB) => {
             const partsA = (idxA || '999999').toString().split('.').map(n => parseInt(n, 10) || 0);
             const partsB = (idxB || '999999').toString().split('.').map(n => parseInt(n, 10) || 0);
@@ -498,8 +502,9 @@ function UnifiedWorkspace() {
         }
     };
 
-    const handleDragStart = (e, item) => {
+    const handleDragStart = (e, item, mode = 'move') => {
         if (currentView !== 'files') return;
+        setDragMode(mode);
         e.dataTransfer.setData('text/plain', item.id);
         e.dataTransfer.effectAllowed = 'move';
     };
@@ -543,8 +548,8 @@ function UnifiedWorkspace() {
         const sourceItem = files.find(f => f.id === sourceId);
         if (!sourceItem) return;
 
-        // If dropping ON a folder — move inside it
-        if (targetItem.type === 'folder') {
+        // If dropping ON a folder AND drag mode is not 'reorder' — move inside it
+        if (targetItem.type === 'folder' && dragMode !== 'reorder') {
             handleDropToFolder(e, targetItem.id);
             return;
         }
@@ -911,6 +916,14 @@ function UnifiedWorkspace() {
                                             {/* 🔥 THE NAME COLUMN - Fully Restored */}
                                             <td className="py-4 px-3" onClick={isFolder ? (e) => { e.stopPropagation(); setCurrentFolderId(item.id); } : undefined}>
                                                 <div className="flex items-center gap-3">
+                                                    <div 
+                                                        draggable
+                                                        onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, item, 'reorder'); }}
+                                                        className="cursor-grab active:cursor-grabbing hover:bg-slate-200 p-1 rounded text-slate-400 hover:text-slate-600 transition-colors mr-1 flex items-center justify-center"
+                                                        title="Drag here to reorder"
+                                                    >
+                                                        <FaGripVertical size={14} />
+                                                    </div>
                                                     {isFolder ? (
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fcd34d"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
                                                     ) : (
