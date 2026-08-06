@@ -13,6 +13,7 @@ export default function MainSidebar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [hasSettingsAccess, setHasSettingsAccess] = useState(false);
+  const [hasQaAccess, setHasQaAccess] = useState(false);
   const [session, setSession] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const isGroupsActive = pathname?.startsWith('/groups');
@@ -25,14 +26,15 @@ export default function MainSidebar() {
     setIsAdmin(sessionObj.role === 'admin');
     setIsSuperAdmin(sessionObj.role === 'super_admin');
 
-    const checkSettingsPermission = async () => {
-      // 1. ONLY Super Admin gets the automatic free pass
+    const checkModulePermissions = async () => {
+      // 1. Super Admin gets automatic access to all modules
       if (sessionObj.role === 'super_admin') {
         setHasSettingsAccess(true);
+        setHasQaAccess(true);
         return;
       }
 
-      // 2. Everyone else (including normal Admins) MUST check the DB
+      // 2. Everyone else checks group permissions in DB
       const { data: ugRows } = await supabase
         .from('user_groups')
         .select('group_id')
@@ -41,19 +43,22 @@ export default function MainSidebar() {
       const groupIds = ugRows?.map(r => r.group_id) || [];
       if (!groupIds.length) return;
 
-      // 3. ONLY check the main 'can_access_settings' column for the gear icon
+      // 3. Check workspace scope permissions
       const { data: perms } = await supabase
         .from('permissions')
-        .select('can_access_settings')
+        .select('can_access_settings, can_access_qa')
         .eq('scope', 'workspace')
         .in('group_id', groupIds);
 
-      // 4. If they have the main settings module ON, show the icon
-      const canAccess = perms?.some(p => p.can_access_settings);
-      setHasSettingsAccess(!!canAccess);
+      // 4. Set module access flags
+      const canAccessSettings = perms?.some(p => p.can_access_settings);
+      const canAccessQa = perms?.some(p => p.can_access_qa);
+
+      setHasSettingsAccess(!!canAccessSettings);
+      setHasQaAccess(!!canAccessQa);
     };
 
-    checkSettingsPermission();
+    checkModulePermissions();
   }, []);
 
   return (
@@ -73,6 +78,7 @@ export default function MainSidebar() {
         {NAV_ITEMS.map((item) => {
           if (item.key === 'settings' && !hasSettingsAccess) return null;
           if (item.key === 'analytics' && !isAdmin && !isSuperAdmin) return null;
+          if (item.key === 'qa' && !hasQaAccess) return null;
           const isActive = pathname?.startsWith(item.href);
 
           return (
