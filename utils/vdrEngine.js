@@ -431,6 +431,18 @@ export const generateSecureHtmlWrapper = (docId, fileName, fileType, encryptedPa
                 container.style.display = 'none';
                 sheetContainer.style.display = 'none';
 
+                // --- MAGIC BYTE DETECTION ---
+                // If a PPT/PPTX was converted to PDF on the server, the encrypted bytes will start with %PDF
+                if (bytes.length > 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) {
+                    container.style.display = 'flex';
+                    renderPDF(bytes, container);
+                    
+                    // Hide Edit button for converted PPTs (cannot edit PDF in browser)
+                    const editBtn = document.getElementById('edit-btn');
+                    if (editBtn) editBtn.style.display = 'none';
+                    return;
+                }
+
                 if (['xlsx', 'xls', 'csv'].includes(SECURE_DATA.fileExt)) {
                     sheetContainer.style.display = 'block';
                     if (window.luckysheet) { try { window.luckysheet.destroy(); } catch(e){} }

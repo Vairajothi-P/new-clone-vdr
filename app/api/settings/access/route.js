@@ -20,14 +20,14 @@ export async function POST(req) {
         if (groupIds.length > 0) {
             const { data: dbPerms } = await supabase
                 .from('permissions')
-                .select('can_access_settings, can_access_branding, can_access_watermarks')
+                .select('can_access_settings, can_access_branding, can_access_watermarks, can_access_nda')
                 .eq('scope', 'workspace')
                 .in('group_id', groupIds);
 
             perms.settings = dbPerms?.some(p => p.can_access_settings) || false;
             perms.branding = dbPerms?.some(p => p.can_access_branding) || false;
             perms.watermark = dbPerms?.some(p => p.can_access_watermarks) || false;
-            perms.nda = perms.settings; // Per your layout logic, NDA inherits from basic settings
+            perms.nda = dbPerms?.some(p => p.can_access_nda) || false;
         }
 
         return NextResponse.json({ success: true, perms });

@@ -9,7 +9,8 @@ const PERMISSION_SECTIONS = [
         label: "Workspace", scope: "workspace", description: "Control access to navigation modules and group management",
         subPerms: [
             { key: "can_access_groups", label: "Groups", desc: "Can access the Groups module and manage group settings", nested: [{ key: "can_add_members", label: "Add Members", desc: "Can invite & add users to groups" }, { key: "can_remove_members", label: "Remove Members", desc: "Can remove users from groups" }, { key: "can_create_group", label: "Create Group", desc: "Can create new groups" }, { key: "can_delete_group", label: "Delete Group", desc: "Can delete existing groups" }] },
-            { key: "can_access_settings", label: "Settings", desc: "Can access the Settings module and workspace configurations", nested: [{ key: "can_access_branding", label: "Branding", desc: "Can customize workspace branding" }, { key: "can_access_watermarks", label: "Watermarks", desc: "Can configure document watermarks" }] },
+            { key: "can_access_settings", label: "Settings", desc: "Can access the Settings module and workspace configurations", nested: [{ key: "can_access_branding", label: "Branding", desc: "Can customize workspace branding" }, { key: "can_access_watermarks", label: "Watermarks", desc: "Can configure document watermarks" }, { key: "can_access_nda", label: "NDA Access", desc: "Can view and configure NDA settings and signers" }] },
+            { key: "can_access_qa", label: "Q&A Module", desc: "Can access the Q&A due diligence inquiry module", nested: [{ key: "can_ask_qa", label: "Ask Questions", desc: "Can raise new document-linked questions" }, { key: "can_answer_qa", label: "Answer & Suggest", desc: "Can submit suggested answers and collaborate" }] },
         ],
     },
 ];
@@ -76,6 +77,10 @@ export default function PermissionsPage() {
                         can_access_settings: row?.can_access_settings ?? false,
                         can_access_branding: row?.can_access_branding ?? false,
                         can_access_watermarks: row?.can_access_watermarks ?? false,
+                        can_access_nda: row?.can_access_nda ?? false,
+                        can_access_qa: row?.can_access_qa ?? false,
+                        can_ask_qa: row?.can_ask_qa ?? false,
+                        can_answer_qa: row?.can_answer_qa ?? false,
                         existingId: row?.id ?? null,
                     };
                 });
@@ -130,7 +135,8 @@ export default function PermissionsPage() {
                     can_create_group: s.can_create_group || false, can_delete_group: s.can_delete_group || false,
                     can_access_documents: s.can_access_documents || false, can_access_groups: s.can_access_groups || false,
                     can_access_edit_permissions: s.can_access_edit_permissions || false, can_access_settings: s.can_access_settings || false,
-                    can_access_branding: s.can_access_branding || false, can_access_watermarks: s.can_access_watermarks || false,
+                    can_access_branding: s.can_access_branding || false, can_access_watermarks: s.can_access_watermarks || false, can_access_nda: s.can_access_nda || false,
+                    can_access_qa: s.can_access_qa || false, can_ask_qa: s.can_ask_qa || false, can_answer_qa: s.can_answer_qa || false,
                     folder_id: null, document_id: null, can_create_folder: s.can_create_folder || false, can_merge_folder: s.can_merge_folder || false, can_delete_folder: s.can_delete_folder || false,
                 };
                 if (s.existingId) { payload.id = s.existingId; payload.updated_at = new Date().toISOString(); }
