@@ -150,21 +150,23 @@ function QAPageContent() {
     }
   };
 
-  // 2. Fetch Directory Tree
+  // 2. Fetch Directory Tree (Filtered by Permissions)
   const fetchSidebarData = async () => {
     try {
       const sessionStr = localStorage.getItem('vdr_session');
       if (!sessionStr) return;
       const curSession = JSON.parse(sessionStr);
       const targetWorkspaceId = curSession.active_workspace_id || curSession.workspace_id;
+      const isGodMode = curSession.role === 'super_admin';
+      const userId = curSession.id;
 
       let foldersQuery = supabase.from('folders')
-        .select('id, name, parent_folder_id, created_by, workspace_id')
+        .select('id, name, parent_folder_id, created_by, creator_revoked, workspace_id')
         .eq('company_id', curSession.company_id)
         .eq('is_deleted', false);
 
       let docsQuery = supabase.from('documents')
-        .select('id, name, folder_id, uploaded_by, is_deleted, workspace_id')
+        .select('id, name, folder_id, uploaded_by, creator_revoked, is_deleted, workspace_id')
         .eq('company_id', curSession.company_id)
         .eq('is_deleted', false);
 
@@ -173,17 +175,114 @@ function QAPageContent() {
         docsQuery = docsQuery.or(`workspace_id.eq.${targetWorkspaceId},workspace_id.is.null`);
       }
 
-      const [foldersRes, docsRes] = await Promise.all([
+      let groupIds = [];
+      if (!isGodMode) {
+        const { data: ugRows } = await supabase
+          .from('user_groups')
+          .select('group_id')
+          .eq('user_id', userId);
+        groupIds = (ugRows || []).map(r => r.group_id);
+      }
+
+      let permsQuery = null;
+      if (!isGodMode && groupIds.length > 0) {
+        permsQuery = supabase
+          .from('permissions')
+          .select('scope, folder_id, document_id, can_view')
+          .eq('company_id', curSession.company_id)
+          .in('group_id', groupIds);
+      }
+
+      const [foldersRes, docsRes, permsRes] = await Promise.all([
         foldersQuery,
-        docsQuery
+        docsQuery,
+        permsQuery ? permsQuery : Promise.resolve({ data: [] })
       ]);
 
+      const allFolders = foldersRes.data || [];
+      const allDocs = docsRes.data || [];
+      const perms = permsRes?.data || [];
+
+      let allowedFolderIds = new Set();
+      let allowedDocIds = new Set();
+
+      if (isGodMode) {
+        allFolders.forEach(f => allowedFolderIds.add(f.id));
+        allDocs.forEach(d => allowedDocIds.add(d.id));
+      } else {
+        const folPermSet = new Set();
+        const docPermSet = new Set();
+
+        perms.forEach(p => {
+          if (p.can_view) {
+            if (p.scope === 'folder' && p.folder_id) folPermSet.add(p.folder_id);
+            if (p.scope === 'document' && p.document_id) docPermSet.add(p.document_id);
+          }
+        });
+
+        const foldersMap = new Map();
+        allFolders.forEach(f => foldersMap.set(f.id, f));
+
+        const isFolderDirectlyOrInheritedAllowed = (folderId) => {
+          const visited = new Set();
+          let curId = folderId;
+          while (curId && !visited.has(curId)) {
+            visited.add(curId);
+            const f = foldersMap.get(curId);
+            if (!f) break;
+            if (f.created_by === userId && !f.creator_revoked) return true;
+            if (folPermSet.has(curId)) return true;
+            curId = f.parent_folder_id;
+          }
+          return false;
+        };
+
+        // Determine accessible folders
+        allFolders.forEach(f => {
+          if (isFolderDirectlyOrInheritedAllowed(f.id)) {
+            allowedFolderIds.add(f.id);
+          }
+        });
+
+        // Determine accessible documents
+        allDocs.forEach(d => {
+          if (
+            (d.uploaded_by === userId && !d.creator_revoked) ||
+            docPermSet.has(d.id) ||
+            (d.folder_id && isFolderDirectlyOrInheritedAllowed(d.folder_id))
+          ) {
+            allowedDocIds.add(d.id);
+            // Ensure parent folders are included so the doc is reachable in the directory tree
+            let pId = d.folder_id;
+            const visited = new Set();
+            while (pId && !visited.has(pId)) {
+              visited.add(pId);
+              allowedFolderIds.add(pId);
+              const parent = foldersMap.get(pId);
+              pId = parent?.parent_folder_id;
+            }
+          }
+        });
+
+        // Ensure ancestor folders of any allowedFolder are included so the tree structure is valid
+        allowedFolderIds.forEach(fId => {
+          let pId = foldersMap.get(fId)?.parent_folder_id;
+          const visited = new Set();
+          while (pId && !visited.has(pId)) {
+            visited.add(pId);
+            allowedFolderIds.add(pId);
+            const parent = foldersMap.get(pId);
+            pId = parent?.parent_folder_id;
+          }
+        });
+      }
+
       const items = [];
-      (foldersRes.data || []).forEach(f => {
+      allFolders.filter(f => allowedFolderIds.has(f.id)).forEach(f => {
         items.push({ id: f.id, name: f.name, type: 'folder', parentId: f.parent_folder_id, ownerId: f.created_by });
       });
 
-      (docsRes.data || []).forEach(d => {
+      allDocs.filter(d => allowedDocIds.has(d.id)).forEach(d => {
         items.push({ id: d.id, name: d.name, type: 'file', parentId: d.folder_id, ownerId: d.uploaded_by });
       });
 

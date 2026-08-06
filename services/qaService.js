@@ -74,8 +74,8 @@ export async function fetchQnAThreads(session, { activeDocId, activeFolderId } =
       official_answered_at,
       created_at,
       updated_at,
-      documents:file_id (id, name, uploaded_by),
-      folders:folder_id (id, name, created_by),
+      documents:file_id (id, name, uploaded_by, folder_id, creator_revoked),
+      folders:folder_id (id, name, created_by, parent_folder_id, creator_revoked),
       creator:created_by (id, name, email, role),
       doc_owner:document_owner_id (id, name, email, role),
       group:creator_group_id (id, name),
@@ -112,15 +112,88 @@ export async function fetchQnAThreads(session, { activeDocId, activeFolderId } =
   const { data: threads, error } = await query;
   if (error) throw error;
 
-  // 3. Apply Strict Visibility Isolation (Document-Centric Confidentiality)
-  // Super Admin can view all Q&A threads in the workspace.
-  // Other users / group admins can ONLY view if:
-  // - They created the question (Question Creator)
-  // - They belong to the creator's group (Group Member)
-  // - They uploaded the document (Document Owner)
-  const visibleThreads = (threads || []).filter(thread => {
-    if (isSuperAdmin) return true;
+  // 3. Fetch permissions & folder hierarchy for document/folder access control
+  let folPermSet = new Set();
+  let docPermSet = new Set();
+  let foldersMap = new Map();
 
+  if (!isSuperAdmin) {
+    // Fetch all workspace folders to evaluate hierarchy inheritance
+    let foldersQuery = supabase
+      .from("folders")
+      .select("id, parent_folder_id, created_by, creator_revoked")
+      .eq("company_id", session.company_id)
+      .eq("is_deleted", false);
+    if (targetWorkspaceId) {
+      foldersQuery = foldersQuery.or(`workspace_id.eq.${targetWorkspaceId},workspace_id.is.null`);
+    }
+    const { data: allFolders } = await foldersQuery;
+    (allFolders || []).forEach(f => foldersMap.set(f.id, f));
+
+    if (userGroupIds.length > 0) {
+      const { data: perms } = await supabase
+        .from("permissions")
+        .select("scope, folder_id, document_id, can_view")
+        .eq("company_id", session.company_id)
+        .in("group_id", userGroupIds);
+
+      (perms || []).forEach(p => {
+        if (p.can_view) {
+          if (p.scope === "folder" && p.folder_id) folPermSet.add(p.folder_id);
+          if (p.scope === "document" && p.document_id) docPermSet.add(p.document_id);
+        }
+      });
+    }
+  }
+
+  const isFolderAccessible = (folderId) => {
+    if (isSuperAdmin) return true;
+    if (!folderId) return false;
+    const visited = new Set();
+    let curId = folderId;
+    while (curId && !visited.has(curId)) {
+      visited.add(curId);
+      const f = foldersMap.get(curId);
+      if (!f) break;
+      if (f.created_by === userId && !f.creator_revoked) return true;
+      if (folPermSet.has(curId)) return true;
+      curId = f.parent_folder_id;
+    }
+    return false;
+  };
+
+  const isDocAccessible = (doc, fileId) => {
+    if (isSuperAdmin) return true;
+    if (!doc && !fileId) return false;
+    if (doc) {
+      if (doc.uploaded_by === userId && !doc.creator_revoked) return true;
+      if (docPermSet.has(doc.id)) return true;
+      if (doc.folder_id && isFolderAccessible(doc.folder_id)) return true;
+    } else if (fileId) {
+      if (docPermSet.has(fileId)) return true;
+    }
+    return false;
+  };
+
+  // 4. Apply Access Control & Strict Visibility Isolation:
+  // ONLY show threads for files/folders the user has permission to view.
+  const visibleThreads = (threads || []).filter(thread => {
+    let hasItemAccess = false;
+    if (isSuperAdmin) {
+      hasItemAccess = true;
+    } else if (thread.file_id) {
+      hasItemAccess = isDocAccessible(thread.documents, thread.file_id);
+    } else if (thread.folder_id) {
+      hasItemAccess = isFolderAccessible(thread.folder_id);
+    } else {
+      // General workspace-level questions
+      hasItemAccess = true;
+    }
+
+    if (!hasItemAccess) return false;
+
+    // Visibility Isolation within accessible items
+    if (isSuperAdmin) return true;
     const isCreator = thread.created_by === userId;
     const isDocOwner = thread.document_owner_id === userId;
     const isGroupMember = thread.creator_group_id && userGroupIds.includes(thread.creator_group_id);
