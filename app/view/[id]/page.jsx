@@ -465,11 +465,19 @@ export default function SecureViewer({ params }) {
         });
 
         element.appendChild(overlay);
-    };    const renderDocument = async (ext, bytes, utf8Text) => {
+    };
+
+    const renderDocument = async (ext, bytes, utf8Text) => {
         const container = containerRef.current;
         if (!container) return;
         container.innerHTML = '';
         try {
+            // --- MAGIC BYTE DETECTION ---
+            // If a PPT/PPTX was converted to PDF on the server, the encrypted bytes will start with %PDF
+            if (bytes.length > 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) {
+                ext = 'pdf';
+            }
+
             if (['xlsx', 'xls', 'csv'].includes(ext)) {
                 if (!window.luckysheet) {
                     await loadScript('https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/js/plugin.js');
