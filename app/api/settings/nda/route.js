@@ -10,12 +10,36 @@ export async function POST(req) {
 
         const compId = session.company_id;
 
+        const activeWorkspaceId = session.active_workspace_id;
+
         // 1. Fetch Real Users
         if (action === 'fetch_users') {
-            const { data, error } = await supabase
+            let workspaceUserIds = null;
+            if (activeWorkspaceId) {
+                const { data: memberData, error: memberError } = await supabase
+                    .from('workspace_members')
+                    .select('user_id')
+                    .eq('workspace_id', activeWorkspaceId);
+                
+                if (memberError) throw memberError;
+                workspaceUserIds = memberData.map(m => m.user_id);
+                
+                if (workspaceUserIds.length === 0) {
+                    return NextResponse.json({ success: true, users: [] });
+                }
+            }
+
+            let query = supabase
                 .from('users')
                 .select('*')
-                .eq('company_id', compId);
+                .eq('company_id', compId)
+                .neq('role', 'super_admin');
+
+            if (workspaceUserIds) {
+                query = query.in('id', workspaceUserIds);
+            }
+
+            const { data, error } = await query;
             if (error) throw error;
             return NextResponse.json({ success: true, users: data || [] });
         }
