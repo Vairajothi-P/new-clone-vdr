@@ -19,6 +19,10 @@ export async function POST(req) {
         const { data: doc, error: docErr } = await supabase.from(tableName).select('*').eq('id', docId).single();
         if (docErr || !doc) throw new Error("Document not found");
 
+        if (!isHistoricalVersion && !doc.is_downloaded) {
+            await supabase.from('documents').update({ is_downloaded: true }).eq('id', docId);
+        }
+
         // Fetch User and Watermark Settings
         const { data: user } = await supabase.from('users').select('company_id, email').eq('id', session.id).single();
         let watermarkSettings = null;
