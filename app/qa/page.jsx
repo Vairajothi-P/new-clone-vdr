@@ -729,13 +729,13 @@ function QAPageContent() {
                 <thead className="bg-slate-50/90 border-b border-slate-200/80">
                   <tr>
                     <th className="w-12 px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">S.No</th>
-                    <th className="w-[240px] px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Subject & Document</th>
+                    <th className="w-[240px] px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Sub & Doc</th>
                     <th className="w-[140px] px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Asked By</th>
                     <th className="w-[140px] px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Doc Owner</th>
                     <th className="w-[120px] px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                    <th className="w-[170px] px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Official Response</th>
+                    <th className="w-[170px] px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Response</th>
                     <th className="w-[100px] px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                    <th className="w-[130px] px-5 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                    <th className="w-[130px] px-5 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -748,7 +748,7 @@ function QAPageContent() {
 
                       <td className="w-[240px] px-4 py-4">
                         <div className="flex flex-col gap-1 max-w-[240px]">
-                          <span className="text-sm font-semibold text-slate-800 group-hover:text-[var(--brand)] transition-colors truncate" title={item.subject}>
+                          <span className="text-xs font-semibold text-slate-800 group-hover:text-[var(--brand)] transition-colors truncate" title={item.subject}>
                             {item.subject}
                           </span>
                           <div className="flex items-center gap-1.5 text-[11px] text-slate-500 truncate" title={item.fileName}>
