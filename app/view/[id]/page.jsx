@@ -408,9 +408,10 @@ export default function SecureViewer({ params }) {
             if (settings?.attributes?.date) lines.push(new Date().toLocaleString());
         }
 
+        const logoHeight = Math.max(10, Math.round(40 * scale));
         let html = `<div style="transform: rotate(${rotation}deg); color: ${hexToRGBA(textColor, textOpacity)}; font-weight: bold; transform-origin: center; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.2s;">`;
         if (logoPath) {
-            html += `<img src="${getLogoUrl(logoPath)}" alt="logo" style="height: 40px; object-fit: contain; margin-bottom: 6px; opacity: ${logoOpacity};" />`;
+            html += `<img src="${getLogoUrl(logoPath)}" alt="logo" style="height: ${logoHeight}px; object-fit: contain; margin-bottom: ${Math.round(6 * scale)}px; opacity: ${logoOpacity};" />`;
         }
         html += `<div style="font-size: ${fontSize}px; white-space: nowrap; display: flex; flex-direction: column; align-items: center;">`;
         lines.forEach(line => {
@@ -434,7 +435,10 @@ export default function SecureViewer({ params }) {
         overlay.style.display = 'grid';
         overlay.style.gridTemplateColumns = 'repeat(3, 1fr)';
         overlay.style.gridTemplateRows = 'repeat(3, 1fr)';
-        overlay.style.padding = '32px';
+        
+        const padX = Math.min(32, element.offsetWidth * 0.1);
+        const padY = Math.min(32, element.offsetHeight * 0.1);
+        overlay.style.padding = `${padY}px ${padX}px`;
 
         const settings = watermarkSettingsRef.current || {};
         const positions = settings.positions || { 'middle-center': true };
@@ -478,7 +482,47 @@ export default function SecureViewer({ params }) {
                 ext = 'pdf';
             }
 
-            if (['xlsx', 'xls', 'csv'].includes(ext)) {
+            if (ext === 'csv') {
+                const rows = utf8Text.split(/\r?\n/).filter(r => r.length > 0);
+                let tableHtml = '<table class="min-w-max w-auto text-left border-collapse bg-white shadow-sm font-sans">';
+                rows.forEach((row, rowIndex) => {
+                    tableHtml += '<tr>';
+                    // simple split by comma, ignoring quotes for basic CSVs
+                    row.split(',').forEach(val => {
+                        const cleanVal = val.replace(/^"|"$/g, '').trim();
+                        if (rowIndex === 0) {
+                            tableHtml += `<th class="px-4 py-2 border border-gray-200 bg-gray-50 text-gray-700 font-bold text-sm whitespace-nowrap">${cleanVal}</th>`;
+                        } else {
+                            tableHtml += `<td class="px-4 py-2 border border-gray-200 text-gray-600 text-sm whitespace-nowrap">${cleanVal}</td>`;
+                        }
+                    });
+                    tableHtml += '</tr>';
+                });
+                tableHtml += '</table>';
+
+                const wrapperHtml = `
+                    <div style="padding: 16px; overflow: auto; width: 100%; height: 100%; display: flex; justify-content: flex-start; align-items: flex-start; background: #f8fafc;">
+                        <div id="csv-content-wrapper" style="position: relative; display: inline-block; background: white;">
+                            ${tableHtml}
+                        </div>
+                    </div>
+                `;
+                container.innerHTML = wrapperHtml;
+
+                setTimeout(() => {
+                    const wrapper = container.querySelector('#csv-content-wrapper');
+                    if (wrapper) {
+                        const w = wrapper.offsetWidth;
+                        const h = wrapper.offsetHeight;
+                        let csvScale = 1.0;
+                        if (w < 400) csvScale = Math.min(csvScale, w / 400);
+                        if (h < 300) csvScale = Math.min(csvScale, h / 300);
+                        if (csvScale < 0.55) csvScale = 0.55; // Keep it readable and slightly larger
+
+                        appendWatermarkToElement(wrapper, userInfoRef.current, clientIpRef.current, csvScale);
+                    }
+                }, 100);
+            } else if (['xlsx', 'xls'].includes(ext)) {
                 if (!window.luckysheet) {
                     await loadScript('https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/js/plugin.js');
                     await loadScript('https://cdn.jsdelivr.net/npm/luckysheet/dist/luckysheet.umd.js');
@@ -490,15 +534,9 @@ export default function SecureViewer({ params }) {
                     showtoolbar: false, showsheetbar: true, showstatisticBar: true,
                     allowEdit: false, enableAddRow: false, enableAddCol: false, sheetFormulaBar: false,
                 };
-                if (ext === 'csv') {
-                    const rows = utf8Text.split(/\r?\n/).filter(r => r.length > 0);
-                    const data = rows.map(row => row.split(',').map(val => ({ v: val, m: val })));
-                    window.luckysheet.create({ ...opts, data: [{ name: 'CSV Data', status: 1, data }] });
-                } else {
-                    window.LuckyExcel.transformExcelToLucky(new File([bytes], 'file.xlsx'), (json) => {
-                        window.luckysheet.create({ ...opts, data: json.sheets, title: docName });
-                    });
-                }
+                window.LuckyExcel.transformExcelToLucky(new File([bytes], 'file.xlsx'), (json) => {
+                    window.luckysheet.create({ ...opts, data: json.sheets, title: docName });
+                });
                 setTimeout(() => {
                     const luckysheetBox = container.querySelector('#luckysheet-container');
                     if (luckysheetBox) appendWatermarkToElement(luckysheetBox, userInfoRef.current, clientIpRef.current);
