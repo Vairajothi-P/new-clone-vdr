@@ -32,10 +32,10 @@ export async function POST(req) {
                 break;
 
             case 'rename':
-                const { itemId, type, newName, currentVersion } = payload;
+                const { itemId, type, newName } = payload;
                 const table = type === 'folder' ? 'folders' : 'documents';
                 const { error: renErr } = await supabase.from(table)
-                    .update({ name: newName, version: currentVersion + 1 })
+                    .update({ name: newName })
                     .eq('id', itemId).eq('company_id', companyId);
                 if (renErr) throw renErr;
                 break;

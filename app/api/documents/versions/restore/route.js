@@ -58,7 +58,7 @@ export async function POST(req) {
         if (archiveErr) throw new Error("Failed to archive current version: " + archiveErr.message);
 
         // 4. Promote the historical version to be the current document
-        const nextVersionNumber = (currentDoc.version || 1) + 1;
+        const nextVersionNumber = historicalVersion.version_number;
         const { error: promoteErr } = await supabase.from('documents').update({
             name: historicalVersion.name,
             file_path: historicalVersion.file_path,
