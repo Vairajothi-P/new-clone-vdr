@@ -70,7 +70,7 @@ export default function ManageUsersPage() {
 
       if (usersError) throw usersError;
 
-      // 2. Fetch all groups in the company
+      // 2. Fetch all groups in the active workspace
       const { data: groupsData, error: groupsError } = await supabase
         .from('groups')
         .select('*')
@@ -92,7 +92,7 @@ export default function ManageUsersPage() {
         memberships = memData || [];
       }
 
-      // Map users with their groups and filter to only include external_user
+      // Map users with their groups and filter to only include external_user in the current workspace
       const mappedUsers = (usersData || [])
         .filter(u => u.role === 'external_user')
         .map(user => {
@@ -109,7 +109,8 @@ export default function ManageUsersPage() {
             company_name: companyData.name,
             groups: userGroups
           };
-        });
+        })
+        .filter(user => user.workspace_id === activeWorkspaceId || user.groups.length > 0);
 
       setUsers(mappedUsers);
     } catch (error) {
@@ -407,80 +408,50 @@ export default function ManageUsersPage() {
           Manage Users
         </h1>
 
-        {/* Search Input */}
-        <div className="relative w-72">
-          <input
-            type="text"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-5 py-2.5 bg-white border border-slate-200 rounded-full text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand)]/10 transition-all duration-300 shadow-inner-sm"
-          />
-          <svg
-            className="absolute left-4 top-3 text-slate-400"
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
+        {/* Right side container: Export + Search */}
+        <div className="flex items-center gap-3">
+          {selectedUserIds.length > 0 && (
+            <span className="text-xs text-slate-400 font-semibold">
+              {selectedUserIds.length} selected
+            </span>
+          )}
+
+          {/* Export */}
+          <button
+            onClick={handleExportCSV}
+            className="px-5 py-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-bold text-xs tracking-wide transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
           >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+            Export
+          </button>
+
+          {/* Search Input */}
+          <div className="relative w-72">
+            <input
+              type="text"
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-5 py-2.5 bg-white border border-slate-200 rounded-full text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand)]/10 transition-all duration-300 shadow-inner-sm"
+            />
+            <svg
+              className="absolute left-4 top-3 text-slate-400"
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </div>
         </div>
       </div>
 
-      {/* Action Buttons Row */}
-      <div className="flex items-center gap-3 mb-6 bg-white/50 backdrop-blur-sm p-3.5 rounded-2xl border border-slate-100 shadow-inner-sm">
-        {/* Invite/Add User */}
-        <button
-          onClick={() => {
-            setFormData({
-              name: '',
-              email: '',
-              mobile: '',
-              org: companyName,
-              role: 'external_user',
-              selectedGroups: []
-            });
-            setIsAddModalOpen(true);
-          }}
-          className="px-5 py-2 rounded-full bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] hover:shadow-md hover:shadow-[var(--brand)]/10 text-white font-bold text-xs tracking-wide transition-all active:scale-95 flex items-center gap-1.5"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-          Invite
-        </button>
 
-        {/* Export */}
-        <button
-          onClick={handleExportCSV}
-          className="px-5 py-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-bold text-xs tracking-wide transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-          Export
-        </button>
-
-        {/* Resend Invite */}
-        <button
-          onClick={handleResendInvite}
-          disabled={selectedUserIds.length === 0}
-          className={`px-5 py-2 rounded-full border text-xs font-bold tracking-wide transition-all active:scale-95 flex items-center gap-1.5 shadow-sm ${selectedUserIds.length > 0
-            ? 'border-teal-200 bg-teal-50/50 text-teal-700 hover:bg-teal-50 hover:border-teal-300'
-            : 'border-slate-100 bg-slate-50/40 text-slate-400 cursor-not-allowed opacity-60'
-            }`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
-          Resend Invite
-        </button>
-
-        {selectedUserIds.length > 0 && (
-          <span className="text-xs text-slate-400 font-semibold ml-2">
-            {selectedUserIds.length} selected
-          </span>
-        )}
-      </div>
 
       {/* Main Administrative Table */}
       {loading ? (

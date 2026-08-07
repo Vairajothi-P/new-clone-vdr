@@ -45,7 +45,7 @@ export default function ManageGroupsPage() {
       setCurrentCompanyId(companyId);
 
       // 1. Fetch all groups for the company
-      const { data: groupsData, error: groupsError } = await supabase
+      let { data: groupsData, error: groupsError } = await supabase
         .from('groups')
         .select('*')
         .eq('company_id', companyId)
@@ -53,6 +53,19 @@ export default function ManageGroupsPage() {
         .order('created_at', { ascending: false });
 
       if (groupsError) throw groupsError;
+
+      // If user is external_user, filter to only groups they belong to
+      if (session.role === 'external_user') {
+        const { data: myGroups, error: myGroupsError } = await supabase
+          .from('user_groups')
+          .select('group_id')
+          .eq('user_id', session.id);
+        
+        if (!myGroupsError && myGroups) {
+          const myGroupIds = myGroups.map(g => g.group_id);
+          groupsData = groupsData.filter(g => myGroupIds.includes(g.id));
+        }
+      }
 
       // 2. Fetch all users to map the "Created By" names
       const { data: usersData, error: usersError } = await supabase
@@ -343,91 +356,52 @@ export default function ManageGroupsPage() {
         </div>
       )}
 
-      {/* Title & Search Row (matching new plan layout) */}
-      <div className="flex items-center justify-between gap-4 mb-6">
+      {/* Title & Search Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-          Manage Group
+          Manage Groups
         </h1>
 
-        {/* Pill Search bar on top right */}
-        <div className="relative w-72">
-          <input
-            type="text"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-5 py-2.5 bg-white border border-slate-200 rounded-full text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand)]/10 transition-all duration-300 shadow-inner-sm"
-          />
-          <svg
-            className="absolute left-4 top-3 text-slate-400"
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
+        <div className="flex items-center gap-3">
+          {selectedGroupIds.length > 0 && (
+            <span className="text-xs text-slate-400 font-semibold">
+              {selectedGroupIds.length} selected
+            </span>
+          )}
+
+          {/* Export Button */}
+          <button
+            onClick={handleExportCSV}
+            className="px-5 py-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-bold text-xs tracking-wide transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
           >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+            Export
+          </button>
+
+          {/* Pill Search bar on top right */}
+          <div className="relative w-72">
+            <input
+              type="text"
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-5 py-2.5 bg-white border border-slate-200 rounded-full text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand)]/10 transition-all duration-300 shadow-inner-sm"
+            />
+            <svg
+              className="absolute left-4 top-3 text-slate-400"
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </div>
         </div>
-      </div>
-
-      {/* Action Buttons Row (Add Group, Delete Group, Export, Edit) */}
-      <div className="flex items-center gap-3 mb-6 bg-white/50 backdrop-blur-sm p-3.5 rounded-2xl border border-slate-100 shadow-inner-sm">
-        {/* Add Group Button */}
-        <button
-          onClick={() => {
-            setFormData({ name: '', description: '', role: 'external_user' });
-            setIsCreateModalOpen(true);
-          }}
-          className="px-5 py-2 rounded-full bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] hover:shadow-md hover:shadow-[var(--brand)]/10 text-white font-bold text-xs tracking-wide transition-all active:scale-95 flex items-center gap-1.5"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-          Add Group
-        </button>
-
-        {/* Delete Group Button */}
-        <button
-          onClick={handleDeleteGroups}
-          disabled={selectedGroupIds.length === 0}
-          className={`px-5 py-2 rounded-full border text-xs font-bold tracking-wide transition-all active:scale-95 flex items-center gap-1.5 shadow-sm ${selectedGroupIds.length > 0
-              ? 'border-rose-200 bg-rose-50/50 text-rose-700 hover:bg-rose-50 hover:border-rose-300'
-              : 'border-slate-100 bg-slate-50/40 text-slate-400 cursor-not-allowed opacity-60'
-            }`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
-          Delete Group
-        </button>
-
-        {/* Export Button */}
-        <button
-          onClick={handleExportCSV}
-          className="px-5 py-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-bold text-xs tracking-wide transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-          Export
-        </button>
-
-        {/* Edit Button (active only when exactly one group is selected) */}
-        <button
-          onClick={handleEditSelected}
-          disabled={selectedGroupIds.length !== 1}
-          className={`px-5 py-2 rounded-full border text-xs font-bold tracking-wide transition-all active:scale-95 flex items-center gap-1.5 shadow-sm ${selectedGroupIds.length === 1
-              ? 'border-teal-200 bg-teal-50/50 text-teal-700 hover:bg-teal-50 hover:border-teal-300'
-              : 'border-slate-100 bg-slate-50/40 text-slate-400 cursor-not-allowed opacity-60'
-            }`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
-          Edit
-        </button>
-
-        {selectedGroupIds.length > 0 && (
-          <span className="text-xs text-slate-400 font-semibold ml-2">
-            {selectedGroupIds.length} selected
-          </span>
-        )}
       </div>
 
       {/* Main Groups Table */}
@@ -539,14 +513,6 @@ export default function ManageGroupsPage() {
 
           <div className="border-t border-slate-100 my-1"></div>
 
-          {/* Remove */}
-          <button
-            onClick={() => handleDeleteSingleGroup(contextMenu.group)}
-            className="w-full px-4 py-2.5 text-xs font-extrabold text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
-            Delete Group
-          </button>
         </div>
       )}
 

@@ -22,13 +22,11 @@ export default function TeamsLayout({ children }) {
       const session = JSON.parse(raw);
       setSessionUser(session);
 
-      // Verify that user is super_admin, admin, or sub_admin
-      const authorizedRoles = ['super_admin', 'admin', 'sub_admin'];
-      if (!authorizedRoles.includes(session.role)) {
-        // Kick non-admins out to documents page
-        router.push('/documents');
-        return;
-      }
+      // Removed role restriction so any role can open Teams
+      // if (!authorizedRoles.includes(session.role)) {
+      //   router.push('/documents');
+      //   return;
+      // }
 
       setLoading(false);
     };
