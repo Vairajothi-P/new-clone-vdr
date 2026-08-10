@@ -153,9 +153,15 @@ export default function WatermarkPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'apply_template', session, payload: { templateId: t.id } })
       });
-      await fetchAllData();
+      
+      // Update the local templates state to move the "Applied" badge
+      setTemplates(prev => prev.map(tmpl => ({
+        ...tmpl,
+        present: tmpl.id === t.id
+      })));
+      
       setShowTemplateModal(false);
-      alert(`Template "${t.name}" applied!`);
+      alert(`Template "${t.name}" applied! Please click "Save Changes" to update the database.`);
     } catch (err) { alert('Failed to apply template'); }
   }
 
