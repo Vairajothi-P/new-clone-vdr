@@ -33,24 +33,15 @@ function InviteRegisterContent({ token }) {
   useEffect(() => {
     const fetchInvite = async () => {
       try {
-        const { data: invite, error: inviteErr } = await supabase
-          .from("invitations")
-          .select("*, groups(company_id, workspace_id, role)")
-          .eq("token", token)
-          .single();
+        const res = await fetch(`/api/auth/register/invite?token=${encodeURIComponent(token)}`);
+        const resData = await res.json();
+        
+        if (!res.ok) throw new Error(resData.error || "Invitation not found or expired.");
 
-        if (inviteErr || !invite) throw new Error("Invitation not found or expired.");
-        if (invite.status !== "pending") throw new Error("This invitation has already been used.");
+        const { invite, company } = resData;
 
         setInviteData(invite);
         setEmail(invite.email);
-
-        const { data: company } = await supabase
-          .from("companies")
-          .select("id, name")
-          .eq("id", invite.groups.company_id)
-          .single();
-
         if (company) setCompanyData(company);
 
         // Check if user is already logged in
@@ -145,32 +136,24 @@ function InviteRegisterContent({ token }) {
     setSubmitting(true);
 
     try {
-      // 1. Sign up with Supabase Auth
-      const { data: authData, error: authErr } = await supabase.auth.signUp({
-        email: inviteData.email,
-        password: password,
-      });
-
-      if (authErr) throw authErr;
-
       const assignedNdaStatus = inviteData.requires_nda ? "pending" : "not_required";
-      let userId = authData?.user?.id || crypto.randomUUID();
+      let userId = crypto.randomUUID();
 
-      // 2. Insert into users table
-      const { error: userErr } = await supabase.from("users").insert([
-        {
-          id: userId,
-          company_id: companyData.id,
-          name: name.trim(),
+      // Create user via new API
+      const userRes = await fetch("/api/auth/register/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          companyId: companyData.id,
+          name,
           email: inviteData.email,
-          password_hash: password,
-          role: "user",
-          status: "active",
-          nda_status: assignedNdaStatus,
-        },
-      ]);
-
-      if (userErr) throw new Error(userErr.message || "Failed to create user account.");
+          password,
+          requiresNda: inviteData.requires_nda
+        })
+      });
+      const userData = await userRes.json();
+      if (!userRes.ok) throw new Error(userData.error || "Failed to create user account.");
 
       const targetRole = inviteData.groups?.role || "external_user";
 

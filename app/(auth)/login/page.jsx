@@ -26,43 +26,21 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // 1. ADDED nda_status to the select query
-      const { data: user, error: fetchError } = await supabase
-        .from('users')
-        .select('id, company_id, name, email, password_hash, role, status, nda_status')
-        .eq('email', email)
-        .single();
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
 
-      if (fetchError || !user) {
-        setError('Invalid email or password');
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || 'Invalid email or password');
         setIsLoading(false);
         return;
       }
 
-      if (user.password_hash !== password) {
-        setError('Invalid email or password');
-        setIsLoading(false);
-        return;
-      }
-
-      if (user.status === 'suspended') {
-        setError('This account has been suspended. Please contact your VDR Administrator.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Log the login action to login_history table
-      const { error: historyError } = await supabase.from('login_history').insert([
-        {
-          user_id: user.id,
-          company_id: user.company_id,
-          action: 'LOGIN'
-        }
-      ]);
-
-      if (historyError) {
-        console.error('Failed to insert login history:', historyError);
-      }
+      const user = result.data;
 
       // Check workspace request status for approval flow
       let requestStatus = user.request_status || 'approved';
