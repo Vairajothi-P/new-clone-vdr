@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { FaUserPlus, FaArrowLeft, FaPaperPlane, FaEnvelope, FaCheckCircle, FaFileSignature, FaUsers } from "react-icons/fa";
+import { FaUserPlus, FaArrowLeft, FaPaperPlane, FaEnvelope, FaCheckCircle, FaFileSignature, FaUsers, FaFileUpload, FaSpinner } from "react-icons/fa";
 
 export default function InviteMemberPage() {
     const params = useParams();
@@ -18,6 +18,9 @@ export default function InviteMemberPage() {
     const [inviteDescription, setInviteDescription] = useState("");
     const [requireNda, setRequireNda] = useState(true);
     const [inviting, setInviting] = useState(false);
+
+    const [parsingFile, setParsingFile] = useState(false);
+    const fileInputRef = useRef(null);
 
     const [session, setSession] = useState(null);
     const [successMsg, setSuccessMsg] = useState("");
@@ -44,6 +47,79 @@ export default function InviteMemberPage() {
         };
         fetchGroup();
     }, [groupSlug, session]);
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setParsingFile(true);
+        setErrorMsg("");
+        setSuccessMsg("");
+        try {
+            let extractedText = "";
+            const ext = file.name.split('.').pop().toLowerCase();
+
+            if (['txt', 'csv'].includes(ext)) {
+                extractedText = await file.text();
+            } else if (['xlsx', 'xls'].includes(ext)) {
+                const XLSX = await import('xlsx');
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+                extractedText = workbook.SheetNames.map(name =>
+                    XLSX.utils.sheet_to_csv(workbook.Sheets[name])
+                ).join('\n');
+            } else if (['docx'].includes(ext)) {
+                const JSZip = (await import('jszip')).default;
+                const data = await file.arrayBuffer();
+                const zip = new JSZip();
+                const loadedZip = await zip.loadAsync(data);
+                const docXml = loadedZip.file('word/document.xml');
+                if (docXml) {
+                    const xmlStr = await docXml.async('string');
+                    extractedText = xmlStr.replace(/<[^>]+>/g, ' ');
+                }
+            } else if (['doc'].includes(ext)) {
+                extractedText = await file.text();
+            } else if (['pdf'].includes(ext)) {
+                const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+                pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+                    "pdfjs-dist/legacy/build/pdf.worker.mjs",
+                    import.meta.url
+                ).toString();
+                const data = await file.arrayBuffer();
+                const loadingTask = pdfjs.getDocument({ data });
+                const pdf = await loadingTask.promise;
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    extractedText += content.items.map(item => item.str).join(' ') + '\n';
+                }
+            } else {
+                throw new Error("Unsupported file format");
+            }
+
+            const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi;
+            const foundEmails = extractedText.match(emailRegex) || [];
+
+            if (foundEmails.length > 0) {
+                const uniqueEmails = [...new Set(foundEmails)];
+                setBulkEmails(prev => {
+                    const existing = prev.split(/[\n,]+/).map(e => e.trim()).filter(e => e);
+                    const merged = [...new Set([...existing, ...uniqueEmails])];
+                    return merged.join('\n');
+                });
+                setSuccessMsg(`Extracted ${uniqueEmails.length} unique email(s) from the uploaded file.`);
+            } else {
+                setErrorMsg("No valid email addresses found in the uploaded file.");
+            }
+        } catch (err) {
+            console.error("File parse error:", err);
+            setErrorMsg("Error parsing file. Please check the file format or try another file.");
+        } finally {
+            setParsingFile(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
 
     const handleInviteSubmit = async (e) => {
         e.preventDefault();
@@ -158,8 +234,26 @@ export default function InviteMemberPage() {
                                 </div>
                             ) : (
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Candidate Emails <span className="text-rose-400">*</span></label>
-                                    <p className="text-xs text-slate-400 mb-2">Enter multiple email addresses separated by commas or new lines.</p>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Candidate Emails <span className="text-rose-400">*</span></label>
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={parsingFile}
+                                            className="text-xs font-bold text-[var(--brand)] flex items-center gap-1.5 hover:text-[var(--brand-dark)] transition-colors border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 shadow-sm"
+                                        >
+                                            {parsingFile ? <FaSpinner size={12} className="animate-spin" /> : <FaFileUpload size={12} />}
+                                            {parsingFile ? "Extracting..." : "Upload File"}
+                                        </button>
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            onChange={handleFileUpload}
+                                            className="hidden"
+                                            accept=".txt,.csv,.pdf,.doc,.docx,.xls,.xlsx"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-slate-400 mb-2">Enter multiple email addresses separated by commas or new lines, or upload a file (PDF, TXT, DOCX, XLSX) to auto-extract them.</p>
                                     <textarea value={bulkEmails} onChange={(e) => setBulkEmails(e.target.value)} rows={4} required className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:border-[var(--brand)] outline-none resize-none" placeholder="john@example.com, jane@example.com&#10;team@example.com" />
                                 </div>
                             )}

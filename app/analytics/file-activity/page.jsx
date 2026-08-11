@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { supabase } from '@/utils/supabase/client';
+import { fetchUsersByCompany, fetchFoldersAnalytics, fetchDocumentsAnalytics, fetchDocumentAccessLogsAnalytics, fetchDocumentEditLogsAnalytics } from '../actions';
 import { X, List, BarChart2, Filter, RotateCcw, Clock, Shield, Search } from "lucide-react";
 
 export default function FileActivityPage() {
@@ -60,36 +60,17 @@ export default function FileActivityPage() {
                 if (!companyId) return;
 
                 // Fetch Users
-                const { data: usersData, error: usersError } = await supabase
-                    .from('users')
-                    .select('id, name, email')
-                    .eq('company_id', companyId);
+                const { data: usersData, error: usersError } = await fetchUsersByCompany(companyId);
                 if (usersError) throw usersError;
                 setRawUsers(usersData || []);
 
                 // Fetch Folders
-                let foldersQuery = supabase
-                    .from('folders')
-                    .select('id, name')
-                    .eq('company_id', companyId)
-                    .eq('is_deleted', false);
-                if (session.active_workspace_id) {
-                    foldersQuery = foldersQuery.eq('workspace_id', session.active_workspace_id);
-                }
-                const { data: foldersData, error: foldersError } = await foldersQuery;
+                const { data: foldersData, error: foldersError } = await fetchFoldersAnalytics(companyId, session.active_workspace_id);
                 if (foldersError) throw foldersError;
                 setRawFolders(foldersData || []);
 
                 // Fetch Documents
-                let docsQuery = supabase
-                    .from('documents')
-                    .select('id, name, folder_id')
-                    .eq('company_id', companyId)
-                    .eq('is_deleted', false);
-                if (session.active_workspace_id) {
-                    docsQuery = docsQuery.eq('workspace_id', session.active_workspace_id);
-                }
-                const { data: documentsData, error: docsError } = await docsQuery;
+                const { data: documentsData, error: docsError } = await fetchDocumentsAnalytics(companyId, session.active_workspace_id);
                 if (docsError) throw docsError;
                 setRawDocuments(documentsData || []);
 
@@ -97,18 +78,12 @@ export default function FileActivityPage() {
 
                 if (docIds.length > 0) {
                     // Fetch Access Logs (Views & Duration)
-                    const { data: accessLogs, error: accessError } = await supabase
-                        .from('document_access_logs')
-                        .select('id, document_id, opened_at, closed_at, duration_seconds, duration_formatted, user_id')
-                        .in('document_id', docIds);
+                    const { data: accessLogs, error: accessError } = await fetchDocumentAccessLogsAnalytics(docIds);
                     if (accessError) throw accessError;
                     setRawAccessLogs(accessLogs || []);
 
                     // Fetch Edit Logs (Downloads, Uploads, Deletes, IP Addresses)
-                    const { data: editLogs, error: editError } = await supabase
-                        .from('document_edit_logs')
-                        .select('id, document_id, action_type, metadata, changed_at, user_id')
-                        .in('document_id', docIds);
+                    const { data: editLogs, error: editError } = await fetchDocumentEditLogsAnalytics(docIds);
                     if (editError) throw editError;
                     setRawEditLogs(editLogs || []);
                 }
@@ -748,7 +723,7 @@ export default function FileActivityPage() {
                             </button>
                         </div>
 
-                        <div className="px-6 pt-4 flex items-center justify-between">
+                        <div className="px-6 py-4 flex items-center justify-between bg-white z-10 relative">
                             {/* Toggle Group */}
                             <div className="flex bg-gray-100 rounded-lg p-1 border border-gray-200 shadow-inner">
                                 <button
@@ -769,7 +744,7 @@ export default function FileActivityPage() {
                         </div>
 
                         {/* Content */}
-                        <div className="overflow-y-auto flex-1 relative min-h-[350px] p-6">
+                        <div className="overflow-y-auto flex-1 relative min-h-[350px] px-6 pb-6">
                             {loadingModal ? (
                                 <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
                                     <div className="w-6 h-6 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin"></div>

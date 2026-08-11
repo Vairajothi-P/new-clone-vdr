@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase/client';
+import { fetchGroups, fetchUserGroupsByUserId, fetchUsersMinimal, fetchAllUserGroups } from '../actions';
 
 export default function ManageGroupsPage() {
   const [loading, setLoading] = useState(true);
@@ -45,21 +46,13 @@ export default function ManageGroupsPage() {
       setCurrentCompanyId(companyId);
 
       // 1. Fetch all groups for the company
-      let { data: groupsData, error: groupsError } = await supabase
-        .from('groups')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('workspace_id', activeWorkspaceId)
-        .order('created_at', { ascending: false });
+      let { data: groupsData, error: groupsError } = await fetchGroups(companyId, activeWorkspaceId);
 
       if (groupsError) throw groupsError;
 
       // If user is external_user, filter to only groups they belong to
       if (session.role === 'external_user') {
-        const { data: myGroups, error: myGroupsError } = await supabase
-          .from('user_groups')
-          .select('group_id')
-          .eq('user_id', session.id);
+        const { data: myGroups, error: myGroupsError } = await fetchUserGroupsByUserId(session.id);
         
         if (!myGroupsError && myGroups) {
           const myGroupIds = myGroups.map(g => g.group_id);
@@ -68,18 +61,13 @@ export default function ManageGroupsPage() {
       }
 
       // 2. Fetch all users to map the "Created By" names
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('id, name')
-        .eq('company_id', companyId);
+      const { data: usersData, error: usersError } = await fetchUsersMinimal(companyId);
 
       if (usersError) throw usersError;
       setUsers(usersData || []);
 
       // 3. Fetch all user_groups to count members
-      const { data: ugData, error: ugError } = await supabase
-        .from('user_groups')
-        .select('group_id, user_id');
+      const { data: ugData, error: ugError } = await fetchAllUserGroups();
 
       if (ugError) throw ugError;
       setUserGroups(ugData || []);

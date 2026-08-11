@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/utils/supabase/client';
+import { fetchGroupsAnalytics, fetchUserGroupsByGroupIdsAnalytics, fetchLoginHistoryForCompanyAnalytics, fetchUsersByIdsAnalytics } from '../actions';
 import { X, List, BarChart2 } from "lucide-react";
 
 export default function GroupUsersPage() {
@@ -38,10 +38,7 @@ export default function GroupUsersPage() {
                 if (!companyId) return;
 
                 // Fetch groups
-                const { data: groupsData, error: groupsError } = await supabase
-                    .from('groups')
-                    .select('id, name')
-                    .eq('company_id', companyId);
+                const { data: groupsData, error: groupsError } = await fetchGroupsAnalytics(companyId);
                 
                 if (groupsError) throw groupsError;
 
@@ -50,20 +47,13 @@ export default function GroupUsersPage() {
 
                 // Fetch user_groups
                 if (groupIds.length > 0) {
-                    const { data: userGroupsData, error: ugError } = await supabase
-                        .from('user_groups')
-                        .select('user_id, group_id')
-                        .in('group_id', groupIds);
+                    const { data: userGroupsData, error: ugError } = await fetchUserGroupsByGroupIdsAnalytics(groupIds);
                     if (ugError) throw ugError;
                     setRawUserGroups(userGroupsData || []);
                 }
 
                 // Fetch login history
-                const { data: loginHistoryData, error: lhError } = await supabase
-                    .from('login_history')
-                    .select('user_id, created_at')
-                    .eq('company_id', companyId)
-                    .eq('action', 'LOGIN');
+                const { data: loginHistoryData, error: lhError } = await fetchLoginHistoryForCompanyAnalytics(companyId);
                 
                 if (lhError) throw lhError;
                 setRawLoginHistory(loginHistoryData || []);
@@ -173,10 +163,7 @@ export default function GroupUsersPage() {
             }
 
             // Fetch user details
-            const { data: usersData, error: usersError } = await supabase
-                .from('users')
-                .select('id, name, email')
-                .in('id', groupUserIds);
+            const { data: usersData, error: usersError } = await fetchUsersByIdsAnalytics(groupUserIds);
 
             if (usersError) throw usersError;
 

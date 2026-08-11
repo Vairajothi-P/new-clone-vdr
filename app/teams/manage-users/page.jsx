@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase/client';
+import { fetchCompany, fetchUsers, fetchGroups, fetchUserGroups } from '../actions';
 
 export default function ManageUsersPage() {
   const [loading, setLoading] = useState(true);
@@ -47,11 +48,7 @@ export default function ManageUsersPage() {
       const activeWorkspaceId = session.active_workspace_id;
       setCurrentCompanyId(companyId);
 
-      const { data: companyData, error: companyError } = await supabase
-        .from("companies")
-        .select("name")
-        .eq("id", companyId)
-        .single();
+      const { data: companyData, error: companyError } = await fetchCompany(companyId);
 
       if (companyError) throw companyError;
 
@@ -63,19 +60,12 @@ export default function ManageUsersPage() {
       }));
 
       // 1. Fetch all users in the company
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('company_id', companyId);
+      const { data: usersData, error: usersError } = await fetchUsers(companyId);
 
       if (usersError) throw usersError;
 
       // 2. Fetch all groups in the active workspace
-      const { data: groupsData, error: groupsError } = await supabase
-        .from('groups')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('workspace_id', activeWorkspaceId);
+      const { data: groupsData, error: groupsError } = await fetchGroups(companyId, activeWorkspaceId);
 
       if (groupsError) throw groupsError;
       setGroups(groupsData || []);
@@ -84,10 +74,7 @@ export default function ManageUsersPage() {
       const userIds = (usersData || []).map(u => u.id);
       let memberships = [];
       if (userIds.length > 0) {
-        const { data: memData, error: memError } = await supabase
-          .from('user_groups')
-          .select('user_id, group_id')
-          .in('user_id', userIds);
+        const { data: memData, error: memError } = await fetchUserGroups(userIds);
         if (memError) throw memError;
         memberships = memData || [];
       }

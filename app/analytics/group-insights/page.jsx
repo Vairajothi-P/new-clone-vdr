@@ -4,7 +4,7 @@ import {
     LogIn, Download, Eye, FileSearch, MessageCircleQuestion,
     RefreshCw, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, SlidersHorizontal, X
 } from "lucide-react";
-import { supabase } from "@/utils/supabase/client";
+import { fetchGroupsAnalytics, fetchUserGroupsByGroupIdAnalytics, fetchUsersByIdsAnalytics, fetchLoginHistoryFilteredAnalytics, fetchDocumentEditLogsFilteredAnalytics, fetchDocumentsByIdsAnalytics, fetchDocumentAccessLogsFilteredAnalytics, fetchQnaMessagesAnalytics, fetchQnaThreadsAnalytics } from '../actions';
 
 // ─── All 5 series from the screenshot ─────────────────────────────────────────
 const SERIES = [
@@ -429,11 +429,7 @@ export default function GroupInsightsPage() {
                 if (!rawSession) return;
                 const session = JSON.parse(rawSession);
 
-                const { data: groupsData, error } = await supabase
-                    .from("groups")
-                    .select("id, name")
-                    .eq("company_id", session.company_id)
-                    .order("name", { ascending: true });
+                const { data: groupsData, error } = await fetchGroupsAnalytics(session.company_id);
 
                 if (error) throw error;
                 setGroups(groupsData || []);
@@ -457,20 +453,14 @@ export default function GroupInsightsPage() {
             const session = JSON.parse(rawSession);
 
             // Step 1: Get user_ids in this group
-            const { data: userGroupsData, error: ugError } = await supabase
-                .from("user_groups")
-                .select("user_id")
-                .eq("group_id", group.id);
+            const { data: userGroupsData, error: ugError } = await fetchUserGroupsByGroupIdAnalytics(group.id);
             if (ugError) throw ugError;
 
             const userIds = (userGroupsData || []).map(ug => ug.user_id);
             if (userIds.length === 0) { setChartData([]); setTotalLogins(0); return; }
 
             // Step 2: Fetch user names for those user_ids
-            const { data: usersData, error: usersError } = await supabase
-                .from("users")
-                .select("id, name, email")
-                .in("id", userIds);
+            const { data: usersData, error: usersError } = await fetchUsersByIdsAnalytics(userIds);
             if (usersError) throw usersError;
 
             // Build userId → user info map
@@ -478,39 +468,17 @@ export default function GroupInsightsPage() {
             (usersData || []).forEach(u => { userMap[u.id] = u; });
 
             // Step 3: Fetch login_history with date range filter
-            let lhQuery = supabase
-                .from("login_history")
-                .select("user_id, created_at")
-                .eq("action", "LOGIN")
-                .in("user_id", userIds)
-                .order("created_at", { ascending: true });
-
-            if (dateFrom) lhQuery = lhQuery.gte("created_at", dateFrom + "T00:00:00");
-            if (dateTo) lhQuery = lhQuery.lte("created_at", dateTo + "T23:59:59");
-
-            const { data: loginData, error: lhError } = await lhQuery;
+            const { data: loginData, error: lhError } = await fetchLoginHistoryFilteredAnalytics(userIds, dateFrom, dateTo);
             if (lhError) throw lhError;
 
             // ── Download logs for this group's users ──────────────────────────
-            let dlQuery = supabase
-                .from("document_edit_logs")
-                .select("user_id, document_id, action_type, changed_at")
-                .in("user_id", userIds)
-                .in("action_type", ["DOWNLOAD_PDF", "DOWNLOAD_SECURE", "DOWNLOAD_ORIGINAL", "DOWNLOAD"]);
-
-            if (dateFrom) dlQuery = dlQuery.gte("changed_at", dateFrom + "T00:00:00");
-            if (dateTo) dlQuery = dlQuery.lte("changed_at", dateTo + "T23:59:59");
-
-            const { data: dlData } = await dlQuery;
+            const { data: dlData } = await fetchDocumentEditLogsFilteredAnalytics(userIds, ["DOWNLOAD_PDF", "DOWNLOAD_SECURE", "DOWNLOAD_ORIGINAL", "DOWNLOAD"], dateFrom, dateTo);
 
             // Fetch document names for downloaded docs
             const downloadedDocIds = [...new Set((dlData || []).map(d => d.document_id).filter(Boolean))];
             let docNameMap = {};
             if (downloadedDocIds.length > 0) {
-                const { data: docsData } = await supabase
-                    .from("documents")
-                    .select("id, name")
-                    .in("id", downloadedDocIds);
+                const { data: docsData } = await fetchDocumentsByIdsAnalytics(downloadedDocIds);
                 (docsData || []).forEach(doc => { docNameMap[doc.id] = doc.name; });
             }
 
@@ -533,30 +501,19 @@ export default function GroupInsightsPage() {
             // Build downloads-per-date map for chart
             const downloadsDateMap = {};
             (dlData || []).forEach(log => {
-                const date = (log.changed_at || "").slice(0, 10);
+                const date = log.changed_at ? new Date(log.changed_at).toISOString().slice(0, 10) : "";
                 if (date) downloadsDateMap[date] = (downloadsDateMap[date] || 0) + 1;
             });
             // ─────────────────────────────────────────────────────────────────
 
             // ── Document Access Logs (Views) — group members only ─────────────
-            let viewQuery = supabase
-                .from("document_access_logs")
-                .select("user_id, document_id, opened_at")
-                .in("user_id", userIds);
-
-            if (dateFrom) viewQuery = viewQuery.gte("opened_at", dateFrom + "T00:00:00");
-            if (dateTo)   viewQuery = viewQuery.lte("opened_at", dateTo   + "T23:59:59");
-
-            const { data: viewData } = await viewQuery;
+            const { data: viewData } = await fetchDocumentAccessLogsFilteredAnalytics(userIds, dateFrom, dateTo);
 
             // Fetch document names for viewed docs
             const viewedDocIds = [...new Set((viewData || []).map(v => v.document_id).filter(Boolean))];
             const viewDocNameMap = {};
             if (viewedDocIds.length > 0) {
-                const { data: viewDocsData } = await supabase
-                    .from("documents")
-                    .select("id, name")
-                    .in("id", viewedDocIds);
+                const { data: viewDocsData } = await fetchDocumentsByIdsAnalytics(viewedDocIds);
                 (viewDocsData || []).forEach(doc => { viewDocNameMap[doc.id] = doc.name; });
             }
 
@@ -564,10 +521,7 @@ export default function GroupInsightsPage() {
             const viewerUserIds = [...new Set((viewData || []).map(v => v.user_id).filter(Boolean))];
             const viewUserMap = {};
             if (viewerUserIds.length > 0) {
-                const { data: viewUsersData } = await supabase
-                    .from("users")
-                    .select("id, name, email")
-                    .in("id", viewerUserIds);
+                const { data: viewUsersData } = await fetchUsersByIdsAnalytics(viewerUserIds);
                 (viewUsersData || []).forEach(u => { viewUserMap[u.id] = u; });
             }
 
@@ -590,7 +544,7 @@ export default function GroupInsightsPage() {
             // Build views-per-date map for chart
             const viewsDateMap = {};
             (viewData || []).forEach(log => {
-                const date = (log.opened_at || "").slice(0, 10);
+                const date = log.opened_at ? new Date(log.opened_at).toISOString().slice(0, 10) : "";
                 if (date) viewsDateMap[date] = (viewsDateMap[date] || 0) + 1;
             });
             // ─────────────────────────────────────────────────────────────────
@@ -604,26 +558,14 @@ export default function GroupInsightsPage() {
             const qnaDateMap = {};
 
             if (userNames.length > 0) {
-                let qnaQuery = supabase
-                    .from("qna_messages")
-                    .select("id, thread_id, sender, text, created_at, is_user")
-                    .eq("is_user", true)
-                    .in("sender", userNames);
-
-                if (dateFrom) qnaQuery = qnaQuery.gte("created_at", dateFrom + "T00:00:00");
-                if (dateTo) qnaQuery = qnaQuery.lte("created_at", dateTo + "T23:59:59");
-
-                const { data: qnaData } = await qnaQuery;
+                const { data: qnaData } = await fetchQnaMessagesAnalytics(userNames, dateFrom, dateTo);
                 qnaTotalCount = (qnaData || []).length;
 
                 // Get unique thread_ids to fetch document names
                 const threadIds = [...new Set((qnaData || []).map(m => m.thread_id).filter(Boolean))];
                 const threadDocMap = {};
                 if (threadIds.length > 0) {
-                    const { data: threadsData } = await supabase
-                        .from("qna_threads")
-                        .select("id, documents(id, name)")
-                        .in("id", threadIds);
+                    const { data: threadsData } = await fetchQnaThreadsAnalytics(threadIds);
                     (threadsData || []).forEach(t => {
                         threadDocMap[t.id] = t.documents?.name || "General / Folder";
                     });
@@ -647,7 +589,7 @@ export default function GroupInsightsPage() {
                         qnaGroupMap[key].lastAsked = msg.created_at;
                     }
                     // per-date count for chart
-                    const date = (msg.created_at || "").slice(0, 10);
+                    const date = msg.created_at ? new Date(msg.created_at).toISOString().slice(0, 10) : "";
                     if (date) qnaDateMap[date] = (qnaDateMap[date] || 0) + 1;
                 });
 
@@ -660,7 +602,7 @@ export default function GroupInsightsPage() {
             const userCountMap = {};   // user_id → total login count
             const lastLoginMap = {};   // user_id → latest created_at string
             (loginData || []).forEach(log => {
-                const date = log.created_at.slice(0, 10);
+                const date = log.created_at ? new Date(log.created_at).toISOString().slice(0, 10) : "";
                 if (!dateMap[date]) dateMap[date] = { count: 0, userSet: new Set() };
                 dateMap[date].count += 1;
                 dateMap[date].userSet.add(log.user_id);
