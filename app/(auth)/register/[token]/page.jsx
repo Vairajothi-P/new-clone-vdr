@@ -52,16 +52,15 @@ export default function TokenRegisterPage() {
 
             setLoadingInvite(true);
             try {
-                const { data: invitation, error } = await supabase
-                    .from("invitations")
-                    .select("*, groups(name,company_id,role,workspace_id),inviter:users!invitations_invited_by_fkey(company_id)")
-                    .eq("token", token)
-                    .single();
+                const res = await fetch(`/api/invite/verify?token=${token}`);
+                const data = await res.json();
 
-                if (error || !invitation) {
-                    setErrorState("Invalid Invitation");
+                if (!res.ok || !data.success || !data.invitation) {
+                    setErrorState(data.error || "Invalid Invitation");
                     return;
                 }
+
+                const invitation = data.invitation;
 
                 if (invitation.status !== "pending") {
                     setErrorState("Invitation Already Used");

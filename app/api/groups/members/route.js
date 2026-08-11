@@ -1,20 +1,20 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+import { db } from '@/db';
+import { userGroups } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 export async function POST(req) {
     try {
         const { session, groupId, userIdToRemove } = await req.json();
         if (!session || !session.company_id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const { error } = await supabase
-            .from('user_groups')
-            .delete()
-            .eq('user_id', userIdToRemove)
-            .eq('group_id', groupId);
-
-        if (error) throw error;
+        await db.delete(userGroups)
+            .where(
+                and(
+                    eq(userGroups.userId, userIdToRemove),
+                    eq(userGroups.groupId, groupId)
+                )
+            );
 
         return NextResponse.json({ success: true });
 

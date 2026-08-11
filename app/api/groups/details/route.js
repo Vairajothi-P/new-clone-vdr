@@ -1,7 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+import { db } from '@/db';
+import { groups, userGroups, users, permissions } from '@/db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
 
 export async function POST(req) {
     try {
@@ -11,31 +11,53 @@ export async function POST(req) {
         const companyId = session.company_id;
 
         // 1. Fetch Group
-        const { data: groups, error: groupsError } = await supabase
-            .from("groups")
-            .select("*")
-            .eq("company_id", companyId)
-            .eq("id", groupSlug);
+        const fetchedGroups = await db.select()
+            .from(groups)
+            .where(and(eq(groups.companyId, companyId), eq(groups.id, groupSlug)));
 
-        if (groupsError || !groups?.length) return NextResponse.json({ error: "Group not found" }, { status: 404 });
-        const group = groups[0];
+        if (!fetchedGroups || fetchedGroups.length === 0) return NextResponse.json({ error: "Group not found" }, { status: 404 });
+        
+        // Map to snake_case for frontend
+        const group = {
+            id: fetchedGroups[0].id,
+            company_id: fetchedGroups[0].companyId,
+            name: fetchedGroups[0].name,
+            description: fetchedGroups[0].description,
+            created_by: fetchedGroups[0].createdBy,
+            created_at: fetchedGroups[0].createdAt,
+            updated_at: fetchedGroups[0].updatedAt,
+            role: fetchedGroups[0].role,
+            workspace_id: fetchedGroups[0].workspaceId,
+        };
 
         // 2. Fetch Members
-        const { data: ugRows } = await supabase.from("user_groups").select("user_id").eq("group_id", group.id);
-        const userIds = ugRows?.map(r => r.user_id) || [];
+        const ugRows = await db.select({ userId: userGroups.userId })
+            .from(userGroups)
+            .where(eq(userGroups.groupId, group.id));
+            
+        const userIds = ugRows.map(r => r.userId);
         
         let members = [];
         if (userIds.length > 0) {
-            const { data: users, error: usersError } = await supabase
-                .from("users")
-                .select("id, name, email, phone_number, status")
-                .in("id", userIds)
-                .eq("company_id", companyId);
+            const fetchedUsers = await db.select({
+                id: users.id,
+                name: users.name,
+                email: users.email,
+                phone_number: users.phoneNumber,
+                status: users.status
+            })
+            .from(users)
+            .where(
+                and(
+                    inArray(users.id, userIds),
+                    eq(users.companyId, companyId)
+                )
+            );
             
-            if (!usersError) members = users || [];
+            members = fetchedUsers;
         }
 
-        // 3. Check Logged-in User's Permissions (Can they add/remove members?)
+        // 3. Check Logged-in User's Permissions
         let canAddMembers = false;
         let canRemoveMembers = false;
         let canEditPermissions = false;
@@ -45,16 +67,26 @@ export async function POST(req) {
             canRemoveMembers = true;
             canEditPermissions = true;
         } else {
-            const { data: myGroups } = await supabase.from('user_groups').select('group_id').eq('user_id', session.id);
-            const myGroupIds = myGroups?.map(r => r.group_id) || [];
+            const myGroups = await db.select({ groupId: userGroups.groupId })
+                .from(userGroups)
+                .where(eq(userGroups.userId, session.id));
+                
+            const myGroupIds = myGroups.map(r => r.groupId);
             
             if (myGroupIds.length > 0) {
-                const { data: perms } = await supabase
-                    .from('permissions')
-                    .select('can_add_members, can_remove_members, can_access_edit_permissions')
-                    .eq('company_id', companyId)
-                    .eq('scope', 'workspace')
-                    .in('group_id', myGroupIds);
+                const perms = await db.select({
+                    can_add_members: permissions.canAddMembers,
+                    can_remove_members: permissions.canRemoveMembers,
+                    can_access_edit_permissions: permissions.canAccessEditPermissions
+                })
+                .from(permissions)
+                .where(
+                    and(
+                        eq(permissions.companyId, companyId),
+                        eq(permissions.scope, 'workspace'),
+                        inArray(permissions.groupId, myGroupIds)
+                    )
+                );
 
                 if (perms && perms.length > 0) {
                     canAddMembers = perms.some(p => p.can_add_members);
