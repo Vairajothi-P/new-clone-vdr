@@ -9,6 +9,10 @@ export default function DynamicGroupPage() {
     const router = useRouter();
     const groupSlug = params.slug;
 
+
+
+
+    
     const [members, setMembers] = useState([]);
     const [groupData, setGroupData] = useState(null);
     const [loading, setLoading] = useState(true);
