@@ -25,6 +25,8 @@ export default function WatermarkPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [recordId, setRecordId] = useState(null);
+  const [saveStatus, setSaveStatus] = useState({ show: false, success: true, message: '' });
+  const [clientIp, setClientIp] = useState('192.168.1.1'); // Default preview IP, updated via fetch
 
   // Settings state
   const [activeType, setActiveType] = useState('dynamic');
@@ -63,6 +65,12 @@ export default function WatermarkPage() {
     if (!raw) { router.push('/login'); return; }
     const s = JSON.parse(raw);
     setSession(s);
+
+    // Fetch real IP for preview accuracy
+    fetch('https://api.ipify.org?format=json')
+      .then(r => r.json())
+      .then(d => setClientIp(d.ip || '192.168.1.1'))
+      .catch(() => setClientIp('192.168.1.1'));
   }, [router]);
 
   useEffect(() => {
@@ -126,9 +134,11 @@ export default function WatermarkPage() {
       if (!data.success) throw new Error(data.error);
       
       setRecordId(data.recordId);
-      alert('Watermark settings saved securely!');
+      setSaveStatus({ show: true, success: true, message: 'Watermark settings saved securely!' });
+      setTimeout(() => setSaveStatus(s => ({ ...s, show: false })), 4000);
     } catch (err) {
-      alert('Failed to save: ' + err.message);
+      setSaveStatus({ show: true, success: false, message: 'Failed to save: ' + err.message });
+      setTimeout(() => setSaveStatus(s => ({ ...s, show: false })), 5000);
     } finally {
       setSaving(false);
     }
@@ -253,8 +263,11 @@ export default function WatermarkPage() {
     if (activeType === 'static') return [customText];
     const parts = [customText];
     if (emailText) parts.push(emailText);
-    if (attributes?.ip) parts.push('192.168.1.1');
-    if (attributes?.date) parts.push(new Date().toLocaleString());
+    if (attributes?.ip) parts.push(clientIp);
+    if (attributes?.date) {
+        const d = new Date();
+        parts.push(`${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}\u00A0${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`);
+    }
     return parts.filter(Boolean);
   };
 
@@ -289,6 +302,36 @@ export default function WatermarkPage() {
   return (
     <div className="relative min-h-screen bg-[#F8FAFC]">
       <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-brand-50 to-transparent pointer-events-none" />
+
+      {/* ── Success/Error Toast ─────────────────────────────────────── */}
+      {saveStatus.show && (
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[99999] animate-in zoom-in-95 fade-in duration-300 shadow-[0_0_50px_rgba(0,0,0,0.15)] rounded-2xl">
+          <div className={`bg-white rounded-2xl shadow-xl border flex flex-col items-center p-8 text-center gap-3 min-w-[320px] ${saveStatus.success ? 'border-green-100' : 'border-red-100'}`}>
+            {saveStatus.success ? (
+              <div className="w-16 h-16 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 shadow-inner mb-2">
+                <svg className="w-10 h-10" style={{ animation: 'bounce 0.5s ease-out' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center shrink-0 shadow-inner mb-2">
+                <svg className="w-10 h-10 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </div>
+            )}
+            <div className="flex-1 w-full flex flex-col items-center">
+              <h4 className="text-lg font-bold text-gray-900">{saveStatus.success ? 'Success!' : 'Error'}</h4>
+              <p className="text-[14px] text-gray-500 font-medium mt-1">{saveStatus.message}</p>
+            </div>
+            <button onClick={() => setSaveStatus(s => ({ ...s, show: false }))} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors bg-gray-50 hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+        </div>
+      )}
+
 
       {/* ── Full A4 Preview Modal ──────────────────────────────── */}
       {showPreviewModal && (

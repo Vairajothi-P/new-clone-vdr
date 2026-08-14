@@ -81,20 +81,16 @@ export default function SecureViewer({ params }) {
                 });
             }
         } catch (_) { }
-        fetch('https://api.ipify.org?format=json')
-            .then(r => r.json())
-            .then(d => setClientIp(d.ip || '—'))
-            .catch(() => setClientIp('—'));
     }, []);
 
     // ── Document load & render ────────────────────────────────────────────────
     useEffect(() => { loadDocument(); }, [docId]);
 
     useEffect(() => {
-        if (!loading && docPayload && containerRef.current) {
+        if (!loading && docPayload && containerRef.current && clientIp !== '...') {
             renderDocument(docPayload.ext, docPayload.bytes, docPayload.text);
         }
-    }, [loading, docPayload]);
+    }, [loading, docPayload, clientIp]);
 
     // ── Heartbeat Ping Engine ──────────────────────────────────────────────────
     useEffect(() => {
@@ -341,7 +337,15 @@ export default function SecureViewer({ params }) {
 
             setDocName(data.docName);
             if (data.accessLogId) accessLogIdRef.current = data.accessLogId;
-            if (data.clientIp) setClientIp(data.clientIp);
+            
+            let serverIp = data.clientIp;
+            if (serverIp === '::1' || serverIp === '127.0.0.1') serverIp = 'Localhost';
+            
+            // Try public IP first, fallback to server IP (LAN IP like 192.168.x.x) if ipify is blocked
+            fetch('https://api.ipify.org?format=json')
+                .then(r => r.json())
+                .then(d => setClientIp(d.ip || serverIp || 'Unknown IP'))
+                .catch(() => setClientIp(serverIp || 'Unknown IP'));
 
             if (data.brandLogo) setBrandLogo(data.brandLogo);
             if (data.watermarkSettings) {
@@ -405,7 +409,11 @@ export default function SecureViewer({ params }) {
             lines.push(settings?.custom_text || 'CONFIDENTIAL');
             if (settings?.email_address) lines.push(settings.email_address);
             if (settings?.attributes?.ip) lines.push(ip || 'Unknown IP');
-            if (settings?.attributes?.date) lines.push(new Date().toLocaleString());
+            if (settings?.attributes?.date) {
+                const d = new Date();
+                const dateStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}\u00A0${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+                lines.push(dateStr);
+            }
         }
 
         const logoHeight = Math.max(10, Math.round(40 * scale));
@@ -763,8 +771,12 @@ export default function SecureViewer({ params }) {
                         } else {
                             lines.push(settings.custom_text || 'CONFIDENTIAL');
                             if (settings.email_address) lines.push(settings.email_address);
-                            if (settings.attributes?.ip) lines.push(clientIpRef.current || 'Unknown IP');
-                            if (settings.attributes?.date) lines.push(new Date().toLocaleString());
+                            if (settings.attributes?.ip) lines.push(clientIp || 'Unknown IP');
+                            if (settings.attributes?.date) {
+                                const d = new Date();
+                                const dateStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}\u00A0${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+                                lines.push(dateStr);
+                            }
                         }
 
                         return (
