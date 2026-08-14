@@ -26,7 +26,7 @@ export default function WatermarkPage() {
   const [saving, setSaving] = useState(false);
   const [recordId, setRecordId] = useState(null);
   const [saveStatus, setSaveStatus] = useState({ show: false, success: true, message: '' });
-  const [clientIp, setClientIp] = useState('192.168.1.1'); // Default preview IP, updated via fetch
+  const [clientIp, setClientIp] = useState('');
 
   // Settings state
   const [activeType, setActiveType] = useState('dynamic');
@@ -66,11 +66,13 @@ export default function WatermarkPage() {
     const s = JSON.parse(raw);
     setSession(s);
 
-    // Fetch real IP for preview accuracy
-    fetch('https://api.ipify.org?format=json')
-      .then(r => r.json())
-      .then(d => setClientIp(d.ip || '192.168.1.1'))
-      .catch(() => setClientIp('192.168.1.1'));
+    fetch('/api/ip')
+        .then(res => res.json())
+        .then(data => setClientIp(data.ip || 'Unknown IP'))
+        .catch(() => {
+            const host = window.location.hostname.replace(/:\d+$/, '');
+            setClientIp(host === 'localhost' ? 'Localhost' : host);
+        });
   }, [router]);
 
   useEffect(() => {
@@ -331,7 +333,6 @@ export default function WatermarkPage() {
           </div>
         </div>
       )}
-
 
       {/* ── Full A4 Preview Modal ──────────────────────────────── */}
       {showPreviewModal && (

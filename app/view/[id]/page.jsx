@@ -81,6 +81,7 @@ export default function SecureViewer({ params }) {
                 });
             }
         } catch (_) { }
+
     }, []);
 
     // ── Document load & render ────────────────────────────────────────────────
@@ -110,7 +111,7 @@ export default function SecureViewer({ params }) {
                         headers: { 'Content-Type': 'application/json' },
                         body: payload,
                         keepalive: true
-                    }).catch(() => {});
+                    }).catch(() => { });
                 }
             };
 
@@ -158,7 +159,7 @@ export default function SecureViewer({ params }) {
                             email: userInfoRef.current?.email,
                             reason: `Security violation: ${msg}`
                         })
-                    }).catch(() => {}).finally(() => {
+                    }).catch(() => { }).finally(() => {
                         localStorage.removeItem('vdr_session');
                         window.location.href = '/login';
                     });
@@ -337,15 +338,16 @@ export default function SecureViewer({ params }) {
 
             setDocName(data.docName);
             if (data.accessLogId) accessLogIdRef.current = data.accessLogId;
+            let finalIp = data.clientIp || 'Unknown IP';
+            if (finalIp.startsWith('::ffff:')) finalIp = finalIp.replace('::ffff:', '');
+            finalIp = finalIp.replace(/:\d+$/, '');
             
-            let serverIp = data.clientIp;
-            if (serverIp === '::1' || serverIp === '127.0.0.1') serverIp = 'Localhost';
+            if (finalIp === '::1' || finalIp === '127.0.0.1' || finalIp === 'Unknown IP') {
+                const host = window.location.hostname.replace(/:\d+$/, '');
+                finalIp = host === 'localhost' ? 'Localhost' : host;
+            }
             
-            // Try public IP first, fallback to server IP (LAN IP like 192.168.x.x) if ipify is blocked
-            fetch('https://api.ipify.org?format=json')
-                .then(r => r.json())
-                .then(d => setClientIp(d.ip || serverIp || 'Unknown IP'))
-                .catch(() => setClientIp(serverIp || 'Unknown IP'));
+            setClientIp(finalIp);
 
             if (data.brandLogo) setBrandLogo(data.brandLogo);
             if (data.watermarkSettings) {
@@ -443,7 +445,7 @@ export default function SecureViewer({ params }) {
         overlay.style.display = 'grid';
         overlay.style.gridTemplateColumns = 'repeat(3, 1fr)';
         overlay.style.gridTemplateRows = 'repeat(3, 1fr)';
-        
+
         const padX = Math.min(32, element.offsetWidth * 0.1);
         const padY = Math.min(32, element.offsetHeight * 0.1);
         overlay.style.padding = `${padY}px ${padX}px`;
@@ -605,10 +607,10 @@ export default function SecureViewer({ params }) {
                 container.style.alignItems = 'center';
                 container.style.justifyContent = 'center';
                 container.style.height = '100%';
-                
+
                 const blob = new Blob([bytes]);
                 const url = URL.createObjectURL(blob);
-                
+
                 const imgWrapper = document.createElement('div');
                 imgWrapper.style.position = 'relative';
                 imgWrapper.style.maxWidth = '100%';
@@ -616,7 +618,7 @@ export default function SecureViewer({ params }) {
                 imgWrapper.style.display = 'flex';
                 imgWrapper.style.alignItems = 'center';
                 imgWrapper.style.justifyContent = 'center';
-                
+
                 const img = document.createElement('img');
                 img.src = url;
                 img.style.maxWidth = '90vw';
@@ -626,10 +628,10 @@ export default function SecureViewer({ params }) {
                 img.style.borderRadius = '8px';
                 img.style.userSelect = 'none';
                 img.style.pointerEvents = 'none';
-                
+
                 imgWrapper.appendChild(img);
                 container.appendChild(imgWrapper);
-                
+
                 appendWatermarkToElement(imgWrapper, userInfoRef.current, clientIpRef.current);
             } else {
                 container.innerHTML = '<div class="text-white text-center mt-20 font-bold text-xl">Unsupported Format</div>';

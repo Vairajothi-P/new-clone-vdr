@@ -10,7 +10,7 @@ const supabase = createClient(
 export async function POST(req) {
     try {
         const { docId, session } = await req.json();
-        
+
         if (!session || !session.id || !docId) {
             return NextResponse.json({ success: false, error: 'Unauthorized or missing parameters.' }, { status: 400 });
         }
@@ -35,25 +35,25 @@ export async function POST(req) {
                 .from('user_groups')
                 .select('group_id')
                 .eq('user_id', session.id);
-                
+
             if (groups && groups.length > 0) {
                 const groupIds = groups.map(g => g.group_id);
-                
+
                 // Fetch permissions for these groups
                 const { data: perms } = await supabase
                     .from('permissions')
                     .select('can_view, scope, document_id, folder_id')
                     .in('group_id', groupIds);
-                    
+
                 if (perms) {
                     const docPerms = perms.filter(p => p.scope === 'document' && p.document_id === docId);
                     const folderPerms = perms.filter(p => p.scope === 'folder' && p.folder_id === doc.folder_id);
-                    
-                    if (docPerms.length > 0) { 
-                        if (docPerms.some(p => p.can_view)) hasAccess = true; 
+
+                    if (docPerms.length > 0) {
+                        if (docPerms.some(p => p.can_view)) hasAccess = true;
                     }
-                    else if (folderPerms.length > 0) { 
-                        if (folderPerms.some(p => p.can_view)) hasAccess = true; 
+                    else if (folderPerms.length > 0) {
+                        if (folderPerms.some(p => p.can_view)) hasAccess = true;
                     }
                 }
             }
@@ -67,7 +67,7 @@ export async function POST(req) {
         const { data: fileData, error: fileErr } = await supabase.storage
             .from('vault-files')
             .download(doc.file_path);
-            
+
         if (fileErr || !fileData) {
             return NextResponse.json({ success: false, error: 'Encrypted file not found in storage bucket.' }, { status: 404 });
         }
@@ -82,7 +82,26 @@ export async function POST(req) {
         // Extract client IP address
         const forwarded = req.headers.get('x-forwarded-for');
         const realIp = req.headers.get('x-real-ip');
-        const clientIp = forwarded ? forwarded.split(',')[0].trim() : (realIp || '127.0.0.1');
+        let clientIp = forwarded ? forwarded.split(',')[0].trim() : (realIp || '127.0.0.1');
+
+        // Check if the client is connecting via loopback/localhost
+        const isLoopback = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1' || clientIp.includes('localhost');
+        if (isLoopback) {
+            const os = require('os');
+            const nets = os.networkInterfaces();
+            for (const name of Object.keys(nets)) {
+                for (const net of nets[name]) {
+                    // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+                    if (net.family === 'IPv4' && !net.internal) {
+                        clientIp = net.address;
+                        break;
+                    }
+                }
+                if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(clientIp) && !clientIp.includes('localhost')) {
+                    break;
+                }
+            }
+        }
 
         // 4. Log document view
         const { data: logRes, error: logErr } = await supabase
@@ -90,7 +109,7 @@ export async function POST(req) {
             .insert({ user_id: session.id, document_id: docId, opened_at: new Date().toISOString() })
             .select('id')
             .single();
-            
+
         if (logErr) {
             console.error('[VIEW API] Log failed:', logErr);
         }
@@ -113,10 +132,10 @@ export async function POST(req) {
         // 5. Fetch Watermark & Branding Settings
         let brandLogo = null;
         let watermarkSettings = null;
-        
+
         if (doc.company_id || session.company_id) {
             const cid = doc.company_id || session.company_id;
-            
+
             // Branding Logo
             const { data: wsData } = await supabase
                 .from('workspace_settings')
@@ -132,7 +151,7 @@ export async function POST(req) {
                 .eq('company_id', cid)
                 .limit(1)
                 .single();
-                
+
             if (wmSettings) {
                 // Apply schema cache workarounds
                 if (wmSettings.attributes) {
