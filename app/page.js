@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import Link from "next/link";
-import { FaFolderOpen, FaBars, FaTimes } from "react-icons/fa";
+import { FaFolderOpen, FaBars, FaTimes, FaChevronDown, FaServer, FaBriefcase } from "react-icons/fa";
 
 export default function Home() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProductsOpen, setIsProductsOpen] = useState(false);
 
   useEffect(() => {
     AOS.init({
@@ -67,17 +68,48 @@ export default function Home() {
     <main className="overflow-x-hidden relative w-full">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 w-full bg-white/90 backdrop-blur-md shadow-md z-50 py-4 px-4 md:px-12 flex justify-between items-center">
-        <div className="text-xl md:text-2xl font-bold text-gray-800">
-          <i className="fas fa-shield-alt text-[var(--brand)] mr-2"></i> SecureVDR
+        <div className="flex items-center gap-16 lg:gap-24 flex-1">
+          <div className="text-xl md:text-2xl font-bold text-gray-800 flex-shrink-0">
+            <i className="fas fa-shield-alt text-[var(--brand)] mr-2"></i> SecureVDR
+          </div>
+          
+          <div className="hidden md:flex relative group">
+            <button className="flex items-center gap-2 font-semibold text-gray-700 hover:text-[var(--brand)] transition-colors text-lg py-2">
+              Products
+              <FaChevronDown className="text-sm transition-transform duration-300 group-hover:rotate-180" />
+            </button>
+            
+            <div className="absolute top-10 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 w-72">
+              <div className="bg-white rounded-xl shadow-xl border border-gray-100 py-2 w-full">
+                <Link href="/" className="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors group/item">
+                  <div className="w-10 h-10 rounded-full bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center mr-3 group-hover/item:scale-110 transition-transform">
+                    <FaServer />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-800 group-hover/item:text-[var(--brand)]">Virtual Data Room</div>
+                    <div className="text-xs text-gray-500">Secure document sharing</div>
+                  </div>
+                </Link>
+                <Link href="/dms" className="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-50 group/item">
+                  <div className="w-10 h-10 rounded-full bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center mr-3 group-hover/item:scale-110 transition-transform">
+                    <FaBriefcase />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-800 group-hover/item:text-[var(--brand)]">Deal Management System</div>
+                    <div className="text-xs text-gray-500">End-to-end deal workflow</div>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
         
-        
-        <div className="hidden md:flex gap-4 items-center">
-          <Link href="/business-owner/login" className="btn-bo-hover px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold flex items-center gap-2 transition-all duration-700">
+        <div className="hidden md:flex gap-4 items-center justify-end">
+          <Link href="/business-owner/login" className="btn-bo-hover px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold flex items-center gap-2 transition-all duration-700 whitespace-nowrap">
             <i className="fas fa-chart-line"></i> Business Owner
           </Link>
-          <a href="/login" className="btn-bo-hover px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold transition-all duration-700">Login</a>
-          <Link href="/register" className="btn-bo-hover px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold transition-all duration-700">Register</Link>
+          <a href="/login" className="btn-bo-hover px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold transition-all duration-700 whitespace-nowrap">Login</a>
+          <Link href="/register" className="btn-bo-hover px-5 py-2 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold transition-all duration-700 whitespace-nowrap">Register</Link>
         </div>
         
         <button 
@@ -91,6 +123,25 @@ export default function Home() {
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="fixed top-[68px] left-0 w-full bg-white shadow-md z-40 flex flex-col p-6 md:hidden gap-4 border-t border-gray-100 animate-fade-in">
+          <div className="flex flex-col gap-2">
+            <button 
+              onClick={() => setIsProductsOpen(!isProductsOpen)} 
+              className="flex justify-between items-center w-full px-5 py-3 font-semibold text-gray-700 bg-gray-50 rounded-lg"
+            >
+              Products
+              <FaChevronDown className={`transition-transform duration-300 ${isProductsOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isProductsOpen && (
+              <div className="flex flex-col gap-2 pl-4 animate-fade-in">
+                <Link href="/" className="flex items-center px-5 py-2 text-gray-600 hover:text-[var(--brand)] font-medium">
+                  <FaServer className="mr-3 text-[var(--brand)]" /> Virtual Data Room
+                </Link>
+                <Link href="/dms" className="flex items-center px-5 py-2 text-gray-600 hover:text-[var(--brand)] font-medium">
+                  <FaBriefcase className="mr-3 text-[var(--brand)]" /> Deal Management System
+                </Link>
+              </div>
+            )}
+          </div>
           <a href="/login" className="btn-bo-hover w-full text-center px-5 py-3 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold transition-all duration-700" onClick={() => setIsMobileMenuOpen(false)}>Login</a>
           <Link href="/register" className="btn-bo-hover w-full text-center px-5 py-3 border-2 border-[var(--brand)] text-[var(--brand)] rounded-full font-semibold transition-all duration-700" onClick={() => setIsMobileMenuOpen(false)}>Register</Link>
         </div>
