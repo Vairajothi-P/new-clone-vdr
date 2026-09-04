@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FaArrowLeft, FaSearch, FaCheck, FaShieldAlt, FaLink, FaArrowRight } from "react-icons/fa";
+import { FaArrowLeft, FaSearch, FaCheck, FaShieldAlt, FaLink, FaArrowRight, FaLock, FaBriefcase } from "react-icons/fa";
 
 export default function Marketplace() {
   return (
@@ -18,16 +18,16 @@ export default function Marketplace() {
         <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
           <a href="#how-it-works" className="text-gray-400 hover:text-white transition-colors font-medium py-2">How It Works</a>
           <Link href="#" className="text-gray-400 hover:text-white transition-colors font-medium py-2">For Sellers</Link>
-          <Link href="#" className="text-gray-400 hover:text-white transition-colors font-medium py-2">For Buyers</Link>
+          <a href="#for-buyers" className="text-gray-400 hover:text-white transition-colors font-medium py-2">For Buyers</a>
           <Link href="#" className="text-gray-400 hover:text-white transition-colors font-medium py-2">Resources</Link>
         </div>
         
         {/* Right side - Auth */}
         <div className="hidden md:flex items-center gap-4">
-          <Link href="/login" className="text-white hover:text-[#eab308] border border-white/30 hover:border-[#eab308] px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap">
+          <Link href="/dms/login" className="text-white hover:text-[#eab308] border border-white/30 hover:border-[#eab308] px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap">
             Sign In
           </Link>
-          <Link href="/register" className="text-white hover:text-[#eab308] border border-white/30 hover:border-[#eab308] px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap">
+          <Link href="/dms/register" className="text-white hover:text-[#eab308] border border-white/30 hover:border-[#eab308] px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap">
             Sign Up
           </Link>
         </div>
@@ -120,6 +120,81 @@ export default function Marketplace() {
             <p className="text-gray-800 font-medium text-sm md:text-base">
               More advanced transaction workflows will be introduced in future versions, including secure VDR, NDA, Q&A, and transaction workflows.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* For Buyers Section */}
+      <section id="for-buyers" className="py-24 px-4 md:px-12 lg:px-24 bg-[#f8fafc] text-gray-900 scroll-mt-24 border-t border-gray-200">
+        <div className="max-w-6xl mx-auto">
+          {/* 2x2 Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 bg-white border border-gray-200 shadow-sm mb-20">
+            {/* Card 1 */}
+            <div className="p-10 border-b md:border-r border-gray-200">
+              <div className="w-12 h-12 bg-[#0b1120] rounded mb-6 flex items-center justify-center border border-gray-700 shadow-sm">
+                <FaSearch className="text-[#eab308] text-xl" />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Browse efficiently</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Use clear financial, industry, geography, and transaction filters to focus your search.
+              </p>
+            </div>
+            
+            {/* Card 2 */}
+            <div className="p-10 border-b border-gray-200">
+              <div className="w-12 h-12 bg-[#0b1120] rounded mb-6 flex items-center justify-center border border-gray-700 shadow-sm">
+                <FaLock className="text-[#eab308] text-xl" />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Stay confidential</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Company identities remain protected while you assess fit and submit your credentials.
+              </p>
+            </div>
+            
+            {/* Card 3 */}
+            <div className="p-10 border-b md:border-b-0 md:border-r border-gray-200">
+              <div className="w-12 h-12 bg-[#0b1120] rounded mb-6 flex items-center justify-center border border-gray-700 shadow-sm">
+                <FaShieldAlt className="text-[#eab308] text-xl" />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Request thoughtfully</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Give sellers the context they need to make an informed access decision.
+              </p>
+            </div>
+            
+            {/* Card 4 */}
+            <div className="p-10">
+              <div className="w-12 h-12 bg-[#0b1120] rounded mb-6 flex items-center justify-center border border-gray-700 shadow-sm">
+                <FaBriefcase className="text-[#eab308] text-xl" />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Move with intent</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Keep your early-stage deal sourcing focused on opportunities aligned with your mandate.
+              </p>
+            </div>
+          </div>
+
+          {/* Your buyer journey */}
+          <div>
+            <h2 className="text-3xl font-bold mb-10 text-gray-900">Your buyer journey</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="border-t-[3px] border-[#d4af37] pt-4">
+                <p className="text-[#b48629] font-bold text-sm mb-2">01</p>
+                <p className="font-bold text-sm">Browse deals</p>
+              </div>
+              <div className="border-t-[3px] border-[#d4af37] pt-4">
+                <p className="text-[#b48629] font-bold text-sm mb-2">02</p>
+                <p className="font-bold text-sm">Open a teaser</p>
+              </div>
+              <div className="border-t-[3px] border-[#d4af37] pt-4">
+                <p className="text-[#b48629] font-bold text-sm mb-2">03</p>
+                <p className="font-bold text-sm">Request access</p>
+              </div>
+              <div className="border-t-[3px] border-[#d4af37] pt-4">
+                <p className="text-[#b48629] font-bold text-sm mb-2">04</p>
+                <p className="font-bold text-sm">Access pending</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
