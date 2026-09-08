@@ -161,6 +161,10 @@ export const permissions = pgTable('permissions', {
   canAskQa: boolean('can_ask_qa').default(true),
   canAnswerQa: boolean('can_answer_qa').default(false),
   canAccessNda: boolean('can_access_nda').default(false),
+  canAccessDeals: boolean('can_access_deals').default(false),
+  canAccessTasks: boolean('can_access_tasks').default(false),
+  canAccessCommunication: boolean('can_access_communication').default(false),
+  canAccessControlAudits: boolean('can_access_control_audits').default(false),
 });
 
 export const userGroups = pgTable('user_groups', {

@@ -15,6 +15,10 @@ export default function MainSidebar() {
   const [hasGroupsAccess, setHasGroupsAccess] = useState(false);
   const [hasSettingsAccess, setHasSettingsAccess] = useState(false);
   const [hasQaAccess, setHasQaAccess] = useState(false);
+  const [hasDealsAccess, setHasDealsAccess] = useState(false);
+  const [hasTasksAccess, setHasTasksAccess] = useState(false);
+  const [hasCommunicationAccess, setHasCommunicationAccess] = useState(false);
+  const [hasControlAuditsAccess, setHasControlAuditsAccess] = useState(false);
   const [session, setSession] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const isGroupsActive = pathname?.startsWith('/groups');
@@ -33,6 +37,10 @@ export default function MainSidebar() {
         setHasGroupsAccess(true);
         setHasSettingsAccess(true);
         setHasQaAccess(true);
+        setHasDealsAccess(true);
+        setHasTasksAccess(true);
+        setHasCommunicationAccess(true);
+        setHasControlAuditsAccess(true);
         return;
       }
 
@@ -48,7 +56,7 @@ export default function MainSidebar() {
       // 3. Check workspace scope permissions
       const { data: perms } = await supabase
         .from('permissions')
-        .select('can_access_groups, can_access_settings, can_access_qa')
+        .select('can_access_groups, can_access_settings, can_access_qa, can_access_deals, can_access_tasks, can_access_communication, can_access_control_audits')
         .eq('scope', 'workspace')
         .in('group_id', groupIds);
 
@@ -56,10 +64,18 @@ export default function MainSidebar() {
       const canAccessGroups = perms?.some(p => p.can_access_groups);
       const canAccessSettings = perms?.some(p => p.can_access_settings);
       const canAccessQa = perms?.some(p => p.can_access_qa);
+      const canAccessDeals = perms?.some(p => p.can_access_deals);
+      const canAccessTasks = perms?.some(p => p.can_access_tasks);
+      const canAccessCommunication = perms?.some(p => p.can_access_communication);
+      const canAccessControlAudits = perms?.some((p) => p.can_access_control_audits);
 
       setHasGroupsAccess(!!canAccessGroups);
       setHasSettingsAccess(!!canAccessSettings);
       setHasQaAccess(!!canAccessQa);
+      setHasDealsAccess(!!canAccessDeals);
+      setHasTasksAccess(!!canAccessTasks);
+      setHasCommunicationAccess(!!canAccessCommunication);
+      setHasControlAuditsAccess(!!canAccessControlAudits);
     };
 
     checkModulePermissions();
@@ -71,7 +87,7 @@ export default function MainSidebar() {
 
         {/* Top Logo — PiBi gradient icon */}
         <Link href="/dashboard" className="w-10 h-10 bg-gradient-to-br from-[var(--brand)] to-[var(--brand-secondary)] rounded-xl flex items-center justify-center mb-8 hover:shadow-lg hover:scale-105 transition-all duration-300 shadow-[var(--brand)]/30 shadow-md">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="34" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
@@ -84,6 +100,10 @@ export default function MainSidebar() {
           if (item.key === 'settings' && !hasSettingsAccess) return null;
           if (item.key === 'analytics' && !isAdmin && !isSuperAdmin) return null;
           if (item.key === 'qa' && !hasQaAccess) return null;
+          if (item.key === 'deals' && !hasDealsAccess) return null;
+          if (item.key === 'tasks' && !hasTasksAccess) return null;
+          if (item.key === 'communication' && !hasCommunicationAccess) return null;
+          if (item.key === 'control_audits' && !hasControlAuditsAccess) return null;
           const isActive = pathname?.startsWith(item.href);
 
             return (
