@@ -1,9 +1,27 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { FaArrowLeft, FaSearch, FaCheck, FaShieldAlt, FaLink, FaArrowRight, FaLock, FaBriefcase } from "react-icons/fa";
+import { FaArrowLeft, FaSearch, FaCheck, FaShieldAlt, FaLink, FaArrowRight, FaLock, FaBriefcase, FaPowerOff, FaEllipsisV } from "react-icons/fa";
 
 export default function Marketplace() {
+  const [userRole, setUserRole] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    setUserRole(localStorage.getItem('userRole'));
+    const savedProjects = localStorage.getItem('dms_projects');
+    if (savedProjects) {
+      try {
+        setProjects(JSON.parse(savedProjects));
+      } catch (e) {}
+    }
+  }, []);
+
+  if (!isMounted) return null;
+
   return (
     <main className="min-h-screen bg-[#0b1120] text-white">
       {/* Custom Header for Marketplace */}
@@ -24,12 +42,25 @@ export default function Marketplace() {
         
         {/* Right side - Auth */}
         <div className="hidden md:flex items-center gap-4">
-          <Link href="/dms/login" className="text-white hover:text-[#eab308] border border-white/30 hover:border-[#eab308] px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap">
-            Sign In
-          </Link>
-          <Link href="/dms/register" className="text-white hover:text-[#eab308] border border-white/30 hover:border-[#eab308] px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap">
-            Sign Up
-          </Link>
+          {userRole === 'Buyer' ? (
+            <Link href="/dms/login">
+              <button 
+                onClick={() => localStorage.removeItem('userRole')}
+                className="text-white hover:text-red-400 border border-white/30 hover:border-red-400 px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap flex items-center gap-2"
+              >
+                <FaPowerOff /> Logout
+              </button>
+            </Link>
+          ) : (
+            <>
+              <Link href="/dms/login" className="text-white hover:text-[#eab308] border border-white/30 hover:border-[#eab308] px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap">
+                Sign In
+              </Link>
+              <Link href="/dms/register" className="text-white hover:text-[#eab308] border border-white/30 hover:border-[#eab308] px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap">
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -49,6 +80,47 @@ export default function Marketplace() {
           </p>
         </div>
       </section>
+
+      {/* Projects Section for Logged-in Buyers */}
+      {userRole === 'Buyer' && (
+        <section className="py-12 px-8 md:px-24 border-t border-white/10">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-3xl font-bold text-white">Available Projects</h2>
+              <span className="px-3 py-1 bg-[#eab308]/20 text-[#eab308] text-xs font-bold rounded-full tracking-wide">Buyer View</span>
+            </div>
+
+            {projects.length === 0 ? (
+              <div className="w-full min-h-[200px] flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-2xl border border-white/10">
+                <FaSearch className="text-4xl mb-4 opacity-40" />
+                <p className="text-xl font-medium">Project not available</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {projects.map((proj, idx) => (
+                  <Link href={`/dms/deal?project=${encodeURIComponent(proj.name)}`} key={idx} className="block">
+                    <div className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all cursor-pointer group text-gray-900">
+                      <div className="flex justify-between items-start mb-auto">
+                        <span className="px-2 py-0.5 bg-[#e6fbf2] text-[#00c875] text-[9px] font-bold rounded">
+                          {proj.status}
+                        </span>
+                        <button className="text-gray-400 hover:text-gray-600 p-1 opacity-60 hover:opacity-100">
+                          <FaEllipsisV className="text-[11px]" />
+                        </button>
+                      </div>
+                      <div className="flex flex-col items-center justify-center flex-1 gap-2 pb-2">
+                        <FaShieldAlt className="text-4xl text-[#65a3ab] group-hover:scale-105 transition-transform" />
+                        <span className="font-bold text-gray-800 text-sm mt-1">{proj.name}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
 
       {/* How It Works Section */}
       <section id="how-it-works" className="py-24 px-4 md:px-12 lg:px-24 bg-gray-50 text-gray-900 scroll-mt-24">

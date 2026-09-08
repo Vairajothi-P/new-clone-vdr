@@ -1,155 +1,182 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { FaPowerOff, FaCog, FaDatabase, FaPlus, FaEllipsisV, FaShieldAlt } from "react-icons/fa";
 import Link from "next/link";
-import { FaFolder, FaFolderOpen, FaFileAlt, FaSearch, FaBell, FaCog, FaSignOutAlt, FaChartBar, FaUsers, FaPlus, FaEllipsisV } from "react-icons/fa";
 
-export default function Workspace() {
-  const folders = [
-    { name: "Due Diligence (Project Alpha)", files: 142, size: "1.2 GB", date: "Today, 10:30 AM", color: "text-blue-500" },
-    { name: "Financial Statements 2023", files: 24, size: "145 MB", date: "Yesterday", color: "text-green-500" },
-    { name: "Legal & Compliance", files: 89, size: "450 MB", date: "Sep 1, 2023", color: "text-yellow-500" },
-    { name: "HR & Employee Records", files: 312, size: "890 MB", date: "Aug 28, 2023", color: "text-purple-500" },
-    { name: "Intellectual Property", files: 15, size: "56 MB", date: "Aug 15, 2023", color: "text-red-500" },
-    { name: "Board Minutes", files: 42, size: "112 MB", date: "Jul 30, 2023", color: "text-blue-500" },
-  ];
+export default function WorkspaceDashboard() {
+  const [workspaces, setWorkspaces] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [projectName, setProjectName] = useState("");
+  const [projectDesc, setProjectDesc] = useState("");
+
+  useEffect(() => {
+    const saved = localStorage.getItem('dms_projects');
+    if (saved) {
+      try {
+        setWorkspaces(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse projects", e);
+      }
+    }
+  }, []);
+
+  const handleCreateProject = (e) => {
+    e.preventDefault();
+    if (projectName.trim()) {
+      const updatedWorkspaces = [...workspaces, { name: projectName, status: "ACTIVE" }];
+      setWorkspaces(updatedWorkspaces);
+      localStorage.setItem('dms_projects', JSON.stringify(updatedWorkspaces));
+      setIsModalOpen(false);
+      setProjectName("");
+      setProjectDesc("");
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex font-sans">
-      {/* Sidebar */}
-      <aside className="w-64 bg-[#0b1120] text-gray-300 flex-col hidden md:flex fixed h-full z-10">
-        <div className="p-6 border-b border-gray-800">
-          <div className="flex items-center gap-2 text-white">
-            <i className="fas fa-shield-alt text-[#3b82f6] text-xl"></i>
-            <span className="font-bold text-xl tracking-tight">Secure DMS</span>
-          </div>
-        </div>
-        
-        <nav className="flex-1 py-6 px-4 space-y-2">
-          <p className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Menu</p>
-          <a href="#" className="flex items-center gap-3 px-3 py-2.5 bg-[#3b82f6]/10 text-white rounded-lg transition-colors">
-            <FaFolderOpen className="text-[#3b82f6]" /> 
-            <span className="font-medium">My Workspace</span>
-          </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 hover:text-white rounded-lg transition-colors">
-            <FaChartBar /> 
-            <span className="font-medium">Dashboard</span>
-          </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 hover:text-white rounded-lg transition-colors">
-            <FaUsers /> 
-            <span className="font-medium">Shared with Me</span>
-          </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 hover:text-white rounded-lg transition-colors">
-            <FaFileAlt /> 
-            <span className="font-medium">Recent Files</span>
-          </a>
-        </nav>
-        
-        <div className="p-4 border-t border-gray-800">
-          <a href="#" className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 hover:text-white rounded-lg transition-colors mb-2">
-            <FaCog /> 
-            <span className="font-medium">Settings</span>
-          </a>
-          <Link href="/dms" className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 hover:text-red-400 rounded-lg transition-colors">
-            <FaSignOutAlt /> 
-            <span className="font-medium">Log out</span>
-          </Link>
-        </div>
-      </aside>
+    <div className="min-h-screen bg-[#F8F9FA] relative p-8 md:p-16 flex justify-center items-start font-sans">
+      
+      {/* Top Right Logout Button */}
+      <div className="absolute top-8 right-8">
+        <Link href="/dms/login">
+          <button className="w-10 h-10 rounded-full border border-red-200 bg-white text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors shadow-sm">
+            <FaPowerOff className="text-sm" />
+          </button>
+        </Link>
+      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 md:ml-64 flex flex-col min-h-screen">
-        {/* Header */}
-        <header className="h-20 bg-white border-b border-gray-200 px-8 flex items-center justify-between sticky top-0 z-10">
-          <div className="text-xl font-bold text-gray-800">My Workspace</div>
-          
-          <div className="flex items-center gap-6">
-            <div className="relative hidden lg:block">
-              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input type="text" placeholder="Search files, folders..." className="pl-10 pr-4 py-2 w-64 rounded-full bg-gray-100 border-none focus:ring-2 focus:ring-[#3b82f6] outline-none text-sm transition-all focus:w-80" />
-            </div>
-            
-            <button className="text-gray-400 hover:text-gray-600 transition-colors relative">
-              <FaBell className="text-xl" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
-            
-            <div className="flex items-center gap-3 pl-6 border-l border-gray-200">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-gray-900">John Doe</p>
-                <p className="text-xs text-gray-500">Corporate Development</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-[#0b1120] text-white flex items-center justify-center font-bold">
-                JD
+      {/* Main Container */}
+      <div className="w-full max-w-6xl min-h-[60vh] bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mt-12 flex flex-col">
+        
+        {/* Header Row */}
+        <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-gray-900">Vishwa Tech</h1>
+            <span className="px-3 py-1 bg-[#e6fbf2] text-[#00c875] text-xs font-bold rounded-full tracking-wide">Seller</span>
+          </div>
+
+          <div className="flex items-center gap-8">
+            <div className="relative">
+              <select className="appearance-none bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded pl-3 pr-8 py-1.5 outline-none hover:border-gray-300 transition-colors cursor-pointer shadow-sm">
+                <option>Active</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
               </div>
             </div>
-          </div>
-        </header>
 
-        {/* Workspace Area */}
-        <div className="p-8 flex-1 overflow-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-800">Folders</h2>
-            <button className="bg-[#3b82f6] hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm">
-              <FaPlus /> New Folder
-            </button>
-          </div>
-
-          {/* Folder Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-            {folders.map((folder, index) => (
-              <div key={index} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all hover:border-[#3b82f6]/50 group cursor-pointer relative">
-                <button className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <FaEllipsisV />
-                </button>
-                <FaFolder className={`text-5xl ${folder.color} mb-4 group-hover:scale-105 transition-transform`} />
-                <h3 className="font-bold text-gray-800 mb-1 truncate">{folder.name}</h3>
-                <p className="text-xs text-gray-500 mb-4">{folder.files} files &bull; {folder.size}</p>
-                
-                <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                  <span className="text-xs text-gray-400">Modified: {folder.date}</span>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#f0f7f8] text-[#337a85] flex items-center justify-center">
+                <FaDatabase className="text-sm" />
+              </div>
+              <div className="flex flex-col w-32">
+                <div className="flex justify-between items-center text-[10px] text-gray-400 font-semibold mb-1">
+                  <span>0 KB / 50 GB</span>
+                  <span>[0%]</span>
+                </div>
+                <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#337a85] w-0"></div>
                 </div>
               </div>
+            </div>
+
+            <button className="text-gray-400 hover:text-gray-600 transition-colors">
+              <FaCog className="text-lg" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content Grid */}
+        <div className="p-8 pb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            
+            {/* Add New Workspace Card */}
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="h-44 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center gap-3 hover:border-gray-400 hover:bg-gray-50 transition-all group"
+            >
+              <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center text-xl shadow-md group-hover:scale-105 transition-transform">
+                <FaPlus />
+              </div>
+              <span className="text-[13px] text-gray-500 font-medium">Add New Project</span>
+            </button>
+
+            {/* Existing Workspaces */}
+            {workspaces.map((workspace, index) => (
+              <Link href={`/dms/deal?project=${encodeURIComponent(workspace.name)}`} key={index} className="block">
+                <div className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] transition-all cursor-pointer group">
+                  <div className="flex justify-between items-start mb-auto">
+                    <span className="px-2 py-0.5 bg-[#e6fbf2] text-[#00c875] text-[9px] font-bold rounded">
+                      {workspace.status}
+                    </span>
+                    <button className="text-gray-400 hover:text-gray-600 p-1 opacity-60 hover:opacity-100">
+                      <FaEllipsisV className="text-[11px]" />
+                    </button>
+                  </div>
+                  
+                  <div className="flex flex-col items-center justify-center flex-1 gap-2 pb-2">
+                    <FaShieldAlt className="text-4xl text-[#65a3ab] group-hover:scale-105 transition-transform" />
+                    <span className="font-bold text-gray-800 text-sm mt-1">{workspace.name}</span>
+                  </div>
+                </div>
+              </Link>
             ))}
-          </div>
-
-          {/* Recent Activity */}
-          <div>
-            <h2 className="text-xl font-bold text-gray-800 mb-6">Recent Activity</h2>
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-              <div className="flex items-center gap-4 p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer">
-                <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center text-blue-600">
-                  <FaFileAlt />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-bold text-gray-800">Q3_Financial_Report.pdf</h4>
-                  <p className="text-xs text-gray-500">Uploaded to Due Diligence (Project Alpha)</p>
-                </div>
-                <div className="text-xs text-gray-400">10 mins ago</div>
-              </div>
-              <div className="flex items-center gap-4 p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer">
-                <div className="w-10 h-10 rounded bg-green-100 flex items-center justify-center text-green-600">
-                  <FaFileAlt />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-bold text-gray-800">NDA_ProjectAlpha_Signed.pdf</h4>
-                  <p className="text-xs text-gray-500">Uploaded to Due Diligence (Project Alpha)</p>
-                </div>
-                <div className="text-xs text-gray-400">2 hours ago</div>
-              </div>
-              <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors cursor-pointer">
-                <div className="w-10 h-10 rounded bg-yellow-100 flex items-center justify-center text-yellow-600">
-                  <FaFolder />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-bold text-gray-800">Legal & Compliance</h4>
-                  <p className="text-xs text-gray-500">Folder created by John Doe</p>
-                </div>
-                <div className="text-xs text-gray-400">Yesterday</div>
-              </div>
-            </div>
+            
           </div>
         </div>
-      </main>
+      </div>
+
+      {/* Bottom Left Logo */}
+      <div className="fixed bottom-6 left-6 w-8 h-8 rounded-full bg-[#303030] text-white flex items-center justify-center shadow-lg font-serif italic text-sm">
+        N
+      </div>
+
+      {/* Create Project Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-xl relative animate-in fade-in zoom-in duration-200">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Create New Project</h2>
+            <form onSubmit={handleCreateProject}>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Project Name</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]"
+                  placeholder="Enter project name..."
+                />
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Project Description</label>
+                <textarea 
+                  value={projectDesc}
+                  onChange={(e) => setProjectDesc(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]"
+                  rows="3"
+                  placeholder="Enter project description..."
+                ></textarea>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-[#00c875] hover:bg-[#00a863] text-white rounded-lg font-medium transition-colors shadow-sm"
+                >
+                  Create Project
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
