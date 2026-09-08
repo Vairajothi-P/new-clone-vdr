@@ -10,6 +10,8 @@ export default function DMSRegister() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [loadingText, setLoadingText] = useState("Starting...");
+  const [dealType, setDealType] = useState("");
+  const [participantType, setParticipantType] = useState("");
 
   useEffect(() => {
     if (!isSubmitting) return;
@@ -37,10 +39,20 @@ export default function DMSRegister() {
     } else if (progress >= 90 && progress < 100) {
       setLoadingText("Ready your account...");
     } else if (progress === 100) {
-      setLoadingText("Account created! Redirecting to workspace...");
+      setLoadingText("Account created! Redirecting...");
+      
+      if (participantType) {
+        localStorage.setItem('userRole', participantType);
+      } else {
+        localStorage.setItem('userRole', 'Buyer');
+      }
       
       const timeout = setTimeout(() => {
-        router.push('/dms/workspace');
+        if (dealType === "M&A" && participantType === "Buyer") {
+          router.push('/dms/marketplace');
+        } else {
+          router.push('/dms/workspace');
+        }
       }, 5000);
       
       return () => clearTimeout(timeout);
@@ -100,10 +112,12 @@ export default function DMSRegister() {
       {/* Right Panel - Form */}
       <div className="md:w-[55%] flex items-center justify-center p-8 md:p-12 lg:p-24 bg-white">
         <div className="w-full max-w-lg">
-          <div className="mb-10 text-center md:text-left">
-            <h2 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">Create an account</h2>
-            <p className="text-gray-500 text-lg">Already have an account? <Link href="/dms/login" className="text-[#3b82f6] font-semibold hover:underline">Sign in</Link></p>
-          </div>
+          {!isSubmitting && (
+            <div className="mb-10 text-center md:text-left">
+              <h2 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">Create an account</h2>
+              <p className="text-gray-500 text-lg">Already have an account? <Link href="/dms/login" className="text-[#3b82f6] font-semibold hover:underline">Sign in</Link></p>
+            </div>
+          )}
           
           {isSubmitting ? (
             <div className="py-20 flex flex-col justify-center h-full min-h-[400px] animate-fade-in">
@@ -147,6 +161,35 @@ export default function DMSRegister() {
                 <input type="password" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="••••••••" required minLength={8} />
                 <p className="text-xs text-gray-500 mt-2">Must be at least 8 characters long.</p>
               </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Which type?</label>
+                <select 
+                  value={dealType} 
+                  onChange={(e) => setDealType(e.target.value)} 
+                  required 
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white appearance-none"
+                >
+                  <option value="" disabled>Select type...</option>
+                  <option value="M&A">M&A</option>
+                </select>
+              </div>
+
+              {dealType === "M&A" && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Type</label>
+                  <select 
+                    value={participantType} 
+                    onChange={(e) => setParticipantType(e.target.value)} 
+                    required 
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white appearance-none"
+                  >
+                    <option value="" disabled>Select participant type...</option>
+                    <option value="Buyer">Buyer</option>
+                    <option value="Seller">Seller</option>
+                  </select>
+                </div>
+              )}
               
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Company Type</label>
