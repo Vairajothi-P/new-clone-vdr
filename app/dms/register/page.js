@@ -41,14 +41,11 @@ export default function DMSRegister() {
     } else if (progress === 100) {
       setLoadingText("Account created! Redirecting...");
       
-      if (participantType) {
-        localStorage.setItem('userRole', participantType);
-      } else {
-        localStorage.setItem('userRole', 'Buyer');
-      }
+      const roleToSet = participantType || 'Buyer';
+      localStorage.setItem('userRole', roleToSet);
       
       const timeout = setTimeout(() => {
-        if (dealType === "M&A" && participantType === "Buyer") {
+        if (roleToSet === 'Buyer') {
           router.push('/dms/marketplace');
         } else {
           router.push('/dms/workspace');

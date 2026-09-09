@@ -1,0 +1,304 @@
+"use client";
+
+import { Suspense, useState } from "react";
+import { FaArrowLeft, FaLock, FaCheck, FaTimes } from "react-icons/fa";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+
+function TeaserContent() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const projectName = searchParams.get('project') || "Project Aurora";
+
+  return (
+    <div className="min-h-screen font-sans">
+      
+      {/* Hero / Header Section */}
+      <div className="bg-[#fafafa]">
+        <div className="max-w-5xl mx-auto px-6 py-16 md:py-20">
+          {/* Back Button */}
+          <Link href="/dms/marketplace" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors mb-12">
+            <FaArrowLeft className="mr-2" /> Back to marketplace
+          </Link>
+
+          {/* Top Badges */}
+          <div className="flex items-center gap-4 mb-6">
+            <span className="px-3 py-1 bg-[#b48629] text-white text-[11px] font-bold tracking-wide rounded-sm uppercase">
+              Confidential Opportunity
+            </span>
+            <span className="text-[11px] font-bold text-gray-500 tracking-widest uppercase">
+              {projectName}
+            </span>
+          </div>
+
+          {/* Header Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16 items-start">
+            <div className="lg:col-span-2">
+              <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight mb-6">
+                {projectName}
+              </h1>
+              
+              <p className="text-lg text-gray-600 leading-relaxed mb-8">
+                A profitable mid-market B2B SaaS company providing workflow automation
+                solutions to enterprise customers.
+              </p>
+              
+              <div className="flex flex-wrap items-center text-sm font-medium text-[#b48629]">
+                <span>B2B SaaS</span>
+                <span className="mx-3 text-gray-300">/</span>
+                <span className="text-[#b48629]">North America</span>
+                <span className="mx-3 text-gray-300">/</span>
+                <span className="text-[#b48629]">Majority Acquisition</span>
+              </div>
+            </div>
+
+            <div className="lg:col-span-1">
+              <div className="bg-white border border-gray-200 p-6 rounded-sm shadow-sm">
+                <div className="flex items-center gap-2 mb-4 text-gray-900">
+                  <FaLock className="text-[#b48629]" />
+                  <h3 className="text-xs font-bold tracking-widest uppercase">Identity Protected</h3>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Company identity and detailed transaction information are available only to qualified buyers.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Details Section */}
+      <div className="bg-[#f4f7f9] border-t border-gray-200 py-16 md:py-24">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16 items-start">
+            
+            {/* Left Column (Detailed Data) */}
+            <div className="lg:col-span-2">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Company Overview</h2>
+              <p className="text-gray-600 leading-relaxed mb-12">
+                A profitable mid-market B2B SaaS company providing workflow automation solutions to enterprise customers. The company combines a durable operating model with an attractive opportunity for a well-capitalized partner to support its next phase of growth.
+              </p>
+
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Key Highlights</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 mb-12">
+                {[
+                  "10+ years operating history",
+                  "Strong recurring revenue",
+                  "90%+ customer retention",
+                  "High margin business model",
+                  "Experienced management team",
+                  "Attractive growth opportunity"
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 py-3 border-b border-gray-100 last:border-0 md:last:border-b-0">
+                    <div className="w-5 h-5 bg-green-50 border border-green-100 text-green-600 rounded flex items-center justify-center flex-shrink-0">
+                      <FaCheck className="text-[10px]" />
+                    </div>
+                    <span className="text-sm text-gray-700">{item}</span>
+                  </div>
+                ))}
+              </div>
+
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Financial Snapshot</h2>
+              <div className="bg-white border border-gray-200 rounded flex flex-col md:flex-row overflow-hidden text-center md:text-left">
+                <div className="p-5 flex-1 border-b md:border-b-0 md:border-r border-gray-100">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Revenue</p>
+                  <p className="text-xl font-bold text-gray-900">$12.4M</p>
+                </div>
+                <div className="p-5 flex-1 border-b md:border-b-0 md:border-r border-gray-100">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">EBITDA</p>
+                  <p className="text-xl font-bold text-gray-900">$3.1M</p>
+                </div>
+                <div className="p-5 flex-1 border-b md:border-b-0 md:border-r border-gray-100">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">EBITDA Margin</p>
+                  <p className="text-xl font-bold text-gray-900">25%</p>
+                </div>
+                <div className="p-5 flex-1 border-b md:border-b-0 md:border-r border-gray-100">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">YoY Growth</p>
+                  <p className="text-xl font-bold text-[#00c875]">+28% YoY</p>
+                </div>
+                <div className="p-5 flex-1">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Employees</p>
+                  <p className="text-xl font-bold text-gray-900">85</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column (Transaction Overview Box) */}
+            <div className="lg:col-span-1">
+              <div className="bg-white border border-gray-200 p-6 rounded-sm shadow-sm">
+                <h3 className="text-[10px] font-bold text-[#b48629] tracking-widest uppercase mb-6">Transaction Overview</h3>
+                
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-sm text-gray-500">Deal Type</span>
+                  <span className="text-sm font-bold text-gray-900">Majority Acquisition</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-sm text-gray-500">Geography</span>
+                  <span className="text-sm font-bold text-gray-900">North America</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-sm text-gray-500">Sector</span>
+                  <span className="text-sm font-bold text-gray-900">B2B SaaS</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-gray-100">
+                  <span className="text-sm text-gray-500">Revenue Multiple</span>
+                  <span className="text-sm font-bold text-gray-900">Confidential</span>
+                </div>
+                <div className="flex justify-between items-start py-3 mb-6">
+                  <span className="text-sm text-gray-500 mt-0.5">Asking Price</span>
+                  <span className="text-sm font-bold text-gray-900 text-right">Available upon<br/>qualified access</span>
+                </div>
+                
+                <button 
+                  onClick={() => setIsModalOpen(true)}
+                  className="w-full py-3 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded transition-colors mb-4"
+                >
+                  Request Access
+                </button>
+                
+                <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                  <svg className="w-3 h-3 text-[#00c875]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  <span>Controlled seller approval</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* Request Access Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-[#0b1120]/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-[#f4f7f9] w-full max-w-[600px] rounded-sm shadow-2xl relative flex flex-col max-h-[90vh]">
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 transition-colors p-1"
+            >
+              <FaTimes />
+            </button>
+            
+            <div className="p-8 pb-6 bg-[#f4f7f9] rounded-t-sm">
+              <div className="w-10 h-10 bg-[#0b1120] rounded-sm flex items-center justify-center mb-5 border border-gray-800">
+                <FaLock className="text-[#b48629]" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Request Access to This Opportunity</h2>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Tell the deal representative who you are and why this opportunity fits your mandate.
+              </p>
+            </div>
+            
+            <div className="p-8 overflow-y-auto bg-white border-t border-gray-200/60">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1.5">Full Name</label>
+                  <input type="text" placeholder="Alex Morgan" className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1.5">Work Email</label>
+                  <input type="email" placeholder="alex@firm.com" className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1.5">Company</label>
+                  <input type="text" placeholder="Northstar Capital" className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1.5">Job Title</label>
+                  <input type="text" placeholder="Partner" className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1.5">Investor / Buyer Type</label>
+                  <select className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900 bg-white">
+                    <option>Select type</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1.5">Investment Range</label>
+                  <select className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900 bg-white">
+                    <option>Select range</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1.5">Message</label>
+                <textarea rows="4" placeholder="Share a little about your investment mandate..." className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors resize-none text-gray-900"></textarea>
+              </div>
+            </div>
+            
+            <div className="p-6 flex justify-end bg-white rounded-b-sm border-t border-gray-100">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="py-2.5 px-6 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded transition-colors"
+              >
+                Submit Access Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Footer */}
+      <footer className="bg-[#0b1120] text-gray-400 py-16 border-t border-white/10 mt-auto">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8 mb-12">
+            
+            <div className="md:col-span-1">
+              <h2 className="text-white text-xl font-bold tracking-tight mb-4 flex items-center">
+                <span className="w-6 h-6 bg-[#b48629] rounded-sm mr-2 flex items-center justify-center text-white text-xs font-serif italic">N</span>
+                Secure DMS
+              </h2>
+              <p className="text-sm leading-relaxed text-gray-500">
+                Secure, anonymous deal flow for qualified buyers and corporate development teams.
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="text-white text-sm font-bold tracking-widest uppercase mb-4">Marketplace</h3>
+              <ul className="space-y-3 text-sm">
+                <li><Link href="/dms/marketplace" className="hover:text-white transition-colors">Browse Deals</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">How It Works</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">Pricing</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-white text-sm font-bold tracking-widest uppercase mb-4">Resources</h3>
+              <ul className="space-y-3 text-sm">
+                <li><Link href="#" className="hover:text-white transition-colors">Help Center</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">Legal & Privacy</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">Security</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-white text-sm font-bold tracking-widest uppercase mb-4">Contact</h3>
+              <ul className="space-y-3 text-sm">
+                <li><Link href="#" className="hover:text-white transition-colors">Support</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">Partnerships</Link></li>
+              </ul>
+            </div>
+
+          </div>
+          
+          <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+            <p>&copy; 2026 Nova DMS. All rights reserved.</p>
+            <div className="flex items-center gap-6">
+              <Link href="#" className="hover:text-white transition-colors">Terms of Service</Link>
+              <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  );
+}
+
+export default function DealTeaserPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#fafafa] p-8 flex justify-center items-center text-gray-500">Loading...</div>}>
+      <TeaserContent />
+    </Suspense>
+  );
+}

@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FaPowerOff, FaCog, FaDatabase, FaPlus, FaEllipsisV, FaShieldAlt } from "react-icons/fa";
+import { FaPowerOff, FaCog, FaDatabase, FaPlus, FaEllipsisV, FaShieldAlt, FaBell } from "react-icons/fa";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function WorkspaceDashboard() {
   const [workspaces, setWorkspaces] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [projectDesc, setProjectDesc] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
     const saved = localStorage.getItem('dms_projects');
@@ -36,8 +38,12 @@ export default function WorkspaceDashboard() {
   return (
     <div className="min-h-screen bg-[#F8F9FA] relative p-8 md:p-16 flex justify-center items-start font-sans">
       
-      {/* Top Right Logout Button */}
-      <div className="absolute top-8 right-8">
+      {/* Top Right Buttons */}
+      <div className="absolute top-8 right-8 flex items-center gap-3">
+        <button className="relative w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-500 flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm">
+          <FaBell className="text-sm" />
+          <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+        </button>
         <Link href="/dms/login">
           <button className="w-10 h-10 rounded-full border border-red-200 bg-white text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors shadow-sm">
             <FaPowerOff className="text-sm" />
@@ -103,7 +109,11 @@ export default function WorkspaceDashboard() {
 
             {/* Existing Workspaces */}
             {workspaces.map((workspace, index) => (
-              <Link href={`/dms/deal?project=${encodeURIComponent(workspace.name)}`} key={index} className="block">
+              <div 
+                onClick={() => router.push(`/dms/deal?project=${encodeURIComponent(workspace.name)}`)} 
+                key={index} 
+                className="block cursor-pointer"
+              >
                 <div className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] transition-all cursor-pointer group">
                   <div className="flex justify-between items-start mb-auto">
                     <span className="px-2 py-0.5 bg-[#e6fbf2] text-[#00c875] text-[9px] font-bold rounded">
@@ -119,7 +129,7 @@ export default function WorkspaceDashboard() {
                     <span className="font-bold text-gray-800 text-sm mt-1">{workspace.name}</span>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
             
           </div>
