@@ -35,7 +35,11 @@ const mapToCamel = (obj) => {
         canAccessQa: obj.can_access_qa,
         canAskQa: obj.can_ask_qa,
         canAnswerQa: obj.can_answer_qa,
-        canAccessNda: obj.can_access_nda
+        canAccessNda: obj.can_access_nda,
+        canAccessDeals: obj.can_access_deals,
+        canAccessTasks: obj.can_access_tasks,
+        canAccessCommunication: obj.can_access_communication,
+        canAccessControlAudits: obj.can_access_control_audits
     };
 };
 
@@ -71,7 +75,11 @@ const mapToSnake = (obj) => {
         can_access_qa: obj.canAccessQa,
         can_ask_qa: obj.canAskQa,
         can_answer_qa: obj.canAnswerQa,
-        can_access_nda: obj.canAccessNda
+        can_access_nda: obj.canAccessNda,
+        can_access_deals: obj.canAccessDeals,
+        can_access_tasks: obj.canAccessTasks,
+        can_access_communication: obj.canAccessCommunication,
+        can_access_control_audits: obj.canAccessControlAudits
     };
 };
 

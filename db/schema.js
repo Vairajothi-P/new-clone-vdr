@@ -7,6 +7,8 @@ export const planStatusEnum = pgEnum('plan_status', ['active', 'expired', 'cance
 export const userRoleEnum = pgEnum('user_role', ['super_admin', 'admin', 'sub_admin', 'internal_user', 'external_user']);
 export const userStatusEnum = pgEnum('user_status', ['invited', 'active', 'suspended', 'revoked']);
 export const permissionScopeEnum = pgEnum('permission_scope', ['group', 'document', 'folder', 'workspace', 'files']);
+export const channelTypeEnum = pgEnum('channel_type', ['public', 'private', 'direct_message']);
+export const visibilityEnum = pgEnum('visibility', ['internal', 'external', 'all']);
 
 // TABLES
 
@@ -161,6 +163,10 @@ export const permissions = pgTable('permissions', {
   canAskQa: boolean('can_ask_qa').default(true),
   canAnswerQa: boolean('can_answer_qa').default(false),
   canAccessNda: boolean('can_access_nda').default(false),
+  canAccessDeals: boolean('can_access_deals').default(false),
+  canAccessTasks: boolean('can_access_tasks').default(false),
+  canAccessCommunication: boolean('can_access_communication').default(false),
+  canAccessControlAudits: boolean('can_access_control_audits').default(false),
 });
 
 export const userGroups = pgTable('user_groups', {
@@ -436,4 +442,89 @@ export const qnaActivityLogs = pgTable('qna_activity_logs', {
   details: jsonb('details').default('{}'),
   ipAddress: varchar('ip_address'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+// --- COMMUNICATION MODULE ---
+
+export const communicationChannels = pgTable('communication_channels', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  workspaceId: uuid('workspace_id').references(() => workspaces.id),
+  name: text('name'),
+  description: text('description'),
+  type: channelTypeEnum('type').default('public').notNull(),
+  visibility: visibilityEnum('visibility').default('internal').notNull(),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).defaultNow(),
+});
+
+export const channelMembers = pgTable('channel_members', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  channelId: uuid('channel_id').references(() => communicationChannels.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  role: text('role').default('member').notNull(), // 'admin', 'member', 'guest'
+  joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow().notNull(),
+  lastReadAt: timestamp('last_read_at', { withTimezone: true }).defaultNow(),
+  isMuted: boolean('is_muted').default(false),
+  isPinned: boolean('is_pinned').default(false),
+});
+
+export const messages = pgTable('messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  channelId: uuid('channel_id').references(() => communicationChannels.id, { onDelete: 'cascade' }).notNull(),
+  senderId: uuid('sender_id').references(() => users.id).notNull(),
+  parentMessageId: uuid('parent_message_id'), // Self-reference for threads
+  messageText: text('message_text').notNull(),
+  messageType: text('message_type').default('text').notNull(), // text, file, system, task, approval
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  isEdited: boolean('is_edited').default(false),
+  isPinned: boolean('is_pinned').default(false),
+  attachments: jsonb('attachments').default('[]'),
+  metadata: jsonb('metadata').default('{}'),
+});
+
+export const messageReactions = pgTable('message_reactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  messageId: uuid('message_id').references(() => messages.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  emoji: text('emoji').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const messageMentions = pgTable('message_mentions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  messageId: uuid('message_id').references(() => messages.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  isRead: boolean('is_read').default(false).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const announcementPosts = pgTable('announcement_posts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  workspaceId: uuid('workspace_id').references(() => workspaces.id),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  priority: text('priority').default('normal').notNull(),
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  targetAudience: jsonb('target_audience').default('[]'),
+  attachments: jsonb('attachments').default('[]'),
+});
+
+export const communicationAuditLogs = pgTable('communication_audit_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  workspaceId: uuid('workspace_id').references(() => workspaces.id),
+  userId: uuid('user_id').references(() => users.id),
+  action: text('action').notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: uuid('entity_id').notNull(),
+  metadata: jsonb('metadata').default('{}'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
