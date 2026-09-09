@@ -125,7 +125,6 @@ export default function BuyerOverviewPage() {
           <div className="deal-header">
             <div className="deal-header-top">
               <div>
-                <div className="deal-id">ABC TECHNOLOGIES &nbsp;·&nbsp; SaaS &nbsp;·&nbsp; ARR $25M &nbsp;·&nbsp; Bengaluru, IN</div>
                 <div className="deal-title">
                   Project Alpha
                   <span className="stage-pill"><span className="dot"></span> Bid evaluation in progress</span>
