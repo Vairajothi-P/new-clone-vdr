@@ -8,29 +8,31 @@ export default function SellerMessagesPage() {
     <>
       <style>{`
         :root{
-          --ink:#161A2B; --paper:#F6F4EC; --panel:#FFFFFF;
-          --slate:#63697E; --slate-light:#9CA0B3;
-          --line:#DEDACB; --line-soft:#EAE7DC;
-          --brass:#9C7226; --brass-soft:#F1E4C8;
-          --green:#2E6B4C; --green-soft:#E3EEE5;
-          --amber:#95651E; --amber-soft:#F4E9D4;
-          --red:#9B3B2E; --red-soft:#F3E4E0;
-          --blue:#2E4F8F; --blue-soft:#E4E9F5;
-          --radius:3px;
+          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
+          --slate:#64748b; --slate-light:#94a3b8;
+          --line:#e2e8f0; --line-soft:#f1f5f9;
+          --brass:#2563eb; --brass-soft:#dbeafe;
+          --green:#16a34a; --green-soft:#dcfce7;
+          --red:#dc2626; --red-soft:#fee2e2;
+          --amber:#d97706; --amber-soft:#fef3c7;
+          --blue:#2563eb; --blue-soft:#dbeafe;
+          --purple:#7c3aed; --purple-soft:#ede9fe;
+          --coral:#ea580c; --coral-soft:#ffedd5;
+          --radius:8px;
         }
         .seller-messages-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; font-size:14px; line-height:1.5; min-height: 100vh; display:flex; flex-direction:column; }
         .seller-messages-container a{ color:inherit; text-decoration:none; }
         .seller-messages-container h1, .seller-messages-container h2, .seller-messages-container h3{ font-family:'Source Serif 4', serif; font-weight:500; margin:0; }
 
-        .seller-messages-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:#EDE9DA; }
+        .seller-messages-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
         .seller-messages-container .topbar-left{ display:flex; align-items:center; gap:18px; }
         .seller-messages-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .seller-messages-container .brand-mark{ width:20px; height:20px; border:1.4px solid #C9A24C; border-radius:2px; position:relative; flex:none;}
-        .seller-messages-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid #C9A24C; opacity:.55; }
-        .seller-messages-container .crumbs{ color:#9AA0BE; font-size:12.5px; }
-        .seller-messages-container .crumbs b{ color:#EDE9DA; font-weight:500; }
-        .seller-messages-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:#B7BBD2; }
-        .seller-messages-container .avatar{ width:26px;height:26px;border-radius:50%; background:#3A3F63; color:#EDE9DA; display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
+        .seller-messages-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
+        .seller-messages-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
+        .seller-messages-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
+        .seller-messages-container .crumbs b{ color:var(--paper); font-weight:500; }
+        .seller-messages-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
+        .seller-messages-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
 
         .seller-messages-container .subnav{ display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); }
         .seller-messages-container .subnav a{ padding:13px 16px; font-size:13px; color:var(--slate); border-bottom:2px solid transparent; }
@@ -42,7 +44,7 @@ export default function SellerMessagesPage() {
         .seller-messages-container .thread-list-head{ padding:16px 18px; border-bottom:1px solid var(--line-soft); font-size:11px; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px; }
         .seller-messages-container .thread-item{ padding:12px 18px; border-bottom:1px solid var(--line-soft); cursor:pointer; display:flex; gap:10px; }
         .seller-messages-container .thread-item.active{ background:var(--brass-soft); }
-        .seller-messages-container .buyer-mark{ width:28px; height:28px; border-radius:50%; background:var(--ink); color:#EDE9DA; display:flex; align-items:center; justify-content:center; font-size:10px; font-family:'IBM Plex Mono',monospace; flex:none; }
+        .seller-messages-container .buyer-mark{ width:28px; height:28px; border-radius:50%; background:var(--ink); color:var(--paper); display:flex; align-items:center; justify-content:center; font-size:10px; font-family:'IBM Plex Mono',monospace; flex:none; }
         .seller-messages-container .thread-meta{ flex:1; min-width:0; }
         .seller-messages-container .thread-meta .tt{ font-size:13px; font-weight:500; color:var(--ink); display:flex; justify-content:space-between; }
         .seller-messages-container .thread-meta .tp{ font-size:12px; color:var(--slate); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -62,7 +64,7 @@ export default function SellerMessagesPage() {
         .seller-messages-container .msg.them{ align-self:flex-start; }
         .seller-messages-container .msg.them .bubble{ background:var(--paper); border:1px solid var(--line); color:var(--ink); }
         .seller-messages-container .msg.me{ align-self:flex-end; }
-        .seller-messages-container .msg.me .bubble{ background:var(--ink); color:#EDE9DA; }
+        .seller-messages-container .msg.me .bubble{ background:var(--ink); color:var(--paper); }
         .seller-messages-container .msg.me .meta{ text-align:right; }
 
         .seller-messages-container .composer{ border-top:1px solid var(--line-soft); padding:14px 20px; }

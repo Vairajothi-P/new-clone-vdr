@@ -10,29 +10,31 @@ export default function SellerBuyersPage() {
     <>
       <style>{`
         :root{
-          --ink:#161A2B; --paper:#F6F4EC; --panel:#FFFFFF;
-          --slate:#63697E; --slate-light:#9CA0B3;
-          --line:#DEDACB; --line-soft:#EAE7DC;
-          --brass:#9C7226; --brass-soft:#F1E4C8;
-          --green:#2E6B4C; --green-soft:#E3EEE5;
-          --amber:#95651E; --amber-soft:#F4E9D4;
-          --red:#9B3B2E; --red-soft:#F3E4E0;
-          --blue:#2E4F8F; --blue-soft:#E4E9F5;
-          --radius:3px;
+          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
+          --slate:#64748b; --slate-light:#94a3b8;
+          --line:#e2e8f0; --line-soft:#f1f5f9;
+          --brass:#2563eb; --brass-soft:#dbeafe;
+          --green:#16a34a; --green-soft:#dcfce7;
+          --red:#dc2626; --red-soft:#fee2e2;
+          --amber:#d97706; --amber-soft:#fef3c7;
+          --blue:#2563eb; --blue-soft:#dbeafe;
+          --purple:#7c3aed; --purple-soft:#ede9fe;
+          --coral:#ea580c; --coral-soft:#ffedd5;
+          --radius:8px;
         }
         .seller-buyers-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; font-size:14px; line-height:1.5; min-height: 100vh; }
         .seller-buyers-container a{ color:inherit; text-decoration:none; }
         .seller-buyers-container h1, .seller-buyers-container h2, .seller-buyers-container h3{ font-family:'Source Serif 4', serif; font-weight:500; margin:0; }
 
-        .seller-buyers-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:#EDE9DA; }
+        .seller-buyers-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
         .seller-buyers-container .topbar-left{ display:flex; align-items:center; gap:18px; }
         .seller-buyers-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .seller-buyers-container .brand-mark{ width:20px; height:20px; border:1.4px solid #C9A24C; border-radius:2px; position:relative; flex:none;}
-        .seller-buyers-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid #C9A24C; opacity:.55; }
-        .seller-buyers-container .crumbs{ color:#9AA0BE; font-size:12.5px; }
-        .seller-buyers-container .crumbs b{ color:#EDE9DA; font-weight:500; }
-        .seller-buyers-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:#B7BBD2; }
-        .seller-buyers-container .avatar{ width:26px;height:26px;border-radius:50%; background:#3A3F63; color:#EDE9DA; display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
+        .seller-buyers-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
+        .seller-buyers-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
+        .seller-buyers-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
+        .seller-buyers-container .crumbs b{ color:var(--paper); font-weight:500; }
+        .seller-buyers-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
+        .seller-buyers-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
 
         .seller-buyers-container .subnav{ display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); }
         .seller-buyers-container .subnav a{ padding:13px 16px; font-size:13px; color:var(--slate); border-bottom:2px solid transparent; }
@@ -53,11 +55,11 @@ export default function SellerBuyersPage() {
 
         .seller-buyers-container .panel{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); margin:20px 28px 40px 28px; }
         .seller-buyers-container table.buyers{ width:100%; border-collapse:collapse; }
-        .seller-buyers-container table.buyers thead th{ text-align:left; font-size:11px; color:var(--slate); font-weight:500; padding:10px 18px; border-bottom:1px solid var(--line); background:#FBFAF5; }
+        .seller-buyers-container table.buyers thead th{ text-align:left; font-size:11px; color:var(--slate); font-weight:500; padding:10px 18px; border-bottom:1px solid var(--line); background:var(--paper); }
         .seller-buyers-container table.buyers td{ padding:13px 18px; border-bottom:1px solid var(--line-soft); font-size:13px; vertical-align:middle; }
         .seller-buyers-container table.buyers tr:last-child td{ border-bottom:none; }
         .seller-buyers-container .buyer-cell{ display:flex; align-items:center; gap:10px; }
-        .seller-buyers-container .buyer-mark{ width:30px; height:30px; border-radius:50%; background:var(--ink); color:#EDE9DA; display:flex; align-items:center; justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; flex:none; }
+        .seller-buyers-container .buyer-mark{ width:30px; height:30px; border-radius:50%; background:var(--ink); color:var(--paper); display:flex; align-items:center; justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; flex:none; }
         .seller-buyers-container .buyer-name{ font-weight:500; font-size:13.5px; color:var(--ink); }
         .seller-buyers-container .buyer-type{ font-size:11.5px; color:var(--slate-light); }
 
@@ -74,7 +76,7 @@ export default function SellerBuyersPage() {
         .seller-buyers-container .panel-head{ display:flex; justify-content:space-between; align-items:center; padding:16px 18px; border-bottom:1px solid var(--line-soft); }
         .seller-buyers-container .panel-head h2{ font-size:15px; }
 
-        .seller-buyers-container .invite-form{ padding:18px; display:grid; grid-template-columns:1fr 1fr; gap:14px; background:#FBFAF5; border-top:1px solid var(--line-soft); }
+        .seller-buyers-container .invite-form{ padding:18px; display:grid; grid-template-columns:1fr 1fr; gap:14px; background:var(--paper); border-top:1px solid var(--line-soft); }
         .seller-buyers-container .invite-form .field{ display:flex; flex-direction:column; gap:6px; }
         .seller-buyers-container .invite-form label{ font-size:11.5px; color:var(--slate); font-weight:500; }
         .seller-buyers-container .invite-form input, .seller-buyers-container .invite-form select{ font-family:'IBM Plex Sans',sans-serif; font-size:13px; padding:9px 11px; border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); }

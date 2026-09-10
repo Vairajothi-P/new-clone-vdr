@@ -7,17 +7,17 @@ export default function BuyerOverviewPage() {
     <>
       <style>{`
         :root{
-          --ink:#161A2B; --ink-soft:#2B3050; --paper:#F6F4EC; --panel:#FFFFFF;
-          --slate:#63697E; --slate-light:#9CA0B3;
-          --line:#DEDACB; --line-soft:#EAE7DC;
-          --brass:#9C7226; --brass-soft:#F1E4C8;
-          --green:#2E6B4C; --green-soft:#E3EEE5;
-          --red:#9B3B2E; --red-soft:#F3E4E0;
-          --amber:#95651E; --amber-soft:#F4E9D4;
-          --blue:#2E4F8F; --blue-soft:#E4E9F5;
-          --purple:#5A4B8F; --purple-soft:#E9E4F5;
-          --coral:#A24A34; --coral-soft:#F4E1DA;
-          --radius:3px;
+          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
+          --slate:#64748b; --slate-light:#94a3b8;
+          --line:#e2e8f0; --line-soft:#f1f5f9;
+          --brass:#2563eb; --brass-soft:#dbeafe;
+          --green:#16a34a; --green-soft:#dcfce7;
+          --red:#dc2626; --red-soft:#fee2e2;
+          --amber:#d97706; --amber-soft:#fef3c7;
+          --blue:#2563eb; --blue-soft:#dbeafe;
+          --purple:#7c3aed; --purple-soft:#ede9fe;
+          --coral:#ea580c; --coral-soft:#ffedd5;
+          --radius:8px;
         }
         .buyer-overview-container {
           background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; -webkit-font-smoothing:antialiased; font-size:14px; line-height:1.5;
@@ -28,15 +28,15 @@ export default function BuyerOverviewPage() {
         .buyer-overview-container a{ color:inherit; text-decoration:none; }
         .buyer-overview-container .shell{ max-width:1280px; margin:0 auto; padding-bottom: 34px; }
 
-        .buyer-overview-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:#EDE9DA; }
+        .buyer-overview-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
         .buyer-overview-container .topbar-left{ display:flex; align-items:center; gap:18px; }
         .buyer-overview-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .buyer-overview-container .brand-mark{ width:20px; height:20px; border:1.4px solid #C9A24C; border-radius:2px; position:relative; flex:none;}
-        .buyer-overview-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid #C9A24C; opacity:.55; }
-        .buyer-overview-container .crumbs{ color:#9AA0BE; font-size:12.5px; }
-        .buyer-overview-container .crumbs b{ color:#EDE9DA; font-weight:500; }
-        .buyer-overview-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:#B7BBD2; }
-        .buyer-overview-container .avatar{ width:26px;height:26px;border-radius:50%; background:#3A3F63; color:#EDE9DA; display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
+        .buyer-overview-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
+        .buyer-overview-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
+        .buyer-overview-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
+        .buyer-overview-container .crumbs b{ color:var(--paper); font-weight:500; }
+        .buyer-overview-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
+        .buyer-overview-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
 
         /* secondary nav */
         .buyer-overview-container .subnav{ display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); }
@@ -49,7 +49,7 @@ export default function BuyerOverviewPage() {
         .buyer-overview-container .deal-id{ color:var(--slate); font-size:12px; font-family:'IBM Plex Mono',monospace; letter-spacing:.3px; margin-bottom:6px;}
         .buyer-overview-container .deal-title{ font-size:27px; color:var(--ink); display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
         .buyer-overview-container .deal-sub{ color:var(--slate); font-size:13px; margin-top:5px; }
-        .buyer-overview-container .stage-pill{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:500; padding:4px 10px; border-radius:20px; letter-spacing:.2px; background:var(--blue-soft); color:var(--blue); border:1px solid #C7D2EA; }
+        .buyer-overview-container .stage-pill{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:500; padding:4px 10px; border-radius:20px; letter-spacing:.2px; background:var(--blue-soft); color:var(--blue); border:1px solid var(--blue-soft); }
         .buyer-overview-container .stage-pill .dot{ width:6px;height:6px;border-radius:50%; background:var(--blue); }
 
         .buyer-overview-container .btn{ font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:500; padding:9px 16px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--ink); background:transparent; color:var(--ink); display:inline-block; }

@@ -8,28 +8,31 @@ export default function MessagesPage() {
     <>
       <style>{`
         :root{
-          --ink:#161A2B; --paper:#F6F4EC; --panel:#FFFFFF;
-          --slate:#63697E; --slate-light:#9CA0B3;
-          --line:#DEDACB; --line-soft:#EAE7DC;
-          --brass:#9C7226; --brass-soft:#F1E4C8;
-          --green:#2E6B4C; --green-soft:#E3EEE5;
-          --amber:#95651E; --amber-soft:#F4E9D4;
-          --blue:#2E4F8F; --blue-soft:#E4E9F5;
-          --radius:3px;
+          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
+          --slate:#64748b; --slate-light:#94a3b8;
+          --line:#e2e8f0; --line-soft:#f1f5f9;
+          --brass:#2563eb; --brass-soft:#dbeafe;
+          --green:#16a34a; --green-soft:#dcfce7;
+          --red:#dc2626; --red-soft:#fee2e2;
+          --amber:#d97706; --amber-soft:#fef3c7;
+          --blue:#2563eb; --blue-soft:#dbeafe;
+          --purple:#7c3aed; --purple-soft:#ede9fe;
+          --coral:#ea580c; --coral-soft:#ffedd5;
+          --radius:8px;
         }
         .messages-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; font-size:14px; line-height:1.5; min-height: 100vh; display:flex; flex-direction:column; }
         .messages-container a{ color:inherit; text-decoration:none; }
         .messages-container h1, .messages-container h2, .messages-container h3{ font-family:'Source Serif 4', serif; font-weight:500; margin:0; }
 
-        .messages-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:#EDE9DA; }
+        .messages-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
         .messages-container .topbar-left{ display:flex; align-items:center; gap:18px; }
         .messages-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .messages-container .brand-mark{ width:20px; height:20px; border:1.4px solid #C9A24C; border-radius:2px; position:relative; flex:none;}
-        .messages-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid #C9A24C; opacity:.55; }
-        .messages-container .crumbs{ color:#9AA0BE; font-size:12.5px; }
-        .messages-container .crumbs b{ color:#EDE9DA; font-weight:500; }
-        .messages-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:#B7BBD2; }
-        .messages-container .avatar{ width:26px;height:26px;border-radius:50%; background:#3A3F63; color:#EDE9DA; display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
+        .messages-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
+        .messages-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
+        .messages-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
+        .messages-container .crumbs b{ color:var(--paper); font-weight:500; }
+        .messages-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
+        .messages-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
 
         .messages-container .subnav{ display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); }
         .messages-container .subnav a{ padding:13px 16px; font-size:13px; color:var(--slate); border-bottom:2px solid transparent; }
@@ -58,7 +61,7 @@ export default function MessagesPage() {
         .messages-container .msg.them{ align-self:flex-start; }
         .messages-container .msg.them .bubble{ background:var(--paper); border:1px solid var(--line); color:var(--ink); }
         .messages-container .msg.me{ align-self:flex-end; }
-        .messages-container .msg.me .bubble{ background:var(--ink); color:#EDE9DA; }
+        .messages-container .msg.me .bubble{ background:var(--ink); color:var(--paper); }
         .messages-container .msg.me .meta{ text-align:right; }
         .messages-container .tag-chip{ display:inline-block; font-size:10.5px; color:var(--blue); background:var(--blue-soft); padding:2px 8px; border-radius:20px; margin-bottom:6px; }
 

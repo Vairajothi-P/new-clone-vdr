@@ -8,28 +8,31 @@ export default function DataRoomPage() {
     <>
       <style>{`
         :root{
-          --ink:#161A2B; --paper:#F6F4EC; --panel:#FFFFFF;
-          --slate:#63697E; --slate-light:#9CA0B3;
-          --line:#DEDACB; --line-soft:#EAE7DC;
-          --brass:#9C7226; --brass-soft:#F1E4C8;
-          --green:#2E6B4C; --green-soft:#E3EEE5;
-          --amber:#95651E; --amber-soft:#F4E9D4;
-          --blue:#2E4F8F; --blue-soft:#E4E9F5;
-          --radius:3px;
+          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
+          --slate:#64748b; --slate-light:#94a3b8;
+          --line:#e2e8f0; --line-soft:#f1f5f9;
+          --brass:#2563eb; --brass-soft:#dbeafe;
+          --green:#16a34a; --green-soft:#dcfce7;
+          --red:#dc2626; --red-soft:#fee2e2;
+          --amber:#d97706; --amber-soft:#fef3c7;
+          --blue:#2563eb; --blue-soft:#dbeafe;
+          --purple:#7c3aed; --purple-soft:#ede9fe;
+          --coral:#ea580c; --coral-soft:#ffedd5;
+          --radius:8px;
         }
         .data-room-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; font-size:14px; line-height:1.5; min-height: 100vh; }
         .data-room-container a{ color:inherit; text-decoration:none; }
         .data-room-container h1, .data-room-container h2, .data-room-container h3{ font-family:'Source Serif 4', serif; font-weight:500; margin:0; }
 
-        .data-room-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:#EDE9DA; }
+        .data-room-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
         .data-room-container .topbar-left{ display:flex; align-items:center; gap:18px; }
         .data-room-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .data-room-container .brand-mark{ width:20px; height:20px; border:1.4px solid #C9A24C; border-radius:2px; position:relative; flex:none;}
-        .data-room-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid #C9A24C; opacity:.55; }
-        .data-room-container .crumbs{ color:#9AA0BE; font-size:12.5px; }
-        .data-room-container .crumbs b{ color:#EDE9DA; font-weight:500; }
-        .data-room-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:#B7BBD2; }
-        .data-room-container .avatar{ width:26px;height:26px;border-radius:50%; background:#3A3F63; color:#EDE9DA; display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
+        .data-room-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
+        .data-room-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
+        .data-room-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
+        .data-room-container .crumbs b{ color:var(--paper); font-weight:500; }
+        .data-room-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
+        .data-room-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
 
         .data-room-container .subnav{ display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); }
         .data-room-container .subnav a{ padding:13px 16px; font-size:13px; color:var(--slate); border-bottom:2px solid transparent; }
@@ -51,10 +54,10 @@ export default function DataRoomPage() {
 
         .data-room-container .file-panel-head{ display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--line-soft); }
         .data-room-container table.files{ width:100%; border-collapse:collapse; }
-        .data-room-container table.files thead th{ text-align:left; font-size:11px; color:var(--slate); font-weight:500; padding:9px 20px; border-bottom:1px solid var(--line); background:#FBFAF5; }
+        .data-room-container table.files thead th{ text-align:left; font-size:11px; color:var(--slate); font-weight:500; padding:9px 20px; border-bottom:1px solid var(--line); background:var(--paper); }
         .data-room-container table.files td{ padding:12px 20px; border-bottom:1px solid var(--line-soft); font-size:13px; }
         .data-room-container table.files tbody tr{ cursor:pointer; }
-        .data-room-container table.files tbody tr:hover{ background:#FBFAF5; }
+        .data-room-container table.files tbody tr:hover{ background:var(--paper); }
         .data-room-container table.files tbody tr.selected{ background:var(--brass-soft); }
         .data-room-container .fname{ display:flex; align-items:center; gap:9px; }
         .data-room-container .ficon{ width:26px; height:26px; border-radius:4px; background:var(--blue-soft); color:var(--blue); display:flex; align-items:center; justify-content:center; font-size:10px; font-family:'IBM Plex Mono',monospace; flex:none; }

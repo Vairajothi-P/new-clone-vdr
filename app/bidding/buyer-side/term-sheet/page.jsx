@@ -8,28 +8,31 @@ export default function TermSheetPage() {
     <>
       <style>{`
         :root{
-          --ink:#161A2B; --paper:#F6F4EC; --panel:#FFFFFF;
-          --slate:#63697E; --slate-light:#9CA0B3;
-          --line:#DEDACB; --line-soft:#EAE7DC;
-          --brass:#9C7226; --brass-soft:#F1E4C8;
-          --green:#2E6B4C; --green-soft:#E3EEE5;
-          --amber:#95651E; --amber-soft:#F4E9D4;
-          --red:#9B3B2E; --red-soft:#F3E4E0;
-          --radius:3px;
+          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
+          --slate:#64748b; --slate-light:#94a3b8;
+          --line:#e2e8f0; --line-soft:#f1f5f9;
+          --brass:#2563eb; --brass-soft:#dbeafe;
+          --green:#16a34a; --green-soft:#dcfce7;
+          --red:#dc2626; --red-soft:#fee2e2;
+          --amber:#d97706; --amber-soft:#fef3c7;
+          --blue:#2563eb; --blue-soft:#dbeafe;
+          --purple:#7c3aed; --purple-soft:#ede9fe;
+          --coral:#ea580c; --coral-soft:#ffedd5;
+          --radius:8px;
         }
         .term-sheet-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; font-size:14px; line-height:1.5; min-height: 100vh; }
         .term-sheet-container a{ color:inherit; text-decoration:none; }
         .term-sheet-container h1, .term-sheet-container h2, .term-sheet-container h3{ font-family:'Source Serif 4', serif; font-weight:500; margin:0; }
 
-        .term-sheet-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:#EDE9DA; }
+        .term-sheet-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
         .term-sheet-container .topbar-left{ display:flex; align-items:center; gap:18px; }
         .term-sheet-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .term-sheet-container .brand-mark{ width:20px; height:20px; border:1.4px solid #C9A24C; border-radius:2px; position:relative; flex:none;}
-        .term-sheet-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid #C9A24C; opacity:.55; }
-        .term-sheet-container .crumbs{ color:#9AA0BE; font-size:12.5px; }
-        .term-sheet-container .crumbs b{ color:#EDE9DA; font-weight:500; }
-        .term-sheet-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:#B7BBD2; }
-        .term-sheet-container .avatar{ width:26px;height:26px;border-radius:50%; background:#3A3F63; color:#EDE9DA; display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
+        .term-sheet-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
+        .term-sheet-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
+        .term-sheet-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
+        .term-sheet-container .crumbs b{ color:var(--paper); font-weight:500; }
+        .term-sheet-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
+        .term-sheet-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
 
         .term-sheet-container .subnav{ display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); }
         .term-sheet-container .subnav a{ padding:13px 16px; font-size:13px; color:var(--slate); border-bottom:2px solid transparent; }
@@ -78,14 +81,6 @@ export default function TermSheetPage() {
         .term-sheet-container .side-actions .btn{ width:100%; text-align:center; }
       `}</style>
       <div className="term-sheet-container">
-        <div className="topbar">
-          <div className="topbar-left">
-            <div className="brand"><span className="brand-mark"></span>Meridian DMS</div>
-            <div className="crumbs">Deals &nbsp;/&nbsp; Project Alpha &nbsp;/&nbsp; <b>Term sheet</b></div>
-          </div>
-          <div className="topbar-right"><span>Halcyon Growth</span><span>Buyer</span><div className="avatar">RO</div></div>
-        </div>
-
         <div className="subnav">
           <Link href="/bidding/buyer-side">Overview</Link>
           <Link href="/bidding/buyer-side/data-room">Data room</Link>
@@ -105,7 +100,7 @@ export default function TermSheetPage() {
             <h1>Term sheet — Project Alpha</h1>
             <div className="sub">Draft v2 · last updated by seller counsel, 7 Sep 2026</div>
           </div>
-          <div style={{display:'flex', gap:'10px'}}>
+          <div style={{ display: 'flex', gap: '10px' }}>
             <a href="#" className="btn btn-ghost">Download PDF</a>
             <a href="#" className="btn btn-primary">Send for signature</a>
           </div>
@@ -113,7 +108,7 @@ export default function TermSheetPage() {
 
         <div className="body-grid">
           <div className="panel">
-            <div className="panel-head"><h2>Key terms</h2><span style={{fontSize:'12px', color:'var(--slate-light)'}}>Redlines highlighted</span></div>
+            <div className="panel-head"><h2>Key terms</h2><span style={{ fontSize: '12px', color: 'var(--slate-light)' }}>Redlines highlighted</span></div>
             <table className="terms">
               <tbody>
                 <tr><td className="tk">Purchase price</td><td className="tv">$100,000,000 <span className="changed">changed</span></td></tr>
@@ -142,7 +137,7 @@ export default function TermSheetPage() {
             </div>
           </div>
 
-          <div className="panel" style={{gridRow:'span 1'}}>
+          <div className="panel" style={{ gridRow: 'span 1' }}>
             <div className="side-section">
               <h3>Signature status</h3>
               <div className="sig-row"><span>ABC Technologies (seller)</span><span className="sig-status"><span className="sig-dot done"></span>Signed</span></div>
@@ -150,7 +145,7 @@ export default function TermSheetPage() {
             </div>
             <div className="side-section">
               <h3>Next steps</h3>
-              <div style={{fontSize:'12.5px', color:'var(--slate)'}}>Confirmatory due diligence and definitive agreement drafting begin once this term sheet is fully executed.</div>
+              <div style={{ fontSize: '12.5px', color: 'var(--slate)' }}>Confirmatory due diligence and definitive agreement drafting begin once this term sheet is fully executed.</div>
             </div>
             <div className="side-actions">
               <a href="#" className="btn btn-primary">Sign term sheet</a>
