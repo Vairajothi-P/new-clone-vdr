@@ -21,6 +21,7 @@ export default function MainSidebar() {
   const [hasControlAuditsAccess, setHasControlAuditsAccess] = useState(false);
   const [session, setSession] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [openSubmenuKey, setOpenSubmenuKey] = useState(null);
   const isGroupsActive = pathname?.startsWith('/groups');
 
   useEffect(() => {
@@ -93,41 +94,90 @@ export default function MainSidebar() {
           </svg>
         </Link>
 
-      {/* Nav Items */}
-      <div className="flex flex-col gap-1.5 flex-1">
-        {NAV_ITEMS.map((item) => {
-          if (item.key === 'groups' && !hasGroupsAccess) return null;
-          if (item.key === 'settings' && !hasSettingsAccess) return null;
-          if (item.key === 'analytics' && !isAdmin && !isSuperAdmin) return null;
-          if (item.key === 'qa' && !hasQaAccess) return null;
-          if (item.key === 'deals' && !hasDealsAccess) return null;
-          if (item.key === 'tasks' && !hasTasksAccess) return null;
-          if (item.key === 'communication' && !hasCommunicationAccess) return null;
-          if (item.key === 'control_audits' && !hasControlAuditsAccess) return null;
-          const isActive = pathname?.startsWith(item.href);
+        {/* Nav Items */}
+        <div className="flex flex-col gap-1.5 flex-1">
+          {NAV_ITEMS.map((item) => {
+            if (item.key === 'groups' && !hasGroupsAccess) return null;
+            if (item.key === 'settings' && !hasSettingsAccess) return null;
+            if (item.key === 'analytics' && !isAdmin && !isSuperAdmin) return null;
+            if (item.key === 'qa' && !hasQaAccess) return null;
+            if (item.key === 'deals' && !hasDealsAccess) return null;
+            if (item.key === 'tasks' && !hasTasksAccess) return null;
+            if (item.key === 'communication' && !hasCommunicationAccess) return null;
+            if (item.key === 'control_audits' && !hasControlAuditsAccess) return null;
+            const isActive = pathname?.startsWith(item.href);
+            const hasSubItems = item.subItems && item.subItems.length > 0;
+            const isSubmenuOpen = openSubmenuKey === item.key;
 
             return (
-              <Link
-                key={item.key}
-                href={item.href}
-                title={item.label}
-                className="group relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-300"
-              >
-                {/* Active left accent bar */}
-                {isActive && (
-                  <div className="absolute left-0 w-1 h-7 bg-gradient-to-b from-[var(--brand)] to-[var(--brand-secondary)] rounded-r-full shadow-sm" />
+              <div key={item.key} className="relative flex flex-col items-center">
+                {hasSubItems ? (
+                  <button
+                    onClick={() => setOpenSubmenuKey(isSubmenuOpen ? null : item.key)}
+                    title={item.label}
+                    className="group relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-300"
+                  >
+                    {/* Active left accent bar */}
+                    {isActive && (
+                      <div className="absolute left-0 w-1 h-7 bg-gradient-to-b from-[var(--brand)] to-[var(--brand-secondary)] rounded-r-full shadow-sm" />
+                    )}
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive || isSubmenuOpen
+                      ? 'bg-[var(--brand)]/12 text-[var(--brand)]'
+                      : 'text-gray-400 hover:bg-[var(--brand)]/8 hover:text-[var(--brand)]'
+                      }`}>
+                      {item.icon}
+                    </div>
+                    {/* Tooltip */}
+                    <span className="absolute left-16 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white text-xs font-semibold px-3 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
+                      {item.label}
+                    </span>
+                  </button>
+                ) : (
+                  <Link
+                    href={item.href}
+                    title={item.label}
+                    className="group relative w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-300"
+                  >
+                    {/* Active left accent bar */}
+                    {isActive && (
+                      <div className="absolute left-0 w-1 h-7 bg-gradient-to-b from-[var(--brand)] to-[var(--brand-secondary)] rounded-r-full shadow-sm" />
+                    )}
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive
+                      ? 'bg-[var(--brand)]/12 text-[var(--brand)]'
+                      : 'text-gray-400 hover:bg-[var(--brand)]/8 hover:text-[var(--brand)]'
+                      }`}>
+                      {item.icon}
+                    </div>
+                    {/* Tooltip */}
+                    <span className="absolute left-16 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white text-xs font-semibold px-3 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
+                      {item.label}
+                    </span>
+                  </Link>
                 )}
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive
-                  ? 'bg-[var(--brand)]/12 text-[var(--brand)]'
-                  : 'text-gray-400 hover:bg-[var(--brand)]/8 hover:text-[var(--brand)]'
-                  }`}>
-                  {item.icon}
-                </div>
-                {/* Tooltip */}
-                <span className="absolute left-16 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-secondary)] text-white text-xs font-semibold px-3 py-1.5 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 whitespace-nowrap shadow-xl z-50">
-                  {item.label}
-                </span>
-              </Link>
+
+                {/* Submenu Flyout */}
+                {hasSubItems && isSubmenuOpen && (
+                  <div className="absolute left-16 top-0 ml-2 w-48 bg-white rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.1)] border border-slate-100 p-2 z-[60] flex flex-col gap-1">
+                    <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{item.label}</div>
+                    {item.subItems.map((sub) => {
+                      const isSubActive = pathname === sub.href;
+                      return (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          onClick={() => setOpenSubmenuKey(null)}
+                          className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${isSubActive
+                              ? 'bg-[var(--brand)]/10 text-[var(--brand)]'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-[var(--brand)]'
+                            }`}
+                        >
+                          {sub.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
@@ -187,6 +237,11 @@ export default function MainSidebar() {
     </>
   );
 }
+
+
+
+
+
 
 
 
