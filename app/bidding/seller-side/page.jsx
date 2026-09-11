@@ -34,23 +34,17 @@ export default function SellerBiddingPage() {
     <>
       <style>{`
         :root{
-          --ink:#161A2B;
-          --ink-soft:#2B3050;
-          --paper:#F6F4EC;
-          --panel:#FFFFFF;
-          --slate:#63697E;
-          --slate-light:#9CA0B3;
-          --line:#DEDACB;
-          --line-soft:#EAE7DC;
-          --brass:#9C7226;
-          --brass-soft:#F1E4C8;
-          --green:#2E6B4C;
-          --green-soft:#E3EEE5;
-          --red:#9B3B2E;
-          --red-soft:#F3E4E0;
-          --amber:#95651E;
-          --amber-soft:#F4E9D4;
-          --radius:3px;
+          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
+          --slate:#64748b; --slate-light:#94a3b8;
+          --line:#e2e8f0; --line-soft:#f1f5f9;
+          --brass:#2563eb; --brass-soft:#dbeafe;
+          --green:#16a34a; --green-soft:#dcfce7;
+          --red:#dc2626; --red-soft:#fee2e2;
+          --amber:#d97706; --amber-soft:#fef3c7;
+          --blue:#2563eb; --blue-soft:#dbeafe;
+          --purple:#7c3aed; --purple-soft:#ede9fe;
+          --coral:#ea580c; --coral-soft:#ffedd5;
+          --radius:8px;
         }
         .bidding-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; -webkit-font-smoothing:antialiased; font-size:14px; line-height:1.5; min-height: 100vh; }
         .bidding-container .num, .bidding-container .tabular{ font-family:'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
@@ -62,22 +56,22 @@ export default function SellerBiddingPage() {
         .bidding-container .subnav a.active{ color:var(--ink); border-bottom-color:var(--brass); font-weight:500; }
         .bidding-container .subnav a:hover{ color:var(--ink); }
 
-        .bidding-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:#EDE9DA; }
+        .bidding-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
         .bidding-container .topbar-left{ display:flex; align-items:center; gap:18px; }
         .bidding-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; letter-spacing:.2px;}
-        .bidding-container .brand-mark{ width:20px; height:20px; border:1.4px solid #C9A24C; border-radius:2px; position:relative; flex:none;}
-        .bidding-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid #C9A24C; opacity:.55; }
-        .bidding-container .crumbs{ color:#9AA0BE; font-size:12.5px; }
-        .bidding-container .crumbs b{ color:#EDE9DA; font-weight:500; }
-        .bidding-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:#B7BBD2; }
-        .bidding-container .avatar{ width:26px;height:26px;border-radius:50%; background:#3A3F63; color:#EDE9DA; display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
+        .bidding-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
+        .bidding-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
+        .bidding-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
+        .bidding-container .crumbs b{ color:var(--paper); font-weight:500; }
+        .bidding-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
+        .bidding-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
 
         .bidding-container .deal-header{ padding:26px 28px 0 28px; }
         .bidding-container .deal-header-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap; }
         .bidding-container .deal-id{ color:var(--slate); font-size:12px; font-family:'IBM Plex Mono',monospace; letter-spacing:.3px; margin-bottom:6px;}
         .bidding-container .deal-title{ font-size:27px; color:var(--ink); display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
         .bidding-container .deal-sub{ color:var(--slate); font-size:13px; margin-top:5px; }
-        .bidding-container .stage-pill{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-family:'IBM Plex Sans',sans-serif; font-weight:500; padding:4px 10px; border-radius:20px; letter-spacing:.2px; background:var(--amber-soft); color:var(--amber); border:1px solid #E4CB98; }
+        .bidding-container .stage-pill{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-family:'IBM Plex Sans',sans-serif; font-weight:500; padding:4px 10px; border-radius:20px; letter-spacing:.2px; background:var(--amber-soft); color:var(--amber); border:1px solid var(--amber-soft); }
         .bidding-container .stage-pill .dot{ width:6px;height:6px;border-radius:50%; background:var(--amber); }
 
         .bidding-container .deal-actions{ display:flex; gap:10px; align-items:flex-start; }
@@ -117,14 +111,14 @@ export default function SellerBiddingPage() {
         .bidding-container select.sort-select{ font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; color:var(--ink); border:1px solid var(--line); border-radius:var(--radius); padding:5px 8px; background:var(--panel); }
 
         .bidding-container table.ledger{ width:100%; border-collapse:collapse; }
-        .bidding-container table.ledger thead th{ text-align:left; font-weight:500; font-size:11px; color:var(--slate); padding:10px 14px; border-bottom:1px solid var(--line); background:#FBFAF5; letter-spacing:.2px; }
+        .bidding-container table.ledger thead th{ text-align:left; font-weight:500; font-size:11px; color:var(--slate); padding:10px 14px; border-bottom:1px solid var(--line); background:var(--paper); letter-spacing:.2px; }
         .bidding-container table.ledger td{ padding:14px; border-bottom:1px solid var(--line-soft); vertical-align:middle; }
         .bidding-container table.ledger tbody tr{ cursor:pointer; transition:background .12s; }
-        .bidding-container table.ledger tbody tr:hover{ background:#FBFAF5; }
+        .bidding-container table.ledger tbody tr:hover{ background:var(--paper); }
         .bidding-container table.ledger tbody tr:last-child td{ border-bottom:none; }
 
         .bidding-container .buyer-cell{ display:flex; align-items:center; gap:10px; }
-        .bidding-container .buyer-mark{ width:30px; height:30px; border-radius:50%; background:var(--ink-soft); color:#EDE9DA; display:flex; align-items:center; justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; flex:none; }
+        .bidding-container .buyer-mark{ width:30px; height:30px; border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex; align-items:center; justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; flex:none; }
         .bidding-container .buyer-name{ font-weight:500; color:var(--ink); font-size:13.5px; }
         .bidding-container .buyer-type{ font-size:11.5px; color:var(--slate-light); }
 
@@ -134,7 +128,7 @@ export default function SellerBiddingPage() {
 
         .bidding-container .badge{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:500; padding:3px 9px; border-radius:20px; }
         .bidding-container .badge.new{ background:var(--amber-soft); color:var(--amber); }
-        .bidding-container .badge.review{ background:#EAE9F5; color:#4C4E86; }
+        .bidding-container .badge.review{ background:var(--purple-soft); color:var(--purple); }
         .bidding-container .badge.shortlisted{ background:var(--green-soft); color:var(--green); }
         .bidding-container .badge.declined{ background:var(--red-soft); color:var(--red); }
 
@@ -147,8 +141,8 @@ export default function SellerBiddingPage() {
 
         .bidding-container .compare-bar{ display:none; align-items:center; justify-content:space-between; padding:11px 20px; background:var(--ink); color:var(--paper); font-size:12.5px; border-radius:var(--radius); margin:0 20px 16px 20px; }
         .bidding-container .compare-bar.show{ display:flex; }
-        .bidding-container .compare-bar .btn{ padding:6px 13px; font-size:12px; border-color:#EDE9DA; color:#EDE9DA; }
-        .bidding-container .compare-bar .btn:hover{ background:#EDE9DA; color:var(--ink); }
+        .bidding-container .compare-bar .btn{ padding:6px 13px; font-size:12px; border-color:var(--paper); color:var(--paper); }
+        .bidding-container .compare-bar .btn:hover{ background:var(--paper); color:var(--ink); }
 
         .bidding-container footer{ padding:16px 28px 34px 28px; color:var(--slate-light); font-size:11.5px; display:flex; justify-content:space-between; border-top:1px solid var(--line-soft); margin:0 28px; }
 
@@ -160,7 +154,7 @@ export default function SellerBiddingPage() {
         .bidding-container .close-x{ cursor:pointer; color:var(--slate); font-size:20px; line-height:1; border:none; background:none; }
         .bidding-container .compare-table{ width:100%; border-collapse:collapse; }
         .bidding-container .compare-table th, .bidding-container .compare-table td{ padding:13px 20px; border-bottom:1px solid var(--line-soft); font-size:13px; text-align:left; }
-        .bidding-container .compare-table th{ color:var(--slate); font-weight:500; font-size:11.5px; width:150px; background:#FBFAF5; }
+        .bidding-container .compare-table th{ color:var(--slate); font-weight:500; font-size:11.5px; width:150px; background:var(--paper); }
         .bidding-container .compare-table td.win{ color:var(--brass); font-weight:600; }
 
         @media (max-width: 980px){

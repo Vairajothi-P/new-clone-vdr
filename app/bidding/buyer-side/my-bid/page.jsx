@@ -8,15 +8,17 @@ export default function MyBidPage() {
     <>
       <style>{`
         :root{
-          --ink:#161A2B; --ink-soft:#2B3050; --paper:#F6F4EC; --panel:#FFFFFF;
-          --slate:#63697E; --slate-light:#9CA0B3;
-          --line:#DEDACB; --line-soft:#EAE7DC;
-          --brass:#9C7226; --brass-soft:#F1E4C8;
-          --green:#2E6B4C; --green-soft:#E3EEE5;
-          --red:#9B3B2E; --red-soft:#F3E4E0;
-          --amber:#95651E; --amber-soft:#F4E9D4;
-          --blue:#2E4F8F; --blue-soft:#E4E9F5;
-          --radius:3px;
+          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
+          --slate:#64748b; --slate-light:#94a3b8;
+          --line:#e2e8f0; --line-soft:#f1f5f9;
+          --brass:#2563eb; --brass-soft:#dbeafe;
+          --green:#16a34a; --green-soft:#dcfce7;
+          --red:#dc2626; --red-soft:#fee2e2;
+          --amber:#d97706; --amber-soft:#fef3c7;
+          --blue:#2563eb; --blue-soft:#dbeafe;
+          --purple:#7c3aed; --purple-soft:#ede9fe;
+          --coral:#ea580c; --coral-soft:#ffedd5;
+          --radius:8px;
         }
         .my-bid-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; -webkit-font-smoothing:antialiased; font-size:14px; line-height:1.5; min-height:100vh; }
         .my-bid-container .num,.my-bid-container .tabular{ font-family:'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
@@ -27,22 +29,22 @@ export default function MyBidPage() {
         .my-bid-container .subnav a.active{ color:var(--ink); border-bottom-color:var(--brass); font-weight:500; }
         .my-bid-container .subnav a:hover{ color:var(--ink); }
 
-        .my-bid-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:#EDE9DA; }
+        .my-bid-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
         .my-bid-container .topbar-left{ display:flex; align-items:center; gap:18px; }
         .my-bid-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .my-bid-container .brand-mark{ width:20px; height:20px; border:1.4px solid #C9A24C; border-radius:2px; position:relative; flex:none;}
-        .my-bid-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid #C9A24C; opacity:.55; }
-        .my-bid-container .crumbs{ color:#9AA0BE; font-size:12.5px; }
-        .my-bid-container .crumbs b{ color:#EDE9DA; font-weight:500; }
-        .my-bid-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:#B7BBD2; }
-        .my-bid-container .avatar{ width:26px;height:26px;border-radius:50%; background:#3A3F63; color:#EDE9DA; display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
+        .my-bid-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
+        .my-bid-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
+        .my-bid-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
+        .my-bid-container .crumbs b{ color:var(--paper); font-weight:500; }
+        .my-bid-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
+        .my-bid-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
 
         .my-bid-container .deal-header{ padding:26px 28px 0 28px; }
         .my-bid-container .deal-header-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap; }
         .my-bid-container .deal-id{ color:var(--slate); font-size:12px; font-family:'IBM Plex Mono',monospace; letter-spacing:.3px; margin-bottom:6px;}
         .my-bid-container .deal-title{ font-size:27px; color:var(--ink); display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
         .my-bid-container .deal-sub{ color:var(--slate); font-size:13px; margin-top:5px; }
-        .my-bid-container .stage-pill{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:500; padding:4px 10px; border-radius:20px; letter-spacing:.2px; background:var(--blue-soft); color:var(--blue); border:1px solid #C7D2EA; }
+        .my-bid-container .stage-pill{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:500; padding:4px 10px; border-radius:20px; letter-spacing:.2px; background:var(--blue-soft); color:var(--blue); border:1px solid var(--blue-soft); }
         .my-bid-container .stage-pill .dot{ width:6px;height:6px;border-radius:50%; background:var(--blue); }
         .my-bid-container .deadline-note{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--red); margin-top:14px; }
         .my-bid-container .deadline-note b{ font-family:'IBM Plex Mono',monospace; }
@@ -55,7 +57,7 @@ export default function MyBidPage() {
         .my-bid-container .panel-head .hint{ font-size:12px; color:var(--slate-light); }
 
         .my-bid-container .counter-banner{
-          margin:0 0 20px 0; padding:16px 20px; background:var(--amber-soft); border:1px solid #E4CB98; border-radius:var(--radius);
+          margin:0 0 20px 0; padding:16px 20px; background:var(--amber-soft); border:1px solid var(--amber-soft); border-radius:var(--radius);
           display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;
         }
         .my-bid-container .counter-banner .ct{ font-size:13px; color:var(--amber); }
@@ -130,18 +132,6 @@ export default function MyBidPage() {
         @media (max-width: 980px){ .my-bid-container .body-grid{ grid-template-columns:1fr; } .my-bid-container .field-row{ grid-template-columns:1fr; } }
       `}</style>
       <div className="my-bid-container">
-        <div className="topbar">
-          <div className="topbar-left">
-            <div className="brand"><span className="brand-mark"></span>Meridian DMS</div>
-            <div className="crumbs">Deals &nbsp;/&nbsp; <b>Project Alpha</b> &nbsp;/&nbsp; My bid</div>
-          </div>
-          <div className="topbar-right">
-            <span>Halcyon Growth</span>
-            <span>Buyer</span>
-            <div className="avatar">RO</div>
-          </div>
-        </div>
-
         <div className="subnav">
           <Link href="/bidding/buyer-side">Overview</Link>
           <Link href="/bidding/buyer-side/data-room">Data room</Link>
@@ -241,7 +231,7 @@ export default function MyBidPage() {
 
                 <div className="form-footer">
                   <span className="note">Submitting notifies the seller immediately and is logged to the deal audit trail.</span>
-                  <div style={{display:'flex', gap:'10px'}}>
+                  <div style={{ display: 'flex', gap: '10px' }}>
                     <button className="btn btn-ghost">Save draft</button>
                     <button className="btn btn-primary">Submit revised bid</button>
                   </div>
@@ -260,7 +250,7 @@ export default function MyBidPage() {
                 <h3>Deal snapshot</h3>
                 <div className="kv"><span className="k">Asking price</span><span className="v">$100.0M</span></div>
                 <div className="kv"><span className="k">Your offer</span><span className="v">$95.0M</span></div>
-                <div className="kv"><span className="k">Seller's counter</span><span className="v" style={{color:'var(--amber)'}}>$100.0M</span></div>
+                <div className="kv"><span className="k">Seller's counter</span><span className="v" style={{ color: 'var(--amber)' }}>$100.0M</span></div>
                 <div className="kv"><span className="k">Expected close</span><span className="v">Dec 2026</span></div>
               </div>
 

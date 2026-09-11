@@ -11,17 +11,29 @@ import {
   Layers,
 } from "lucide-react";
 import { MOCK_DEALS } from "@/lib/mock-controls-audit-data";
+import { useControlsAudit } from "@/components/controls-audit/ControlsAuditContext";
 
 export default function ControlsAuditHeader({
-  selectedDealId = "deal-acme-001",
-  onSelectDeal,
-  selectedWorkspaceId = "ws-buyer-abc",
-  onSelectWorkspace,
+  selectedDealId: propDealId,
+  onSelectDeal: propOnSelectDeal,
+  selectedWorkspaceId: propWsId,
+  onSelectWorkspace: propOnSelectWs,
 }) {
+  let ctx = null;
+  try {
+    ctx = useControlsAudit();
+  } catch (e) {}
+
+  const selectedDealId = ctx?.selectedDealId || propDealId || "deal-acme-001";
+  const onSelectDeal = ctx?.setSelectedDealId || propOnSelectDeal;
+  const selectedWorkspaceId = ctx?.selectedWorkspaceId || propWsId || "ws-buyer-abc";
+  const onSelectWorkspace = ctx?.setSelectedWorkspaceId || propOnSelectWs;
+
   const [dealDropOpen, setDealDropOpen] = useState(false);
   const [wsDropOpen, setWsDropOpen] = useState(false);
 
-  const activeDeal = MOCK_DEALS.find((d) => d.id === selectedDealId) || MOCK_DEALS[0];
+  const activeDeal = ctx?.activeDeal || MOCK_DEALS.find((d) => d.id === selectedDealId) || MOCK_DEALS[0];
+
   const activeWorkspace =
     activeDeal.workspaces.find((w) => w.id === selectedWorkspaceId) || activeDeal.workspaces[0];
 

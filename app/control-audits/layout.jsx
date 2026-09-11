@@ -6,13 +6,12 @@ import { supabase } from "@/utils/supabase/client";
 import MainSidebar from "@/components/MainSidebar";
 import ControlsAuditHeader from "@/components/controls-audit/ControlsAuditHeader";
 import ControlsAuditNav from "@/components/controls-audit/ControlsAuditNav";
+import { ControlsAuditProvider } from "@/components/controls-audit/ControlsAuditContext";
 
 export default function ControlAuditsLayout({ children }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
-  const [selectedDealId, setSelectedDealId] = useState("deal-acme-001");
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("ws-buyer-abc");
 
   useEffect(() => {
     const verifyAccess = async () => {
@@ -105,31 +104,28 @@ export default function ControlAuditsLayout({ children }) {
   if (!hasAccess) return null;
 
   return (
-    <div className="h-screen w-full bg-[#F8F9FB] flex overflow-hidden font-sans relative">
-      {/* Top brand gradient accent (matching Teams & Settings design) */}
-      <div className="absolute top-0 left-0 w-full h-80 bg-gradient-to-b from-[var(--brand)]/8 to-transparent pointer-events-none z-0"></div>
+    <ControlsAuditProvider>
+      <div className="h-screen w-full bg-[#F8F9FB] flex overflow-hidden font-sans relative">
+        {/* Top brand gradient accent (matching Teams & Settings design) */}
+        <div className="absolute top-0 left-0 w-full h-80 bg-gradient-to-b from-[var(--brand)]/8 to-transparent pointer-events-none z-0"></div>
 
-      {/* Main DMS Global Rail Sidebar */}
-      <MainSidebar />
+        {/* Main DMS Global Rail Sidebar */}
+        <MainSidebar />
 
-      {/* Module Content Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative z-10">
-        {/* Module Header with Deal Context and Workspace Selectors */}
-        <ControlsAuditHeader
-          selectedDealId={selectedDealId}
-          onSelectDeal={setSelectedDealId}
-          selectedWorkspaceId={selectedWorkspaceId}
-          onSelectWorkspace={setSelectedWorkspaceId}
-        />
+        {/* Module Content Wrapper */}
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative z-10">
+          {/* Module Header with Deal Context and Workspace Selectors */}
+          <ControlsAuditHeader />
 
-        {/* Horizontal Navigation Sub-Bar with the 9 Module Tabs */}
-        <ControlsAuditNav />
+          {/* Horizontal Navigation Sub-Bar with the 9 Module Tabs */}
+          <ControlsAuditNav />
 
-        {/* Active Sub-Page Canvas */}
-        <main className="flex-1 overflow-y-auto bg-[#F8F9FB] relative flex flex-col min-w-0">
-          {children}
-        </main>
+          {/* Active Sub-Page Canvas */}
+          <main className="flex-1 overflow-y-auto bg-[#F8F9FB] relative flex flex-col min-w-0">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </ControlsAuditProvider>
   );
 }
