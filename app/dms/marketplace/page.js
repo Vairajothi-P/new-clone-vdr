@@ -6,16 +6,16 @@ import { FaArrowLeft, FaSearch, FaCheck, FaShieldAlt, FaLink, FaArrowRight, FaLo
 
 export default function Marketplace() {
   const [userRole, setUserRole] = useState(null);
-  const [projects, setProjects] = useState([]);
+  const [opportunities, setOpportunities] = useState([]);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
     setUserRole(localStorage.getItem('userRole'));
-    const savedProjects = localStorage.getItem('dms_projects');
-    if (savedProjects) {
+    const savedTeasers = localStorage.getItem('dms_market_teasers');
+    if (savedTeasers) {
       try {
-        setProjects(JSON.parse(savedProjects));
+        setOpportunities(JSON.parse(savedTeasers));
       } catch (e) {}
     }
   }, []);
@@ -37,12 +37,7 @@ export default function Marketplace() {
           )}
         </div>
         
-        <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
-          <a href="#how-it-works" className="text-gray-400 hover:text-white transition-colors font-medium py-2">How It Works</a>
-          <Link href="#" className="text-gray-400 hover:text-white transition-colors font-medium py-2">For Sellers</Link>
-          <a href="#for-buyers" className="text-gray-400 hover:text-white transition-colors font-medium py-2">For Buyers</a>
-          <Link href="#" className="text-gray-400 hover:text-white transition-colors font-medium py-2">Resources</Link>
-        </div>
+
         
         {/* Right side - Auth */}
         <div className="hidden md:flex items-center gap-4">
@@ -186,24 +181,24 @@ export default function Marketplace() {
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-4 text-sm text-gray-500">
                 <FaFilter className="text-gray-400 text-xs" />
-                <span>Showing <strong>{projects.length}</strong> opportunities</span>
+                <span>Showing <strong>{opportunities.length}</strong> opportunities</span>
               </div>
 
-              {projects.length === 0 ? (
+              {opportunities.length === 0 ? (
                 <div className="w-full min-h-[300px] flex flex-col items-center justify-center text-gray-400 bg-white border border-gray-200 rounded-lg">
                   <FaSearch className="text-4xl mb-4 opacity-40" />
-                  <p className="text-xl font-medium">No projects found</p>
+                  <p className="text-xl font-medium">No opportunities found</p>
                   <p className="text-sm mt-2">Check back later or adjust your filters.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {projects.map((proj, idx) => (
+                  {opportunities.map((opp, idx) => (
                     <div key={idx} className="bg-white border border-gray-200 flex flex-col group relative overflow-hidden hover:shadow-md transition-shadow">
                       
                       <div className="p-5 flex flex-col h-full">
                         <div className="flex justify-between items-start mb-6">
-                          <span className={`px-3 py-1 text-white text-[10px] font-bold tracking-wide rounded-sm uppercase ${proj.status === 'Active' ? 'bg-[#b48629]' : 'bg-green-700'}`}>
-                            {proj.status || 'Active'}
+                          <span className={`px-3 py-1 text-white text-[10px] font-bold tracking-wide rounded-sm uppercase ${opp.status === 'Active' ? 'bg-[#b48629]' : 'bg-green-700'}`}>
+                            {opp.status || 'Active'}
                           </span>
                           <button className="text-gray-400 hover:text-gray-900 transition-colors">
                             <FaRegBookmark />
@@ -211,29 +206,29 @@ export default function Marketplace() {
                         </div>
                         
                         <div className="mb-6">
-                          <p className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-2">Project {String.fromCharCode(65 + (idx % 26))}</p>
-                          <h3 className="text-lg font-bold text-gray-900 leading-snug mb-3">{proj.name}</h3>
+                          <p className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-2">{opp.projectName}</p>
+                          <h3 className="text-lg font-bold text-gray-900 leading-snug mb-3">{opp.name}</h3>
                           <div className="flex items-center text-xs text-[#b48629] font-medium">
-                            <FaMapMarkerAlt className="mr-1.5" /> Sector &middot; Global
+                            <FaMapMarkerAlt className="mr-1.5" /> {opp.sector || 'Sector'} &middot; {opp.geography || 'Global'}
                           </div>
                         </div>
                         
                         <div className="grid grid-cols-2 gap-y-4 gap-x-2 mb-8 mt-auto">
                           <div>
                             <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Revenue</p>
-                            <p className="font-bold text-gray-900">TBD</p>
+                            <p className="font-bold text-gray-900">{opp.revenue || 'TBD'}</p>
                           </div>
                           <div>
                             <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">EBITDA</p>
-                            <p className="font-bold text-gray-900">TBD</p>
+                            <p className="font-bold text-gray-900">{opp.ebitda || 'TBD'}</p>
                           </div>
                           <div>
                             <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Growth</p>
-                            <p className="font-bold text-gray-400">--</p>
+                            <p className="font-bold text-gray-400">{opp.growth || '--'}</p>
                           </div>
                           <div>
                             <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Employees</p>
-                            <p className="font-bold text-gray-400">--</p>
+                            <p className="font-bold text-gray-400">{opp.employees || '--'}</p>
                           </div>
                         </div>
                         
@@ -241,7 +236,7 @@ export default function Marketplace() {
                           <span className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">Opportunity</span>
                           <span className="text-[10px] text-gray-500 italic">Anonymous</span>
                         </div>
-                        <Link href={`/dms/teaser?project=${encodeURIComponent(proj.name)}`} className="block w-full">
+                        <Link href={`/dms/teaser?project=${encodeURIComponent(opp.projectName)}`} className="block w-full">
                           <button className="w-full py-3 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded transition-colors">
                             View Teaser
                           </button>

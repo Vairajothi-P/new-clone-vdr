@@ -3,12 +3,58 @@
 import { Suspense, useState } from "react";
 import { FaArrowLeft, FaLock, FaCheck, FaTimes } from "react-icons/fa";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 function TeaserContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const projectName = searchParams.get('project') || "Project Aurora";
+
+  const handleRemoveFromMarketplace = () => {
+    if (confirm("Are you sure you want to remove this teaser from the marketplace?")) {
+      const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
+      const updatedTeasers = marketTeasers.filter(t => t.projectName !== projectName);
+      localStorage.setItem('dms_market_teasers', JSON.stringify(updatedTeasers));
+      router.push('/dms/marketplace');
+    }
+  };
+
+  const [requestForm, setRequestForm] = useState({
+    fullName: "",
+    email: "",
+    company: "",
+    jobTitle: "",
+    investorType: "Select type",
+    investmentRange: "Select range",
+    message: ""
+  });
+
+  const handleFormChange = (e) => {
+    setRequestForm({ ...requestForm, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmitRequest = () => {
+    if (!requestForm.fullName || !requestForm.company) {
+      alert("Please provide at least a Full Name and Company.");
+      return;
+    }
+    const requests = JSON.parse(localStorage.getItem(`dms_requests_${projectName}`) || "[]");
+    requests.push({ ...requestForm, id: Date.now(), status: "PENDING" });
+    localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(requests));
+    setIsModalOpen(false);
+    
+    // Reset form
+    setRequestForm({
+      fullName: "",
+      email: "",
+      company: "",
+      jobTitle: "",
+      investorType: "Select type",
+      investmentRange: "Select range",
+      message: ""
+    });
+  };
 
   return (
     <div className="min-h-screen font-sans">
@@ -192,43 +238,49 @@ function TeaserContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-1.5">Full Name</label>
-                  <input type="text" placeholder="Alex Morgan" className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900" />
+                  <input type="text" name="fullName" value={requestForm.fullName} onChange={handleFormChange} placeholder="Alex Morgan" className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-1.5">Work Email</label>
-                  <input type="email" placeholder="alex@firm.com" className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900" />
+                  <input type="email" name="email" value={requestForm.email} onChange={handleFormChange} placeholder="alex@firm.com" className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-1.5">Company</label>
-                  <input type="text" placeholder="Northstar Capital" className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900" />
+                  <input type="text" name="company" value={requestForm.company} onChange={handleFormChange} placeholder="Northstar Capital" className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-1.5">Job Title</label>
-                  <input type="text" placeholder="Partner" className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900" />
+                  <input type="text" name="jobTitle" value={requestForm.jobTitle} onChange={handleFormChange} placeholder="Partner" className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-1.5">Investor / Buyer Type</label>
-                  <select className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900 bg-white">
+                  <select name="investorType" value={requestForm.investorType} onChange={handleFormChange} className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900 bg-white">
                     <option>Select type</option>
+                    <option>Private Equity</option>
+                    <option>Strategic Buyer</option>
+                    <option>Family Office</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-1.5">Investment Range</label>
-                  <select className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900 bg-white">
+                  <select name="investmentRange" value={requestForm.investmentRange} onChange={handleFormChange} className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors text-gray-900 bg-white">
                     <option>Select range</option>
+                    <option>$1M - $5M</option>
+                    <option>$5M - $20M</option>
+                    <option>$20M+</option>
                   </select>
                 </div>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Message</label>
-                <textarea rows="4" placeholder="Share a little about your investment mandate..." className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors resize-none text-gray-900"></textarea>
+                <textarea rows="4" name="message" value={requestForm.message} onChange={handleFormChange} placeholder="Share a little about your investment mandate..." className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors resize-none text-gray-900"></textarea>
               </div>
             </div>
             
             <div className="p-6 flex justify-end bg-white rounded-b-sm border-t border-gray-100">
               <button 
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleSubmitRequest}
                 className="py-2.5 px-6 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded transition-colors"
               >
                 Submit Access Request

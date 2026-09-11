@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 export default function WorkspaceDashboard() {
   const [workspaces, setWorkspaces] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState(null);
   const [projectName, setProjectName] = useState("");
   const [projectDesc, setProjectDesc] = useState("");
   const router = useRouter();
@@ -35,15 +36,24 @@ export default function WorkspaceDashboard() {
     }
   };
 
+  const handleDeleteProject = (name) => {
+    const updatedWorkspaces = workspaces.filter(ws => ws.name !== name);
+    setWorkspaces(updatedWorkspaces);
+    localStorage.setItem('dms_projects', JSON.stringify(updatedWorkspaces));
+    
+    // Remove related teasers from the marketplace
+    const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
+    const updatedTeasers = marketTeasers.filter(teaser => teaser.projectName !== name);
+    localStorage.setItem('dms_market_teasers', JSON.stringify(updatedTeasers));
+    
+    setOpenDropdownId(null);
+  };
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] relative p-8 md:p-16 flex justify-center items-start font-sans">
       
       {/* Top Right Buttons */}
       <div className="absolute top-8 right-8 flex items-center gap-3">
-        <button className="relative w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-500 flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm">
-          <FaBell className="text-sm" />
-          <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-        </button>
         <Link href="/dms/login">
           <button className="w-10 h-10 rounded-full border border-red-200 bg-white text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors shadow-sm">
             <FaPowerOff className="text-sm" />
@@ -119,9 +129,32 @@ export default function WorkspaceDashboard() {
                     <span className="px-2 py-0.5 bg-[#e6fbf2] text-[#00c875] text-[9px] font-bold rounded">
                       {workspace.status}
                     </span>
-                    <button className="text-gray-400 hover:text-gray-600 p-1 opacity-60 hover:opacity-100">
-                      <FaEllipsisV className="text-[11px]" />
-                    </button>
+                    
+                    <div className="relative">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDropdownId(openDropdownId === workspace.name ? null : workspace.name);
+                        }}
+                        className="text-gray-400 hover:text-gray-600 p-1 opacity-60 hover:opacity-100"
+                      >
+                        <FaEllipsisV className="text-[11px]" />
+                      </button>
+                      
+                      {openDropdownId === workspace.name && (
+                        <div className="absolute right-0 mt-1 w-24 bg-white rounded-md shadow-lg border border-gray-100 z-10 overflow-hidden">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteProject(workspace.name);
+                            }}
+                            className="w-full text-left px-4 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors font-medium"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="flex flex-col items-center justify-center flex-1 gap-2 pb-2">
