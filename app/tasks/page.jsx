@@ -147,23 +147,23 @@ export default function TasksWorkflowPage() {
     <div className="flex-1 w-full h-full flex flex-col bg-[#F8FAFC] font-sans text-slate-800 overflow-hidden">
 
       {/* Premium Header */}
-      <div className="bg-white border-b border-slate-200/60 shrink-0 shadow-sm relative z-10">
-        {/* Subtle top gradient line */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[var(--brand,theme(colors.blue.500))] to-purple-500 opacity-80"></div>
+      <div className="bg-white border-b border-slate-200 shrink-0 relative z-10">
+        {/* Clean top accent line */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-[var(--brand,theme(colors.blue.600))] opacity-90"></div>
 
         <div className="w-full px-8 lg:px-10">
           <div className="flex justify-between items-center py-6">
             <div className="flex flex-col">
               <div className="flex items-center gap-4">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 drop-shadow-sm">
+                <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
                   Task & Workflow
                 </h1>
-                <span className="text-[10px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-50 to-blue-50 text-purple-700 border border-purple-200/60 shadow-sm flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></span>
+                <span className="text-[11px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                   STAGE: {currentDealStage}
                 </span>
               </div>
-              <p className="text-sm font-medium text-slate-500 mt-1.5">Streamline deal execution and track milestones.</p>
+              <p className="text-sm text-slate-500 mt-1">Streamline deal execution and track milestones.</p>
             </div>
             <div className="flex items-center gap-5">
 
@@ -186,9 +186,9 @@ export default function TasksWorkflowPage() {
               {viewMode === 'Seller' && (
                 <button
                   onClick={() => setIsCreating(true)}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-b from-[var(--brand,theme(colors.blue.500))] to-[var(--brand,theme(colors.blue.600))] hover:from-[var(--brand,theme(colors.blue.600))] hover:to-[var(--brand,theme(colors.blue.700))] rounded-xl transition-all shadow-[0_4px_10px_-2px_rgba(59,130,246,0.3)] hover:shadow-[0_6px_14px_-2px_rgba(59,130,246,0.4)] hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand)]"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[var(--brand,theme(colors.blue.600))] hover:bg-[var(--brand,theme(colors.blue.700))] rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand)]"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path></svg>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
                   New Task
                 </button>
               )}
@@ -203,9 +203,9 @@ export default function TasksWorkflowPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`whitespace-nowrap px-4 py-2 rounded-full font-bold text-[13px] transition-all duration-300 ${isActive
-                    ? 'bg-[var(--brand,theme(colors.blue.600))] text-white shadow-md scale-105'
-                    : 'bg-transparent text-slate-500 hover:text-[var(--brand,theme(colors.blue.700))] hover:bg-blue-50'
+                  className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-[13px] transition-colors duration-200 ${isActive
+                    ? 'bg-[var(--brand-50,theme(colors.blue.50))] text-[var(--brand,theme(colors.blue.700))] shadow-sm border border-[var(--brand-100,theme(colors.blue.100))]'
+                    : 'bg-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
                     }`}
                 >
                   {tab.label}
@@ -216,11 +216,7 @@ export default function TasksWorkflowPage() {
         </div>
       </div>
 
-      {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto w-full px-8 lg:px-10 py-8 relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {/* Subtle background glow */}
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[var(--brand,theme(colors.blue.500))] opacity-[0.03] blur-[120px] rounded-full pointer-events-none"></div>
-        <div className="absolute top-[20%] right-[-10%] w-[40%] h-[40%] bg-purple-500 opacity-[0.03] blur-[100px] rounded-full pointer-events-none"></div>
 
         <div className="max-w-[1400px] mx-auto h-full relative z-10">
           {activeTab === 'control' && <ControlCenter tasks={visibleTasks} currentDealStage={currentDealStage} />}

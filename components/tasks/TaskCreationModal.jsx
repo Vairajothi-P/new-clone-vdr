@@ -300,7 +300,7 @@ export default function TaskCreationModal({ allTasks = [], onClose, onCreate }) 
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 transition-colors focus:outline-none shadow-sm">
               Cancel
             </button>
-            <button type="submit" className="px-6 py-2.5 rounded-xl shadow-[0_4px_10px_-2px_rgba(59,130,246,0.3)] hover:shadow-[0_6px_14px_-2px_rgba(59,130,246,0.4)] text-sm font-bold text-white bg-gradient-to-b from-[var(--brand,theme(colors.blue.500))] to-[var(--brand,theme(colors.blue.600))] hover:from-[var(--brand,theme(colors.blue.600))] hover:to-[var(--brand,theme(colors.blue.700))] transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand)]">
+            <button type="submit" className="px-6 py-2.5 rounded-lg text-sm font-medium text-white bg-[var(--brand,theme(colors.blue.600))] hover:bg-[var(--brand,theme(colors.blue.700))] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand)]">
               Create Task
             </button>
           </div>
