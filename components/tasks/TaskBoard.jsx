@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 
-export default function TaskBoard({ tasks, allTasks, onTaskClick }) {
+export default function TaskBoard({ tasks, allTasks, onTaskClick, viewMode }) {
   const [filterRole, setFilterRole] = useState('All');
   const [filterPriority, setFilterPriority] = useState('All');
   const [filterStage, setFilterStage] = useState('All');
@@ -11,7 +11,7 @@ export default function TaskBoard({ tasks, allTasks, onTaskClick }) {
     { id: 'not_started', label: 'To Do' },
     { id: 'in_progress', label: 'In Progress' },
     { id: 'blocked', label: 'Blocked' },
-    { id: 'under_review', label: 'Review' },
+    { id: 'audit', label: 'Audit' },
     { id: 'completed', label: 'Done' }
   ];
 
@@ -42,12 +42,12 @@ export default function TaskBoard({ tasks, allTasks, onTaskClick }) {
   return (
     <div className="h-full flex flex-col space-y-4 animate-in fade-in duration-300">
       
-      {/* Clean Filters */}
-      <div className="flex gap-4 border-b border-slate-200 pb-4">
+      {/* Sleek Filters */}
+      <div className="flex gap-4 border-b border-slate-200/60 pb-4">
         <select 
           value={filterRole} 
           onChange={(e) => setFilterRole(e.target.value)}
-          className="text-sm font-medium border border-slate-200 bg-white rounded-md py-1.5 px-3 focus:ring-1 focus:ring-[var(--brand)] focus:border-[var(--brand)] outline-none shadow-sm"
+          className="text-sm font-semibold text-slate-700 bg-white border border-slate-200/80 rounded-xl py-2 px-4 focus:ring-2 focus:ring-[var(--brand,theme(colors.blue.500))] focus:border-transparent outline-none shadow-sm hover:bg-slate-50 transition-colors"
         >
           <option value="All">All Roles</option>
           <option value="Legal">Legal</option>
@@ -58,18 +58,18 @@ export default function TaskBoard({ tasks, allTasks, onTaskClick }) {
         <select 
           value={filterPriority} 
           onChange={(e) => setFilterPriority(e.target.value)}
-          className="text-sm font-medium border border-slate-200 bg-white rounded-md py-1.5 px-3 focus:ring-1 focus:ring-[var(--brand)] focus:border-[var(--brand)] outline-none shadow-sm"
+          className="text-sm font-semibold text-slate-700 bg-white border border-slate-200/80 rounded-xl py-2 px-4 focus:ring-2 focus:ring-[var(--brand,theme(colors.blue.500))] focus:border-transparent outline-none shadow-sm hover:bg-slate-50 transition-colors"
         >
           <option value="All">All Priorities</option>
-          <option value="High">High</option>
-          <option value="Medium">Medium</option>
-          <option value="Low">Low</option>
+          <option value="High">High Priority</option>
+          <option value="Medium">Medium Priority</option>
+          <option value="Low">Low Priority</option>
         </select>
 
         <select 
           value={filterStage} 
           onChange={(e) => setFilterStage(e.target.value)}
-          className="text-sm font-medium border border-slate-200 bg-white rounded-md py-1.5 px-3 focus:ring-1 focus:ring-[var(--brand)] focus:border-[var(--brand)] outline-none shadow-sm"
+          className="text-sm font-semibold text-slate-700 bg-white border border-slate-200/80 rounded-xl py-2 px-4 focus:ring-2 focus:ring-[var(--brand,theme(colors.blue.500))] focus:border-transparent outline-none shadow-sm hover:bg-slate-50 transition-colors"
         >
           <option value="All">All Stages</option>
           <option value="preparation">Preparation</option>
@@ -79,22 +79,22 @@ export default function TaskBoard({ tasks, allTasks, onTaskClick }) {
         </select>
       </div>
 
-      {/* Clean Kanban Board */}
-      <div className="flex gap-4 overflow-x-auto pb-4 flex-1 items-start hide-scrollbar pt-2">
+      {/* Premium Kanban Board */}
+      <div className="flex gap-5 overflow-x-auto pb-4 flex-1 items-start pt-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {columns.map(col => {
           const colTasks = filteredTasks.filter(t => t.status === col.id);
           
           return (
-            <div key={col.id} className="min-w-[280px] w-[280px] shrink-0 bg-slate-50 border border-slate-200 rounded-lg p-3 flex flex-col max-h-full">
+            <div key={col.id} className="min-w-[300px] w-[300px] shrink-0 bg-slate-100/50 rounded-lg p-3 flex flex-col max-h-full border border-slate-200/50">
               
-              <div className="flex justify-between items-center mb-4 px-1">
-                <h3 className="text-sm font-bold text-slate-800">{col.label}</h3>
-                <span className="text-[11px] font-bold bg-white text-slate-600 px-2 py-0.5 rounded-full border border-slate-200 shadow-sm">
+              <div className="flex justify-between items-center mb-4 px-2 pt-1">
+                <h3 className="text-[13px] font-bold text-slate-700 tracking-wide">{col.label}</h3>
+                <span className="text-[10px] font-black bg-white text-slate-500 px-2 py-0.5 rounded-full border border-slate-200/80 shadow-sm">
                   {colTasks.length}
                 </span>
               </div>
               
-              <div className="space-y-3 overflow-y-auto pr-1 pb-1 flex-1">
+              <div className="space-y-3 overflow-y-auto pr-1 pb-1 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {colTasks.map(task => {
                   const hasDependencies = task.dependencies && task.dependencies.length > 0;
                   const isBlockedByDependency = hasDependencies && task.dependencies.some(depId => {
@@ -107,59 +107,70 @@ export default function TaskBoard({ tasks, allTasks, onTaskClick }) {
                     <div 
                       key={task.id}
                       onClick={() => onTaskClick(task)}
-                      className={`bg-white border rounded-md p-3.5 shadow-sm hover:shadow-md cursor-pointer transition-all group relative flex flex-col h-40 ${isOverdue ? 'border-red-300 hover:border-red-400 bg-red-50/30' : 'border-slate-200 hover:border-slate-300'}`}
+                      className={`bg-white/90 backdrop-blur-sm border rounded-md p-4 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.1)] hover:-translate-y-1 cursor-pointer transition-all duration-300 group relative flex flex-col h-[170px] ${isOverdue ? 'border-red-200 bg-red-50/20' : 'border-slate-200/80 hover:border-slate-300'}`}
                     >
-                      {/* Brand color left accent on hover */}
-                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${isOverdue ? 'bg-red-500' : 'bg-[var(--brand)]'} opacity-0 group-hover:opacity-100 transition-opacity rounded-l-md`}></div>
+                      {/* Hover subtle glow on left */}
+                      <div className={`absolute left-0 top-3 bottom-3 w-1 ${isOverdue ? 'bg-red-400' : 'bg-[var(--brand,theme(colors.blue.500))]'} opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-r-md`}></div>
 
                       <div className="flex justify-between items-start mb-3 shrink-0">
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${getPriorityStyle(task.priority)}`}>
-                          {task.priority}
-                        </span>
-                        <div className="flex gap-1.5">
+                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md border ${getPriorityStyle(task.priority)}`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80"></span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider">
+                            {task.priority}
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5 items-center">
+                          {task.isStageGate && (
+                            <span className="text-[10px] uppercase font-black tracking-wider text-purple-600 bg-purple-50 border border-purple-100/80 px-2 py-0.5 rounded-md shadow-sm">
+                              MILESTONE
+                            </span>
+                          )}
                           {isOverdue && (
-                            <span className="text-[10px] uppercase font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] uppercase font-black tracking-wider text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-md shadow-sm">
                               OVERDUE
                             </span>
                           )}
                           {task.riskImpact === 'high' && !isOverdue && (
-                            <span className="text-[10px] uppercase font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] uppercase font-black tracking-wider text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md shadow-sm">
                               RISK
                             </span>
                           )}
-                          <span title={`Task Type: ${task.taskType}`} className="text-xs bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded">
-                            {getTaskTypeIcon(task.taskType)}
-                          </span>
                         </div>
                       </div>
                       
-                      <h4 className="text-sm font-semibold text-slate-900 mb-2 leading-snug group-hover:text-[var(--brand)] transition-colors line-clamp-2">
+                      <h4 className="text-[15px] font-bold text-slate-800 mb-2 leading-snug group-hover:text-[var(--brand,theme(colors.blue.600))] transition-colors line-clamp-2">
                         {task.title}
                       </h4>
 
                       {isBlockedByDependency && col.id !== 'completed' && (
                         <div className="mb-3 shrink-0">
-                          <span className="text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded truncate max-w-full inline-block">
+                          <span className="text-[10px] font-semibold text-red-600/80 flex items-center gap-1 truncate max-w-full">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                             Blocked by Dependency
                           </span>
                         </div>
                       )}
                       
-                      <div className="flex items-center justify-between mt-auto pt-2 shrink-0 border-t border-slate-100">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-600">
+                      <div className="flex items-center justify-between mt-auto pt-3 shrink-0 border-t border-slate-100/80">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-300 flex items-center justify-center text-[10px] font-black text-slate-600 shadow-sm">
                             {task.assignee.charAt(0)}
                           </div>
-                          <span className="text-[11px] font-semibold text-slate-600 truncate max-w-[100px]">
+                          <span className="text-xs font-semibold text-slate-500 truncate max-w-[100px]">
                             {task.assignee}
                           </span>
                         </div>
                         
-                        {task.linkedDocumentId && (
-                          <div className="text-[9px] font-bold text-[var(--brand)] bg-[var(--brand-50,theme(colors.blue.50))] px-1.5 py-0.5 rounded border border-[var(--brand-200,theme(colors.blue.200))]">
-                            DOC
+                        <div className="flex gap-2">
+                          {task.linkedDocumentId && (
+                            <div className="flex items-center justify-center w-6 h-6 text-[var(--brand,theme(colors.blue.600))] bg-blue-50/50 rounded-md border border-blue-100/50" title="Has Linked Document">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-center w-6 h-6 text-slate-400 bg-slate-50/50 rounded-md border border-slate-100/80" title={`Task Type: ${task.taskType}`}>
+                            <span className="text-xs">{getTaskTypeIcon(task.taskType)}</span>
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
                   );
