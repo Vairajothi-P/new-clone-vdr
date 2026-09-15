@@ -4,11 +4,6 @@ import React, { useState } from "react";
 import {
   KeyRound,
   Shield,
-  ShieldAlert,
-  UserPlus,
-  Edit3,
-  Save,
-  X,
   CheckCircle2,
   AlertCircle,
   HelpCircle,
@@ -29,7 +24,6 @@ import {
   StatusBadge,
   DetailDrawer,
 } from "@/components/controls-audit/shared";
-import ModalPortal from "@/components/ui/ModalPortal";
 
 export default function PermissionsPage() {
   const {
@@ -38,9 +32,6 @@ export default function PermissionsPage() {
     users,
     permissionsMatrix,
     accessGrants,
-    updatePermissionCell,
-    createAccessGrant,
-    showToast,
   } = useControlsAudit();
 
   // View toggle: 'role' | 'user'
@@ -49,27 +40,9 @@ export default function PermissionsPage() {
   // Selected cell detail for inspection drawer
   const [inspectedCell, setInspectedCell] = useState(null);
 
-  // Edit mode state
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [stagedEdits, setStagedEdits] = useState({}); // { `${action}_${role}`: newStatus }
-  const [showConfirmSaveModal, setShowConfirmSaveModal] = useState(false);
-
   // By User view selection & search
   const [selectedUserId, setSelectedUserId] = useState("usr-4"); // default Alexander Vance
   const [userSearch, setUserSearch] = useState("");
-
-  // Grant Access modal state
-  const [isGrantModalOpen, setIsGrantModalOpen] = useState(false);
-  const [grantFormData, setGrantFormData] = useState({
-    user: "Dr. Julian Hayes",
-    role: "External Advisor",
-    workspace: "Legal Advisory - Gibson & Dunn",
-    resource: "Due Diligence / Tax Disclosures",
-    permission: "Clean Room View",
-    scope: "Folder Scope",
-    expiration: "2026-11-30",
-    reason: "Specialized foreign tax treaty liability review",
-  });
 
   const selectedUser = users.find((u) => u.id === selectedUserId) || users[0];
 
@@ -85,90 +58,14 @@ export default function PermissionsPage() {
     "Manage Users",
   ];
 
-  // Toggle cell in edit mode
+  // Open inspection drawer on cell click
   const handleCellClick = (actionName, roleName, currentCellData) => {
-    if (!isEditMode) {
-      // Open inspection drawer
-      setInspectedCell({
-        action: actionName,
-        role: roleName,
-        deal: activeDeal.name,
-        workspace: "Buyer ABC Corp / Acme Room",
-        ...currentCellData,
-      });
-      return;
-    }
-
-    // In edit mode: cycle allowed <-> denied
-    const key = `${actionName}__${roleName}`;
-    const effectiveStatus = stagedEdits[key] || currentCellData.status;
-
-    let nextStatus = "allowed";
-    if (effectiveStatus === "allowed") nextStatus = "denied";
-    else if (effectiveStatus === "denied") nextStatus = "allowed";
-
-    setStagedEdits((prev) => ({
-      ...prev,
-      [key]: nextStatus,
-    }));
-  };
-
-  // Save all staged edits
-  const handleSaveEdits = () => {
-    const editKeys = Object.keys(stagedEdits);
-    if (editKeys.length === 0) {
-      setIsEditMode(false);
-      return;
-    }
-
-    editKeys.forEach((key) => {
-      const [actionName, roleName] = key.split("__");
-      const newStatus = stagedEdits[key];
-      updatePermissionCell(
-        actionName,
-        roleName,
-        newStatus,
-        `Bulk permission matrix modification by Administrator.`
-      );
-    });
-
-    setStagedEdits({});
-    setIsEditMode(false);
-    setShowConfirmSaveModal(false);
-    showToast(`Successfully saved ${editKeys.length} permission modifications.`, "success");
-  };
-
-  // Cancel edit mode
-  const handleCancelEdits = () => {
-    setStagedEdits({});
-    setIsEditMode(false);
-  };
-
-  // Submit Grant Access
-  const handleGrantSubmit = (e) => {
-    e.preventDefault();
-    createAccessGrant({
-      user: grantFormData.user,
-      role: grantFormData.role,
+    setInspectedCell({
+      action: actionName,
+      role: roleName,
       deal: activeDeal.name,
-      workspace: grantFormData.workspace,
-      resource: grantFormData.resource,
-      permission: grantFormData.permission,
-      scope: grantFormData.scope,
-      expiresAt: grantFormData.expiration,
-      reason: grantFormData.reason,
-    });
-
-    setIsGrantModalOpen(false);
-    setGrantFormData({
-      user: "Dr. Julian Hayes",
-      role: "External Advisor",
-      workspace: "Legal Advisory - Gibson & Dunn",
-      resource: "Due Diligence / Tax Disclosures",
-      permission: "Clean Room View",
-      scope: "Folder Scope",
-      expiration: "2026-11-30",
-      reason: "Specialized foreign tax treaty liability review",
+      workspace: "Buyer ABC Corp / Acme Room",
+      ...currentCellData,
     });
   };
 
@@ -176,8 +73,8 @@ export default function PermissionsPage() {
     <div className="p-6 lg:p-8 max-w-7xl mx-auto w-full font-sans space-y-6">
       {/* ── HEADER ── */}
       <PageHeader
-        title="Permissions Matrix & Access Grants"
-        subtitle="Inspect and manage role-based and user-level resource permissions, inheritance chains, and specific access grants."
+        title="Permissions Matrix & Governance"
+        subtitle="Inspect role-based and user-level resource permissions, inheritance chains, and active access grants."
         badge={<StatusBadge status="active" label="Inheritance Active" size="sm" />}
         actions={
           <div className="flex items-center gap-2.5">
@@ -206,70 +103,9 @@ export default function PermissionsPage() {
                 <span>By User</span>
               </button>
             </div>
-
-            {/* Edit / Save Actions */}
-            {viewMode === "role" && (
-              <>
-                {!isEditMode ? (
-                  <button
-                    onClick={() => setIsEditMode(true)}
-                    className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Edit3 size={13} className="text-slate-400" />
-                    <span>Edit Permissions</span>
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleCancelEdits}
-                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (Object.keys(stagedEdits).length > 0) {
-                          setShowConfirmSaveModal(true);
-                        } else {
-                          setIsEditMode(false);
-                        }
-                      }}
-                      className="px-3.5 py-2 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-xs font-semibold rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Save size={13} />
-                      <span>Save Changes {Object.keys(stagedEdits).length > 0 && `(${Object.keys(stagedEdits).length})`}</span>
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Grant Access Button */}
-            <button
-              onClick={() => setIsGrantModalOpen(true)}
-              className="px-3.5 py-2 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-xs font-semibold rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
-            >
-              <UserPlus size={14} />
-              <span>Grant Access</span>
-            </button>
           </div>
         }
       />
-
-      {/* Edit Mode Notice Banner */}
-      {isEditMode && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900 shadow-xs animate-in fade-in">
-          <div className="flex items-center gap-2.5">
-            <AlertCircle size={16} className="text-amber-600 shrink-0" />
-            <div>
-              <span className="font-bold">Edit Mode Active:</span> Click any permission cell to toggle between <span className="font-semibold text-emerald-700">Allowed (✓)</span> and <span className="font-semibold text-rose-700">Denied (×)</span>. Changes will generate immutable audit logs upon saving.
-            </div>
-          </div>
-          <span className="font-bold font-mono text-[11px] bg-white px-2.5 py-1 rounded-lg border border-amber-200 text-amber-800">
-            {Object.keys(stagedEdits).length} modifications pending
-          </span>
-        </div>
-      )}
 
       {/* ── B. BY ROLE VIEW: MATRIX TABLE ── */}
       {viewMode === "role" && (
@@ -293,7 +129,7 @@ export default function PermissionsPage() {
                   <span className="text-slate-400 font-bold">—</span> Not Applicable
                 </span>
                 <span className="text-slate-300">|</span>
-                <span className="text-[11px] text-slate-400">Click any cell to inspect reason</span>
+                <span className="text-[11px] text-slate-400">Click any cell to inspect authorization reason</span>
               </div>
             </div>
 
@@ -340,40 +176,26 @@ export default function PermissionsPage() {
                             reason: "Standard configuration.",
                           };
 
-                          const stagedKey = `${actionName}__${r.name}`;
-                          const currentStatus = stagedEdits[stagedKey] || cellData.status;
-                          const isEdited = !!stagedEdits[stagedKey];
-
                           return (
                             <td
                               key={r.id}
                               onClick={() => handleCellClick(actionName, r.name, cellData)}
-                              className={`px-3 py-3 text-center transition-all cursor-pointer select-none ${
-                                isEditMode
-                                  ? "hover:bg-[var(--brand-50)] hover:scale-105"
-                                  : "hover:bg-slate-100/60"
-                              } ${isEdited ? "bg-amber-50/80 ring-2 ring-amber-400/60 inset-0" : ""}`}
+                              className="px-3 py-3 text-center transition-all cursor-pointer select-none hover:bg-slate-100/70"
                             >
                               <div className="flex flex-col items-center justify-center">
-                                {currentStatus === "allowed" && (
+                                {cellData.status === "allowed" && (
                                   <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/80 shadow-2xs">
                                     ✓
                                   </span>
                                 )}
-                                {currentStatus === "denied" && (
+                                {cellData.status === "denied" && (
                                   <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-rose-50 text-rose-700 font-bold border border-rose-200/80 shadow-2xs">
                                     ×
                                   </span>
                                 )}
-                                {currentStatus === "na" && (
+                                {cellData.status === "na" && (
                                   <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-50 text-slate-400 font-bold border border-slate-200/60">
                                     —
-                                  </span>
-                                )}
-
-                                {isEdited && (
-                                  <span className="text-[9px] font-bold text-amber-700 mt-1 uppercase">
-                                    Edited
                                   </span>
                                 )}
                               </div>
@@ -388,7 +210,7 @@ export default function PermissionsPage() {
             </div>
           </div>
 
-          {/* Active Grants List */}
+          {/* Active Grants List (Governance Inspection) */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -399,12 +221,6 @@ export default function PermissionsPage() {
                   Specific resource allowances granted outside baseline role inheritance
                 </p>
               </div>
-              <button
-                onClick={() => setIsGrantModalOpen(true)}
-                className="text-xs font-semibold text-[var(--brand)] hover:underline inline-flex items-center gap-1"
-              >
-                <span>+ Grant New Access</span>
-              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -692,190 +508,6 @@ export default function PermissionsPage() {
           </div>
         )}
       </DetailDrawer>
-
-      {/* ── F. GRANT ACCESS MODAL ── */}
-      {isGrantModalOpen && (
-        <ModalPortal>
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 font-sans">
-            <div
-              onClick={() => setIsGrantModalOpen(false)}
-              className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
-            />
-            <div className="relative z-10 w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
-              <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
-                <div className="flex items-center gap-2.5">
-                  <UserPlus className="w-5 h-5 text-[var(--brand)]" />
-                  <h3 className="text-base font-bold text-slate-900">
-                    Grant Resource Access
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setIsGrantModalOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <form onSubmit={handleGrantSubmit} className="p-6 space-y-4 text-xs">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Target User</label>
-                  <select
-                    value={grantFormData.user}
-                    onChange={(e) => {
-                      const u = users.find((x) => x.name === e.target.value);
-                      setGrantFormData({
-                        ...grantFormData,
-                        user: e.target.value,
-                        role: u?.role || grantFormData.role,
-                      });
-                    }}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-medium"
-                  >
-                    {users.map((u) => (
-                      <option key={u.id} value={u.name}>
-                        {u.name} ({u.role})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Assigned Role</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={grantFormData.role}
-                      className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Workspace</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={grantFormData.workspace}
-                      className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-medium"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Target Resource / Folder</label>
-                  <input
-                    type="text"
-                    required
-                    value={grantFormData.resource}
-                    onChange={(e) => setGrantFormData({ ...grantFormData, resource: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 font-medium focus:border-[var(--brand)]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Permission Type</label>
-                    <select
-                      value={grantFormData.permission}
-                      onChange={(e) => setGrantFormData({ ...grantFormData, permission: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-medium"
-                    >
-                      <option value="Clean Room View">Clean Room View</option>
-                      <option value="Download with Watermark">Download with Watermark</option>
-                      <option value="Full Read-Write Access">Full Read-Write Access</option>
-                      <option value="Q&A Inquiry Submission">Q&A Inquiry Submission</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Expiration Date</label>
-                    <input
-                      type="date"
-                      required
-                      value={grantFormData.expiration}
-                      onChange={(e) => setGrantFormData({ ...grantFormData, expiration: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 font-medium"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Business Reason & Scope</label>
-                  <textarea
-                    rows={2}
-                    required
-                    value={grantFormData.reason}
-                    onChange={(e) => setGrantFormData({ ...grantFormData, reason: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 font-medium focus:border-[var(--brand)]"
-                    placeholder="Provide justification for compliance audit recording..."
-                  />
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setIsGrantModalOpen(false)}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
-                  >
-                    Confirm & Grant Access
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </ModalPortal>
-      )}
-
-      {/* ── G. CONFIRM SAVE PERMISSIONS MODAL ── */}
-      {showConfirmSaveModal && (
-        <ModalPortal>
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 font-sans">
-            <div
-              onClick={() => setShowConfirmSaveModal(false)}
-              className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
-            />
-            <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in-95">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                  <AlertCircle size={20} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Confirm Permission Updates
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Applying {Object.keys(stagedEdits).length} modifications to active matrix
-                  </p>
-                </div>
-              </div>
-
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Saving these changes will immediately alter counterparty security access and automatically record verifiable audit events in the forensic ledger.
-              </p>
-
-              <div className="pt-2 flex items-center justify-end gap-2.5">
-                <button
-                  onClick={() => setShowConfirmSaveModal(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-                >
-                  Keep Editing
-                </button>
-                <button
-                  onClick={handleSaveEdits}
-                  className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
-                >
-                  Save & Log to Audit
-                </button>
-              </div>
-            </div>
-          </div>
-        </ModalPortal>
-      )}
     </div>
   );
 }

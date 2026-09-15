@@ -31,6 +31,17 @@ import {
   EmptyState,
 } from "@/components/controls-audit/shared";
 
+const REQUIRED_AUDIT_MODULES = [
+  "Stage Control",
+  "Documents",
+  "Permissions",
+  "Approvals",
+  "Q&A",
+  "Policies",
+  "Communications",
+  "AI Capabilities",
+];
+
 export default function AuditTrailPage() {
   const { auditLogs, activeDeal, showToast } = useControlsAudit();
 
@@ -51,9 +62,10 @@ export default function AuditTrailPage() {
   // Selected event for detail drawer (READ ONLY)
   const [selectedAuditLog, setSelectedAuditLog] = useState(null);
 
-  // Extract unique modules & actions for dropdowns
+  // Extract unique modules & actions for dropdowns, including Communications & AI Capabilities
   const uniqueModules = useMemo(() => {
-    return Array.from(new Set(auditLogs.map((l) => l.module).filter(Boolean)));
+    const modulesFromLogs = auditLogs.map((l) => l.module).filter(Boolean);
+    return Array.from(new Set([...REQUIRED_AUDIT_MODULES, ...modulesFromLogs]));
   }, [auditLogs]);
 
   const uniqueActions = useMemo(() => {
@@ -268,118 +280,119 @@ export default function AuditTrailPage() {
         </span>
       </div>
 
-      {/* ── E & F. FILTER & SEARCH TOOLBAR ── */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Search bar */}
-          <div className="relative flex-1 min-w-[260px] max-w-md">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Search user, action, resource, IP, or role..."
-              className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-[var(--brand)] font-medium text-slate-800 placeholder:text-slate-400"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
-
-          {/* Quick Result Pill Filters */}
-          <div className="flex items-center gap-1.5">
-            {["all", "Success", "Denied", "Flagged"].map((res) => (
-              <button
-                key={res}
-                onClick={() => {
-                  setSelectedResult(res);
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize transition-colors cursor-pointer ${
-                  selectedResult.toLowerCase() === res.toLowerCase()
-                    ? "bg-[var(--brand)] text-white shadow-2xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                {res}
-              </button>
-            ))}
-          </div>
+      {/* ── FILTER & SEARCH NAVIGATION BAR ── */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs space-y-3 relative z-20">
+        {/* Row 1: Search */}
+        <div className="relative w-full">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            placeholder="Search user, action, resource, IP or role..."
+            className="w-full pl-10 pr-9 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-[var(--brand)] font-medium text-slate-800 placeholder:text-slate-400 transition-colors shadow-2xs"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
 
-        {/* Secondary Filters row */}
-        <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100 text-xs">
-          {/* Date Range Dropdown */}
-          <select
-            value={selectedDateRange}
-            onChange={(e) => {
-              setSelectedDateRange(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="h-8.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700"
-          >
-            <option value="all">All Dates</option>
-            <option value="today">Today Only</option>
-            <option value="last7">Past 7 Days</option>
-            <option value="last30">Past 30 Days</option>
-          </select>
+        {/* Row 2: Dropdowns [All Dates] [All Modules] [All Actions] [All Results] */}
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 text-xs">
+          {/* All Dates */}
+          <div className="relative">
+            <select
+              value={selectedDateRange}
+              onChange={(e) => {
+                setSelectedDateRange(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="h-9 px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl font-semibold text-slate-700 focus:outline-none focus:border-[var(--brand)] cursor-pointer text-xs transition-colors"
+            >
+              <option value="all">All Dates</option>
+              <option value="today">Today Only</option>
+              <option value="last7">Past 7 Days</option>
+              <option value="last30">Past 30 Days</option>
+            </select>
+          </div>
 
-          {/* Module Dropdown */}
-          <select
-            value={selectedModule}
-            onChange={(e) => {
-              setSelectedModule(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="h-8.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700"
-          >
-            <option value="all">All Modules</option>
-            {uniqueModules.map((m) => (
-              <option key={m} value={m}>
-                Module: {m}
-              </option>
-            ))}
-          </select>
+          {/* All Modules (including Communications and AI Capabilities) */}
+          <div className="relative">
+            <select
+              value={selectedModule}
+              onChange={(e) => {
+                setSelectedModule(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="h-9 px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl font-semibold text-slate-700 focus:outline-none focus:border-[var(--brand)] cursor-pointer text-xs transition-colors"
+            >
+              <option value="all">All Modules</option>
+              {uniqueModules.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          {/* Action Dropdown */}
-          <select
-            value={selectedAction}
-            onChange={(e) => {
-              setSelectedAction(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="h-8.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700"
-          >
-            <option value="all">All Actions ({uniqueActions.length})</option>
-            {uniqueActions.map((act) => (
-              <option key={act} value={act}>
-                {act}
-              </option>
-            ))}
-          </select>
+          {/* All Actions */}
+          <div className="relative">
+            <select
+              value={selectedAction}
+              onChange={(e) => {
+                setSelectedAction(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="h-9 px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl font-semibold text-slate-700 focus:outline-none focus:border-[var(--brand)] cursor-pointer text-xs transition-colors"
+            >
+              <option value="all">All Actions ({uniqueActions.length})</option>
+              {uniqueActions.map((act) => (
+                <option key={act} value={act}>
+                  {act}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* All Results / Status */}
+          <div className="relative">
+            <select
+              value={selectedResult}
+              onChange={(e) => {
+                setSelectedResult(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="h-9 px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl font-semibold text-slate-700 focus:outline-none focus:border-[var(--brand)] cursor-pointer text-xs transition-colors"
+            >
+              <option value="all">All Results</option>
+              <option value="Success">Success</option>
+              <option value="Denied">Denied</option>
+              <option value="Flagged">Flagged</option>
+            </select>
+          </div>
 
           {/* Reset Filters */}
           {hasActiveFilters && (
             <button
               onClick={handleResetFilters}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl border border-rose-200 transition-colors ml-auto cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl border border-rose-200 transition-colors ml-auto cursor-pointer"
             >
-              <RotateCcw size={11} />
+              <RotateCcw size={12} />
               <span>Reset Filters</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* ── B & G. FORENSIC AUDIT TABLE ── */}
+      {/* ── FORENSIC AUDIT TABLE ── */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-2">
@@ -483,7 +496,7 @@ export default function AuditTrailPage() {
           </div>
         )}
 
-        {/* ── H. CLIENT-SIDE PAGINATION TOOLBAR ── */}
+        {/* ── CLIENT-SIDE PAGINATION TOOLBAR ── */}
         <div className="px-5 py-3.5 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-3 text-slate-500">
             <span>
@@ -501,7 +514,7 @@ export default function AuditTrailPage() {
                     setPageSize(sz);
                     setCurrentPage(1);
                   }}
-                  className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                  className={`px-2 py-0.5 rounded text-xs font-semibold cursor-pointer ${
                     pageSize === sz
                       ? "bg-[var(--brand)] text-white font-bold"
                       : "bg-slate-200 text-slate-600 hover:bg-slate-300"
@@ -518,7 +531,7 @@ export default function AuditTrailPage() {
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
               title="Previous Page"
             >
               <ChevronLeft size={14} />
@@ -530,7 +543,7 @@ export default function AuditTrailPage() {
                 <button
                   key={pNum}
                   onClick={() => setCurrentPage(pNum)}
-                  className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors ${
+                  className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                     currentPage === pNum
                       ? "bg-[var(--brand)] text-white shadow-2xs"
                       : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -544,7 +557,7 @@ export default function AuditTrailPage() {
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
               title="Next Page"
             >
               <ChevronRight size={14} />
@@ -553,7 +566,7 @@ export default function AuditTrailPage() {
         </div>
       </div>
 
-      {/* ── I. FORENSIC AUDIT DETAIL DRAWER (READ ONLY) ── */}
+      {/* ── FORENSIC AUDIT DETAIL DRAWER (READ ONLY) ── */}
       <DetailDrawer
         isOpen={!!selectedAuditLog}
         onClose={() => setSelectedAuditLog(null)}

@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import MainSidebar from "@/components/MainSidebar";
 import ControlsAuditHeader from "@/components/controls-audit/ControlsAuditHeader";
-import ControlsAuditNav from "@/components/controls-audit/ControlsAuditNav";
+import ControlsAuditSidebar from "@/components/controls-audit/ControlsAuditSidebar";
 import { ControlsAuditProvider } from "@/components/controls-audit/ControlsAuditContext";
 
 export default function ControlAuditsLayout({ children }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [hasAccess, setHasAccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [hasAccess, setHasAccess] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     const verifyAccess = async () => {
@@ -114,16 +115,44 @@ export default function ControlAuditsLayout({ children }) {
 
         {/* Module Content Wrapper */}
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative z-10">
-          {/* Module Header with Deal Context and Workspace Selectors */}
+          {/* Module Header */}
           <ControlsAuditHeader />
 
-          {/* Horizontal Navigation Sub-Bar with the 9 Module Tabs */}
-          <ControlsAuditNav />
+          {/* Module Body: Left Sidebar + Main Content */}
+          <div className="flex-1 flex min-w-0 overflow-hidden relative">
+            <ControlsAuditSidebar isOpen={isSidebarOpen} />
 
-          {/* Active Sub-Page Canvas */}
-          <main className="flex-1 overflow-y-auto bg-[#F8F9FB] relative flex flex-col min-w-0">
-            {children}
-          </main>
+            {/* Main Content Area */}
+            <main className="flex-1 bg-[#F8F9FB] relative flex flex-col min-w-0 transition-all duration-300 h-full">
+              {/* Secondary Sidebar Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className={`absolute top-6 left-0 -ml-3.5 z-30 hidden md:flex items-center justify-center w-7 h-7 bg-white border border-gray-200 rounded-full shadow-[0_2px_8px_rgb(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgb(0,0,0,0.12)] cursor-pointer text-gray-500 hover:text-gray-900 hover:scale-105 hover:bg-gray-50 transition-all duration-300 ${
+                  !isSidebarOpen ? "rotate-180" : ""
+                }`}
+                title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+              </button>
+
+              <div className="flex-1 overflow-y-auto w-full h-full">
+                {children}
+              </div>
+            </main>
+          </div>
         </div>
       </div>
     </ControlsAuditProvider>
