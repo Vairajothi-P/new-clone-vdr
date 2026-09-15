@@ -23,7 +23,7 @@ export default function Marketplace() {
   if (!isMounted) return null;
 
   return (
-    <main className={`min-h-screen ${userRole ? 'bg-[#f4f7f9] text-gray-900' : 'bg-[#0b1120] text-white'}`}>
+    <main className={`${userRole ? 'h-screen overflow-hidden bg-[#f4f7f9] text-gray-900' : 'min-h-screen bg-[#0b1120] text-white'}`}>
       {/* Custom Header for Marketplace */}
       <nav className="fixed top-0 left-0 w-full bg-[#0b1120]/95 backdrop-blur-md z-50 py-5 px-4 md:px-12 flex justify-between items-center border-b border-white/10 text-white">
         <div className="flex items-center">
@@ -33,7 +33,17 @@ export default function Marketplace() {
               <span className="font-medium">Back</span>
             </Link>
           ) : (
-            <span className="text-xl font-bold text-white tracking-wide">Marketplace</span>
+            <div className="flex items-center">
+              <span className="text-xl font-bold text-white tracking-wide mr-20">Marketplace</span>
+              <div className="flex items-center gap-20">
+                <Link href="#" className="text-lg text-gray-300 hover:text-white font-medium transition-colors">
+                  Profile
+                </Link>
+                <Link href="#" className="text-lg text-gray-300 hover:text-white font-medium transition-colors">
+                  Tracker
+                </Link>
+              </div>
+            </div>
           )}
         </div>
         
@@ -84,7 +94,7 @@ export default function Marketplace() {
 
       {/* Logged-in Dashboard View */}
       {userRole && (
-        <div className="pt-32 px-4 md:px-8 lg:px-12 max-w-[1600px] mx-auto pb-24">
+        <div className="pt-28 px-4 md:px-8 lg:px-12 max-w-[1600px] w-full mx-auto h-full flex flex-col pb-4">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8">
             <div>
@@ -117,7 +127,7 @@ export default function Marketplace() {
           </div>
 
           {/* Main Content Grid */}
-          <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex flex-col lg:flex-row gap-8 flex-1 overflow-hidden">
             {/* Sidebar Filters */}
             <div className="w-full lg:w-64 flex-shrink-0">
               <div className="bg-white border border-gray-200 rounded-lg p-5">
@@ -178,20 +188,21 @@ export default function Marketplace() {
             </div>
 
             {/* Projects Area */}
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-4 text-sm text-gray-500">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+              <div className="flex items-center gap-2 mb-4 text-sm text-gray-500 flex-shrink-0">
                 <FaFilter className="text-gray-400 text-xs" />
                 <span>Showing <strong>{opportunities.length}</strong> opportunities</span>
               </div>
 
-              {opportunities.length === 0 ? (
-                <div className="w-full min-h-[300px] flex flex-col items-center justify-center text-gray-400 bg-white border border-gray-200 rounded-lg">
-                  <FaSearch className="text-4xl mb-4 opacity-40" />
-                  <p className="text-xl font-medium">No opportunities found</p>
-                  <p className="text-sm mt-2">Check back later or adjust your filters.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="flex-1 overflow-y-auto pr-4 pb-12 custom-scrollbar">
+                {opportunities.length === 0 ? (
+                  <div className="w-full min-h-[300px] flex flex-col items-center justify-center text-gray-400 bg-white border border-gray-200 rounded-lg">
+                    <FaSearch className="text-4xl mb-4 opacity-40" />
+                    <p className="text-xl font-medium">No opportunities found</p>
+                    <p className="text-sm mt-2">Check back later or adjust your filters.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {opportunities.map((opp, idx) => (
                     <div key={idx} className="bg-white border border-gray-200 flex flex-col group relative overflow-hidden hover:shadow-md transition-shadow">
                       
@@ -246,6 +257,7 @@ export default function Marketplace() {
                   ))}
                 </div>
               )}
+              </div>
             </div>
           </div>
         </div>
