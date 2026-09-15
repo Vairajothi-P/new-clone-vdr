@@ -42,18 +42,18 @@ export default function WorkspaceDashboard() {
     const updatedWorkspaces = workspaces.filter(ws => ws.name !== name);
     setWorkspaces(updatedWorkspaces);
     localStorage.setItem('dms_projects', JSON.stringify(updatedWorkspaces));
-    
+
     // Remove related teasers from the marketplace
     const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
     const updatedTeasers = marketTeasers.filter(teaser => teaser.projectName !== name);
     localStorage.setItem('dms_market_teasers', JSON.stringify(updatedTeasers));
-    
+
     setOpenDropdownId(null);
   };
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] relative p-8 md:p-16 flex justify-center items-start font-sans">
-      
+
       {/* Top Right Buttons */}
       <div className="absolute top-8 right-8 flex items-center gap-3">
         <Link href="/dms/login">
@@ -65,7 +65,7 @@ export default function WorkspaceDashboard() {
 
       {/* Main Container */}
       <div className="w-full max-w-6xl min-h-[60vh] bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mt-12 flex flex-col">
-        
+
         {/* Header Row */}
         <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -79,7 +79,7 @@ export default function WorkspaceDashboard() {
                 <option>Active</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
               </div>
             </div>
 
@@ -107,9 +107,9 @@ export default function WorkspaceDashboard() {
         {/* Content Grid */}
         <div className="p-8 pb-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            
+
             {/* Add New Workspace Card */}
-            <button 
+            <button
               onClick={() => setIsModalOpen(true)}
               className="h-44 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center gap-3 hover:border-gray-400 hover:bg-gray-50 transition-all group"
             >
@@ -121,9 +121,9 @@ export default function WorkspaceDashboard() {
 
             {/* Existing Workspaces */}
             {workspaces.map((workspace, index) => (
-              <div 
-                onClick={() => router.push(`/dms/deal?project=${encodeURIComponent(workspace.name)}`)} 
-                key={index} 
+              <div
+                onClick={() => router.push(`/dms/deal?project=${encodeURIComponent(workspace.name)}`)}
+                key={index}
                 className="block cursor-pointer"
               >
                 <div className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] transition-all cursor-pointer group">
@@ -138,9 +138,9 @@ export default function WorkspaceDashboard() {
                         </span>
                       )}
                     </div>
-                    
+
                     <div className="relative">
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setOpenDropdownId(openDropdownId === workspace.name ? null : workspace.name);
@@ -149,7 +149,7 @@ export default function WorkspaceDashboard() {
                       >
                         <FaEllipsisV className="text-[11px]" />
                       </button>
-                      
+
                       {openDropdownId === workspace.name && (
                         <div className="absolute right-0 mt-1 w-24 bg-white rounded-md shadow-lg border border-gray-100 z-10 overflow-hidden">
                           <button
@@ -165,7 +165,7 @@ export default function WorkspaceDashboard() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex flex-col items-center justify-center flex-1 gap-2 pb-2">
                     <FaShieldAlt className="text-4xl text-[#65a3ab] group-hover:scale-105 transition-transform" />
                     <span className="font-bold text-gray-800 text-sm mt-1">{workspace.name}</span>
@@ -173,7 +173,7 @@ export default function WorkspaceDashboard() {
                 </div>
               </div>
             ))}
-            
+
           </div>
         </div>
       </div>
@@ -191,9 +191,9 @@ export default function WorkspaceDashboard() {
             <form onSubmit={handleCreateProject}>
               <div className="mb-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Project Name</label>
-                <input 
-                  type="text" 
-                  required 
+                <input
+                  type="text"
+                  required
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]"
@@ -202,7 +202,7 @@ export default function WorkspaceDashboard() {
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Deal Type</label>
-                <select 
+                <select
                   value={dealType}
                   onChange={(e) => setDealType(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875] bg-white"
@@ -213,7 +213,7 @@ export default function WorkspaceDashboard() {
               </div>
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Project Description</label>
-                <textarea 
+                <textarea
                   value={projectDesc}
                   onChange={(e) => setProjectDesc(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]"
@@ -222,15 +222,15 @@ export default function WorkspaceDashboard() {
                 ></textarea>
               </div>
               <div className="flex justify-end gap-3">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="px-4 py-2 bg-[#00c875] hover:bg-[#00a863] text-white rounded-lg font-medium transition-colors shadow-sm"
                 >
                   Create Project

@@ -39,11 +39,29 @@ function TeaserContent() {
       alert("Please provide at least a Full Name and Company.");
       return;
     }
-    const requests = JSON.parse(localStorage.getItem(`dms_requests_${projectName}`) || "[]");
-    requests.push({ ...requestForm, id: Date.now(), status: "PENDING" });
-    localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(requests));
+    const requests = JSON.parse(localStorage.getItem('dms_all_requests') || "[]");
+
+    // Format date like 'Oct 24, 2023'
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    requests.push({
+      ...requestForm,
+      id: Date.now(),
+      projectName,
+      dateSubmitted: dateStr,
+      status: "PENDING"
+    });
+
+    localStorage.setItem('dms_all_requests', JSON.stringify(requests));
+
+    // Also save in project-specific list for backward compatibility
+    const projRequests = JSON.parse(localStorage.getItem(`dms_requests_${projectName}`) || "[]");
+    projRequests.push({ ...requestForm, id: Date.now(), projectName, dateSubmitted: dateStr, status: "PENDING" });
+    localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(projRequests));
+
     setIsModalOpen(false);
-    
+
     // Reset form
     setRequestForm({
       fullName: "",
@@ -58,7 +76,7 @@ function TeaserContent() {
 
   return (
     <div className="min-h-screen font-sans">
-      
+
       {/* Hero / Header Section */}
       <div className="bg-[#fafafa]">
         <div className="max-w-5xl mx-auto px-6 py-16 md:py-20">
@@ -83,12 +101,12 @@ function TeaserContent() {
               <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight mb-6">
                 {projectName}
               </h1>
-              
+
               <p className="text-lg text-gray-600 leading-relaxed mb-8">
                 A profitable mid-market B2B SaaS company providing workflow automation
                 solutions to enterprise customers.
               </p>
-              
+
               <div className="flex flex-wrap items-center text-sm font-medium text-[#b48629]">
                 <span>B2B SaaS</span>
                 <span className="mx-3 text-gray-300">/</span>
@@ -117,7 +135,7 @@ function TeaserContent() {
       <div className="bg-[#f4f7f9] border-t border-gray-200 py-16 md:py-24">
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16 items-start">
-            
+
             {/* Left Column (Detailed Data) */}
             <div className="lg:col-span-2">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Company Overview</h2>
@@ -173,7 +191,7 @@ function TeaserContent() {
             <div className="lg:col-span-1">
               <div className="bg-white border border-gray-200 p-6 rounded-sm shadow-sm">
                 <h3 className="text-[10px] font-bold text-[#b48629] tracking-widest uppercase mb-6">Transaction Overview</h3>
-                
+
                 <div className="flex justify-between py-3 border-b border-gray-100">
                   <span className="text-sm text-gray-500">Deal Type</span>
                   <span className="text-sm font-bold text-gray-900">Majority Acquisition</span>
@@ -192,16 +210,16 @@ function TeaserContent() {
                 </div>
                 <div className="flex justify-between items-start py-3 mb-6">
                   <span className="text-sm text-gray-500 mt-0.5">Asking Price</span>
-                  <span className="text-sm font-bold text-gray-900 text-right">Available upon<br/>qualified access</span>
+                  <span className="text-sm font-bold text-gray-900 text-right">Available upon<br />qualified access</span>
                 </div>
-                
-                <button 
+
+                <button
                   onClick={() => setIsModalOpen(true)}
                   className="w-full py-3 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded transition-colors mb-4"
                 >
                   Request Access
                 </button>
-                
+
                 <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
                   <svg className="w-3 h-3 text-[#00c875]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                   <span>Controlled seller approval</span>
@@ -217,13 +235,13 @@ function TeaserContent() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-[#0b1120]/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <div className="bg-[#f4f7f9] w-full max-w-[600px] rounded-sm shadow-2xl relative flex flex-col max-h-[90vh]">
-            <button 
+            <button
               onClick={() => setIsModalOpen(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 transition-colors p-1"
             >
               <FaTimes />
             </button>
-            
+
             <div className="p-8 pb-6 bg-[#f4f7f9] rounded-t-sm">
               <div className="w-10 h-10 bg-[#0b1120] rounded-sm flex items-center justify-center mb-5 border border-gray-800">
                 <FaLock className="text-[#b48629]" />
@@ -233,7 +251,7 @@ function TeaserContent() {
                 Tell the deal representative who you are and why this opportunity fits your mandate.
               </p>
             </div>
-            
+
             <div className="p-8 overflow-y-auto bg-white border-t border-gray-200/60">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
@@ -271,15 +289,15 @@ function TeaserContent() {
                   </select>
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1.5">Message</label>
                 <textarea rows="4" name="message" value={requestForm.message} onChange={handleFormChange} placeholder="Share a little about your investment mandate..." className="w-full border border-gray-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#b48629] focus:border-[#b48629] transition-colors resize-none text-gray-900"></textarea>
               </div>
             </div>
-            
+
             <div className="p-6 flex justify-end bg-white rounded-b-sm border-t border-gray-100">
-              <button 
+              <button
                 onClick={handleSubmitRequest}
                 className="py-2.5 px-6 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded transition-colors"
               >
@@ -294,7 +312,7 @@ function TeaserContent() {
       <footer className="bg-[#0b1120] text-gray-400 py-16 border-t border-white/10 mt-auto">
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8 mb-12">
-            
+
             <div className="md:col-span-1">
               <h2 className="text-white text-xl font-bold tracking-tight mb-4 flex items-center">
                 <span className="w-6 h-6 bg-[#b48629] rounded-sm mr-2 flex items-center justify-center text-white text-xs font-serif italic">N</span>
@@ -304,7 +322,7 @@ function TeaserContent() {
                 Secure, anonymous deal flow for qualified buyers and corporate development teams.
               </p>
             </div>
-            
+
             <div>
               <h3 className="text-white text-sm font-bold tracking-widest uppercase mb-4">Marketplace</h3>
               <ul className="space-y-3 text-sm">
@@ -332,7 +350,7 @@ function TeaserContent() {
             </div>
 
           </div>
-          
+
           <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
             <p>&copy; 2026 Nova DMS. All rights reserved.</p>
             <div className="flex items-center gap-6">

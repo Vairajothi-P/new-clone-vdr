@@ -9,7 +9,7 @@ export default function DealDashboard() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const projectName = searchParams.get('project') || "Project";
-  
+
   const [deals, setDeals] = useState([]);
   const [requests, setRequests] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,7 +19,7 @@ export default function DealDashboard() {
   const [newDealDesc, setNewDealDesc] = useState("");
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  
+
   // Deal form state
   const [formData, setFormData] = useState({
     name: "",
@@ -31,8 +31,10 @@ export default function DealDashboard() {
     growth: "--",
     employees: "--",
     overview: "A profitable mid-market company...",
+    overview: "A profitable mid-market company...",
     askingPrice: "Available upon qualified access",
   });
+  const [isTeaserPublished, setIsTeaserPublished] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(`dms_deals_${projectName}`);
@@ -43,7 +45,7 @@ export default function DealDashboard() {
         console.error("Failed to parse deals", e);
       }
     }
-    
+
     const savedRequests = localStorage.getItem(`dms_requests_${projectName}`);
     if (savedRequests) {
       try {
@@ -52,17 +54,27 @@ export default function DealDashboard() {
         console.error("Failed to parse requests", e);
       }
     }
+
+    const savedTeasers = localStorage.getItem('dms_market_teasers');
+    if (savedTeasers) {
+      try {
+        const teasers = JSON.parse(savedTeasers);
+        setIsTeaserPublished(teasers.some(t => t.projectName === projectName));
+      } catch (e) {
+        console.error("Failed to parse teasers", e);
+      }
+    }
   }, [projectName]);
 
   const handleCreateDeal = (e) => {
     e.preventDefault();
     if (!newDealName.trim()) return;
-    
+
     const newDeal = { name: newDealName, desc: newDealDesc, status: "DRAFT", id: Date.now() };
     const updatedDeals = [...deals, newDeal];
     setDeals(updatedDeals);
     localStorage.setItem(`dms_deals_${projectName}`, JSON.stringify(updatedDeals));
-    
+
     setIsAddDealModalOpen(false);
     setNewDealName("");
     setNewDealDesc("");
@@ -77,7 +89,7 @@ export default function DealDashboard() {
 
   const handleSaveDeal = (e) => {
     e.preventDefault();
-    
+
     const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
     const existingIndex = marketTeasers.findIndex(t => t.projectName === projectName);
 
@@ -87,7 +99,7 @@ export default function DealDashboard() {
       id: existingIndex >= 0 ? marketTeasers[existingIndex].id : Date.now(),
       status: 'Active'
     };
-    
+
     if (existingIndex >= 0) {
       marketTeasers[existingIndex] = newTeaser;
       alert("Teaser details updated successfully!");
@@ -95,8 +107,9 @@ export default function DealDashboard() {
       marketTeasers.push(newTeaser);
       alert("Teaser details saved successfully and published to marketplace!");
     }
-    
+
     localStorage.setItem('dms_market_teasers', JSON.stringify(marketTeasers));
+    setIsTeaserPublished(true);
     setIsModalOpen(false);
   };
 
@@ -128,6 +141,7 @@ export default function DealDashboard() {
       const updatedTeasers = marketTeasers.filter(t => t.projectName !== projectName);
       localStorage.setItem('dms_market_teasers', JSON.stringify(updatedTeasers));
       alert("Teaser removed from marketplace");
+      setIsTeaserPublished(false);
       setIsModalOpen(false);
     }
   };
@@ -138,11 +152,11 @@ export default function DealDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] relative p-8 md:p-16 flex justify-center items-start font-sans">
-      
+
       {/* Top Right Buttons */}
       <div className="absolute top-8 right-8 flex items-center gap-3">
         <div className="relative">
-          <button 
+          <button
             onClick={() => setShowNotificationMenu(!showNotificationMenu)}
             className="relative w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-500 flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm"
           >
@@ -151,7 +165,7 @@ export default function DealDashboard() {
               <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
             )}
           </button>
-          
+
           {/* Notification Dropdown */}
           {showNotificationMenu && (
             <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
@@ -163,8 +177,8 @@ export default function DealDashboard() {
                   <div className="p-4 text-center text-sm text-gray-500">No new notifications</div>
                 ) : (
                   requests.filter(r => r.status === 'PENDING').map(req => (
-                    <div 
-                      key={req.id} 
+                    <div
+                      key={req.id}
                       onClick={() => { setSelectedRequest(req); setShowNotificationMenu(false); }}
                       className="p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
                     >
@@ -187,7 +201,7 @@ export default function DealDashboard() {
 
       {/* Main Container */}
       <div className="w-full max-w-6xl min-h-[60vh] bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mt-12 flex flex-col">
-        
+
         {/* Header Row */}
         <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -204,7 +218,7 @@ export default function DealDashboard() {
                 <option>Active</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
               </div>
             </div>
 
@@ -232,21 +246,27 @@ export default function DealDashboard() {
         {/* Content Grid */}
         <div className="p-8 pb-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            
+
             {/* Deal Teaser Card */}
-            <div 
-              onClick={handleOpenTeaserModal} 
+            <div
+              onClick={handleOpenTeaserModal}
               className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] transition-all cursor-pointer group"
             >
               <div className="flex justify-between items-start mb-auto">
-                <span className="px-2 py-0.5 bg-[#e6fbf2] text-[#00c875] text-[9px] font-bold rounded">
-                  SETUP REQUIRED
-                </span>
+                {isTeaserPublished ? (
+                  <span className="px-2 py-0.5 bg-[#e6fbf2] text-[#00c875] text-[9px] font-bold rounded">
+                    PUBLISHED
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 bg-[#fff8e6] text-[#b48629] text-[9px] font-bold rounded">
+                    SETUP REQUIRED
+                  </span>
+                )}
                 <button className="text-gray-400 hover:text-gray-600 p-1 opacity-60 hover:opacity-100">
                   <FaEllipsisV className="text-[11px]" />
                 </button>
               </div>
-              
+
               <div className="flex flex-col items-center justify-center flex-1 gap-2 pb-2">
                 <div className="w-12 h-12 rounded-full bg-[#f4f7f9] flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
                   <FaShieldAlt className="text-2xl text-[#b48629]" />
@@ -256,7 +276,7 @@ export default function DealDashboard() {
             </div>
 
             {/* Add New Deal Card */}
-            <button 
+            <button
               onClick={() => setIsAddDealModalOpen(true)}
               className="h-44 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center gap-3 hover:border-gray-400 hover:bg-gray-50 transition-all group"
             >
@@ -268,8 +288,8 @@ export default function DealDashboard() {
 
             {/* Existing Deals */}
             {deals.map((deal) => (
-              <div 
-                key={deal.id} 
+              <div
+                key={deal.id}
                 onClick={() => router.push('/documents')}
                 className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] transition-all cursor-pointer group"
               >
@@ -277,9 +297,9 @@ export default function DealDashboard() {
                   <span className="px-2 py-0.5 bg-[#fff8e6] text-[#b48629] text-[9px] font-bold rounded">
                     {deal.status}
                   </span>
-                  
+
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setOpenDropdownId(openDropdownId === deal.id ? null : deal.id);
@@ -288,7 +308,7 @@ export default function DealDashboard() {
                     >
                       <FaEllipsisV className="text-[11px]" />
                     </button>
-                    
+
                     {openDropdownId === deal.id && (
                       <div className="absolute right-0 mt-1 w-24 bg-white rounded-md shadow-lg border border-gray-100 z-10 overflow-hidden">
                         <button
@@ -304,7 +324,7 @@ export default function DealDashboard() {
                     )}
                   </div>
                 </div>
-                
+
                 <div className="flex flex-col items-center justify-center flex-1 gap-2 pb-2">
                   <div className="w-12 h-12 rounded-full bg-[#f4f7f9] flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
                     <FaShieldAlt className="text-2xl text-[#b48629]" />
@@ -313,7 +333,7 @@ export default function DealDashboard() {
                 </div>
               </div>
             ))}
-            
+
           </div>
         </div>
       </div>
@@ -333,7 +353,7 @@ export default function DealDashboard() {
                 <FaTimes className="text-lg" />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-5">
               <div className="grid grid-cols-2 gap-y-4 gap-x-6">
                 <div>
@@ -361,7 +381,7 @@ export default function DealDashboard() {
                   <p className="text-sm font-medium text-gray-900">{selectedRequest.investmentRange}</p>
                 </div>
               </div>
-              
+
               <div className="pt-2 border-t border-gray-100">
                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2 mt-2">Message</p>
                 <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-700 min-h-[80px] border border-gray-100">
@@ -369,9 +389,9 @@ export default function DealDashboard() {
                 </div>
               </div>
             </div>
-            
+
             <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-              <button 
+              <button
                 onClick={() => {
                   const updatedReqs = requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'REJECTED' } : r);
                   setRequests(updatedReqs);
@@ -382,24 +402,24 @@ export default function DealDashboard() {
               >
                 Reject Request
               </button>
-              <button 
+              <button
                 onClick={() => {
                   // Update request status
                   const updatedReqs = requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'ACCEPTED' } : r);
                   setRequests(updatedReqs);
                   localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(updatedReqs));
-                  
+
                   // Auto-create a deal card based on company name
-                  const newDeal = { 
-                    name: selectedRequest.company || "New Deal", 
-                    desc: "Created automatically from approved access request.", 
-                    status: "DRAFT", 
-                    id: Date.now() 
+                  const newDeal = {
+                    name: selectedRequest.company || "New Deal",
+                    desc: "Created automatically from approved access request.",
+                    status: "DRAFT",
+                    id: Date.now()
                   };
                   const updatedDeals = [...deals, newDeal];
                   setDeals(updatedDeals);
                   localStorage.setItem(`dms_deals_${projectName}`, JSON.stringify(updatedDeals));
-                  
+
                   setSelectedRequest(null);
                   alert(`Deal card "${newDeal.name}" created automatically.`);
                 }}
@@ -420,9 +440,9 @@ export default function DealDashboard() {
             <form onSubmit={handleCreateDeal}>
               <div className="mb-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Deal Name</label>
-                <input 
-                  type="text" 
-                  required 
+                <input
+                  type="text"
+                  required
                   value={newDealName}
                   onChange={(e) => setNewDealName(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]"
@@ -431,7 +451,7 @@ export default function DealDashboard() {
               </div>
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Deal Description</label>
-                <textarea 
+                <textarea
                   value={newDealDesc}
                   onChange={(e) => setNewDealDesc(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]"
@@ -440,15 +460,15 @@ export default function DealDashboard() {
                 ></textarea>
               </div>
               <div className="flex justify-end gap-3">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setIsAddDealModalOpen(false)}
                   className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="px-4 py-2 bg-[#00c875] hover:bg-[#00a863] text-white rounded-lg font-medium transition-colors shadow-sm"
                 >
                   Create Deal
@@ -463,25 +483,25 @@ export default function DealDashboard() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-[#0b1120]/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <div className="bg-[#f4f7f9] w-full max-w-[900px] rounded-sm shadow-2xl relative flex flex-col max-h-[95vh] overflow-hidden">
-            
+
             {/* Modal Header */}
             <div className="p-6 border-b border-gray-200 bg-white flex justify-between items-center rounded-t-sm z-10">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Create New Deal</h2>
                 <p className="text-sm text-[#00c875] font-bold tracking-wide mt-1">FOR {projectName.toUpperCase()}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-gray-400 hover:text-gray-900 transition-colors p-2"
               >
                 <FaTimes className="text-xl" />
               </button>
             </div>
-            
+
             {/* Modal Body (Scrollable) */}
             <div className="p-8 overflow-y-auto bg-[#f4f7f9] flex-1">
               <form id="deal-form" onSubmit={handleSaveDeal} className="space-y-8">
-                
+
                 {/* Deal Name */}
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                   <h3 className="text-lg font-bold text-gray-900 mb-6">Deal Information</h3>
@@ -554,27 +574,27 @@ export default function DealDashboard() {
 
               </form>
             </div>
-            
+
             {/* Modal Footer */}
             <div className="p-6 bg-white border-t border-gray-200 rounded-b-sm flex justify-between items-center z-10">
-              <button 
+              <button
                 type="button"
                 onClick={handleRemoveTeaser}
                 className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-bold text-sm rounded transition-colors flex items-center gap-2"
               >
                 <FaTimes /> Remove from Marketplace
               </button>
-              
+
               <div className="flex gap-4">
-                <button 
+                <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   className="px-6 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold rounded-sm transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   form="deal-form"
                   className="flex items-center gap-2 px-8 py-2.5 bg-[#0b1120] hover:bg-gray-800 text-white font-bold rounded-sm shadow-sm transition-colors"
                 >

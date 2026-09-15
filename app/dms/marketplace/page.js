@@ -16,7 +16,7 @@ export default function Marketplace() {
     if (savedTeasers) {
       try {
         setOpportunities(JSON.parse(savedTeasers));
-      } catch (e) {}
+      } catch (e) { }
     }
   }, []);
 
@@ -39,21 +39,21 @@ export default function Marketplace() {
                 <Link href="#" className="text-lg text-gray-300 hover:text-white font-medium transition-colors">
                   Profile
                 </Link>
-                <Link href="#" className="text-lg text-gray-300 hover:text-white font-medium transition-colors">
+                <Link href="/dms/tracker" className="text-lg text-gray-300 hover:text-white font-medium transition-colors">
                   Tracker
                 </Link>
               </div>
             </div>
           )}
         </div>
-        
 
-        
+
+
         {/* Right side - Auth */}
         <div className="hidden md:flex items-center gap-4">
           {userRole ? (
             <Link href="/dms/login">
-              <button 
+              <button
                 onClick={() => localStorage.removeItem('userRole')}
                 className="text-white hover:text-red-400 border border-white/30 hover:border-red-400 px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap flex items-center gap-2"
               >
@@ -80,11 +80,11 @@ export default function Marketplace() {
             <p className="text-[#eab308] text-xs font-bold tracking-[0.2em] uppercase mb-6">
               Private Markets &middot; Live
             </p>
-            
+
             <h1 className="text-5xl md:text-7xl font-bold mb-8 tracking-tight text-white">
               Deal Marketplace
             </h1>
-            
+
             <p className="text-[#9ca3af] text-lg md:text-xl leading-relaxed max-w-2xl">
               A focused view of anonymous acquisition opportunities for qualified buyers, corporate development teams, and investment professionals.
             </p>
@@ -105,14 +105,14 @@ export default function Marketplace() {
               11 matching opportunities &middot; updated 4m ago
             </div>
           </div>
-          
+
           {/* Search Bar Area */}
           <div className="flex flex-col md:flex-row gap-4 mb-8">
             <div className="relative flex-1">
               <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input 
-                type="text" 
-                placeholder="Search by industry, business model, or keyword" 
+              <input
+                type="text"
+                placeholder="Search by industry, business model, or keyword"
                 className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#b48629] focus:ring-1 focus:ring-[#b48629] transition-all"
               />
             </div>
@@ -137,7 +137,7 @@ export default function Marketplace() {
                     <FaRedoAlt className="text-[10px]" /> Reset
                   </button>
                 </div>
-                
+
                 <div className="space-y-5">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2">Industry</label>
@@ -151,7 +151,7 @@ export default function Marketplace() {
                       <FaChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none" />
                     </div>
                   </div>
-                  
+
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2">Location</label>
                     <div className="relative">
@@ -164,7 +164,7 @@ export default function Marketplace() {
                       <FaChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none" />
                     </div>
                   </div>
-                  
+
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2">Deal Type</label>
                     <div className="relative">
@@ -178,7 +178,7 @@ export default function Marketplace() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mt-8 pt-6 border-t border-gray-100">
                   <p className="text-xs text-gray-500 leading-relaxed">
                     All opportunities are presented anonymously. Detailed information is shared only after seller approval.
@@ -203,60 +203,60 @@ export default function Marketplace() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {opportunities.map((opp, idx) => (
-                    <div key={idx} className="bg-white border border-gray-200 flex flex-col group relative overflow-hidden hover:shadow-md transition-shadow">
-                      
-                      <div className="p-5 flex flex-col h-full">
-                        <div className="flex justify-between items-start mb-6">
-                          <span className={`px-3 py-1 text-white text-[10px] font-bold tracking-wide rounded-sm uppercase ${opp.status === 'Active' ? 'bg-[#b48629]' : 'bg-green-700'}`}>
-                            {opp.status || 'Active'}
-                          </span>
-                          <button className="text-gray-400 hover:text-gray-900 transition-colors">
-                            <FaRegBookmark />
-                          </button>
+                    {opportunities.map((opp, idx) => (
+                      <div key={idx} className="bg-white border border-gray-200 flex flex-col group relative overflow-hidden hover:shadow-md transition-shadow">
+
+                        <div className="p-5 flex flex-col h-full">
+                          <div className="flex justify-between items-start mb-6">
+                            <span className={`px-3 py-1 text-white text-[10px] font-bold tracking-wide rounded-sm uppercase ${opp.status === 'Active' ? 'bg-[#b48629]' : 'bg-green-700'}`}>
+                              {opp.status || 'Active'}
+                            </span>
+                            <button className="text-gray-400 hover:text-gray-900 transition-colors">
+                              <FaRegBookmark />
+                            </button>
+                          </div>
+
+                          <div className="mb-6">
+                            <p className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-2">{opp.projectName}</p>
+                            <h3 className="text-lg font-bold text-gray-900 leading-snug mb-3">{opp.name}</h3>
+                            <div className="flex items-center text-xs text-[#b48629] font-medium">
+                              <FaMapMarkerAlt className="mr-1.5" /> {opp.sector || 'Sector'} &middot; {opp.geography || 'Global'}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-y-4 gap-x-2 mb-8 mt-auto">
+                            <div>
+                              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Revenue</p>
+                              <p className="font-bold text-gray-900">{opp.revenue || 'TBD'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">EBITDA</p>
+                              <p className="font-bold text-gray-900">{opp.ebitda || 'TBD'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Growth</p>
+                              <p className="font-bold text-gray-400">{opp.growth || '--'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Employees</p>
+                              <p className="font-bold text-gray-400">{opp.employees || '--'}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-4 border-t border-gray-100 mb-4">
+                            <span className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">Opportunity</span>
+                            <span className="text-[10px] text-gray-500 italic">Anonymous</span>
+                          </div>
+                          <Link href={`/dms/teaser?project=${encodeURIComponent(opp.projectName)}`} className="block w-full">
+                            <button className="w-full py-3 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded transition-colors">
+                              View Teaser
+                            </button>
+                          </Link>
                         </div>
-                        
-                        <div className="mb-6">
-                          <p className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-2">{opp.projectName}</p>
-                          <h3 className="text-lg font-bold text-gray-900 leading-snug mb-3">{opp.name}</h3>
-                          <div className="flex items-center text-xs text-[#b48629] font-medium">
-                            <FaMapMarkerAlt className="mr-1.5" /> {opp.sector || 'Sector'} &middot; {opp.geography || 'Global'}
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-y-4 gap-x-2 mb-8 mt-auto">
-                          <div>
-                            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Revenue</p>
-                            <p className="font-bold text-gray-900">{opp.revenue || 'TBD'}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">EBITDA</p>
-                            <p className="font-bold text-gray-900">{opp.ebitda || 'TBD'}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Growth</p>
-                            <p className="font-bold text-gray-400">{opp.growth || '--'}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Employees</p>
-                            <p className="font-bold text-gray-400">{opp.employees || '--'}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between pt-4 border-t border-gray-100 mb-4">
-                          <span className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">Opportunity</span>
-                          <span className="text-[10px] text-gray-500 italic">Anonymous</span>
-                        </div>
-                        <Link href={`/dms/teaser?project=${encodeURIComponent(opp.projectName)}`} className="block w-full">
-                          <button className="w-full py-3 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded transition-colors">
-                            View Teaser
-                          </button>
-                        </Link>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -354,7 +354,7 @@ export default function Marketplace() {
                     Use clear financial, industry, geography, and transaction filters to focus your search.
                   </p>
                 </div>
-                
+
                 {/* Card 2 */}
                 <div className="p-10 border-b border-gray-200">
                   <div className="w-12 h-12 bg-[#0b1120] rounded mb-6 flex items-center justify-center border border-gray-700 shadow-sm">
@@ -365,7 +365,7 @@ export default function Marketplace() {
                     Company identities remain protected while you assess fit and submit your credentials.
                   </p>
                 </div>
-                
+
                 {/* Card 3 */}
                 <div className="p-10 border-b md:border-b-0 md:border-r border-gray-200">
                   <div className="w-12 h-12 bg-[#0b1120] rounded mb-6 flex items-center justify-center border border-gray-700 shadow-sm">
@@ -376,7 +376,7 @@ export default function Marketplace() {
                     Give sellers the context they need to make an informed access decision.
                   </p>
                 </div>
-                
+
                 {/* Card 4 */}
                 <div className="p-10">
                   <div className="w-12 h-12 bg-[#0b1120] rounded mb-6 flex items-center justify-center border border-gray-700 shadow-sm">
