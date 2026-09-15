@@ -4,204 +4,152 @@ import React from 'react';
 import Link from 'next/link';
 export default function BuyerOverviewPage() {
   return (
-    <>
-      <style>{`
-        :root{
-          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
-          --slate:#64748b; --slate-light:#94a3b8;
-          --line:#e2e8f0; --line-soft:#f1f5f9;
-          --brass:#2563eb; --brass-soft:#dbeafe;
-          --green:#16a34a; --green-soft:#dcfce7;
-          --red:#dc2626; --red-soft:#fee2e2;
-          --amber:#d97706; --amber-soft:#fef3c7;
-          --blue:#2563eb; --blue-soft:#dbeafe;
-          --purple:#7c3aed; --purple-soft:#ede9fe;
-          --coral:#ea580c; --coral-soft:#ffedd5;
-          --radius:8px;
-        }
-        .buyer-overview-container {
-          background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; -webkit-font-smoothing:antialiased; font-size:14px; line-height:1.5;
-          min-height: 100vh;
-        }
-        .buyer-overview-container .tabular{ font-family:'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
-        .buyer-overview-container h1, .buyer-overview-container h2, .buyer-overview-container h3{ font-family:'Source Serif 4', serif; font-weight:500; margin:0; }
-        .buyer-overview-container a{ color:inherit; text-decoration:none; }
-        .buyer-overview-container .shell{ max-width:1280px; margin:0 auto; padding-bottom: 34px; }
-
-        .buyer-overview-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
-        .buyer-overview-container .topbar-left{ display:flex; align-items:center; gap:18px; }
-        .buyer-overview-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .buyer-overview-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
-        .buyer-overview-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
-        .buyer-overview-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
-        .buyer-overview-container .crumbs b{ color:var(--paper); font-weight:500; }
-        .buyer-overview-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
-        .buyer-overview-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
-
-        /* secondary nav */
-        .buyer-overview-container .subnav{ display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); }
-        .buyer-overview-container .subnav a{ padding:13px 16px; font-size:13px; color:var(--slate); border-bottom:2px solid transparent; }
-        .buyer-overview-container .subnav a.active{ color:var(--ink); border-bottom-color:var(--brass); font-weight:500; }
-        .buyer-overview-container .subnav a:hover{ color:var(--ink); }
-
-        .buyer-overview-container .deal-header{ padding:26px 28px 0 28px; }
-        .buyer-overview-container .deal-header-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap; }
-        .buyer-overview-container .deal-id{ color:var(--slate); font-size:12px; font-family:'IBM Plex Mono',monospace; letter-spacing:.3px; margin-bottom:6px;}
-        .buyer-overview-container .deal-title{ font-size:27px; color:var(--ink); display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
-        .buyer-overview-container .deal-sub{ color:var(--slate); font-size:13px; margin-top:5px; }
-        .buyer-overview-container .stage-pill{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:500; padding:4px 10px; border-radius:20px; letter-spacing:.2px; background:var(--blue-soft); color:var(--blue); border:1px solid var(--blue-soft); }
-        .buyer-overview-container .stage-pill .dot{ width:6px;height:6px;border-radius:50%; background:var(--blue); }
-
-        .buyer-overview-container .btn{ font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:500; padding:9px 16px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--ink); background:transparent; color:var(--ink); display:inline-block; }
-        .buyer-overview-container .btn:hover{ background:var(--ink); color:var(--paper); }
-        .buyer-overview-container .btn-primary{ background:var(--ink); color:var(--paper); }
-        .buyer-overview-container .btn-primary:hover{ opacity:.88; }
-        .buyer-overview-container .btn-ghost{ border-color:var(--line); color:var(--slate); }
-        .buyer-overview-container .btn-ghost:hover{ background:var(--panel); color:var(--ink); }
-
-        /* progress tracker */
-        .buyer-overview-container .tracker{ margin:26px 28px 0 28px; display:flex; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
-        .buyer-overview-container .tstep{ flex:1; padding:14px 18px; border-right:1px solid var(--line-soft); position:relative; }
-        .buyer-overview-container .tstep:last-child{ border-right:none; }
-        .buyer-overview-container .tstep .n{ font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--slate-light); }
-        .buyer-overview-container .tstep .l{ font-size:13px; margin-top:4px; color:var(--slate); }
-        .buyer-overview-container .tstep.done{ background:var(--green-soft); }
-        .buyer-overview-container .tstep.done .n{ color:var(--green); }
-        .buyer-overview-container .tstep.done .l{ color:var(--green); font-weight:500; }
-        .buyer-overview-container .tstep.current{ background:var(--amber-soft); }
-        .buyer-overview-container .tstep.current .n{ color:var(--amber); }
-        .buyer-overview-container .tstep.current .l{ color:var(--amber); font-weight:500; }
-
-        .buyer-overview-container .grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin:22px 28px 0 28px; }
-        .buyer-overview-container .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin:20px 28px 0 28px; }
-        .buyer-overview-container .panel{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); }
-        .buyer-overview-container .panel-head{ padding:16px 20px; border-bottom:1px solid var(--line-soft); display:flex; justify-content:space-between; align-items:center; }
-        .buyer-overview-container .panel-head h2{ font-size:15px; }
-        .buyer-overview-container .panel-head a{ font-size:12px; color:var(--slate); }
-        .buyer-overview-container .panel-head a:hover{ color:var(--ink); }
-        .buyer-overview-container .panel-body{ padding:18px 20px; }
-
-        .buyer-overview-container .kv{ display:flex; justify-content:space-between; padding:7px 0; font-size:13px; border-bottom:1px solid var(--line-soft); }
-        .buyer-overview-container .kv:last-child{ border-bottom:none; }
-        .buyer-overview-container .kv .k{ color:var(--slate); }
-        .buyer-overview-container .kv .v{ color:var(--ink); font-family:'IBM Plex Mono',monospace; }
-
-        .buyer-overview-container .tile{ padding:22px 20px; }
-        .buyer-overview-container .tile-label{ font-size:11.5px; color:var(--slate); margin-bottom:8px; }
-        .buyer-overview-container .tile-value{ font-size:24px; font-family:'IBM Plex Mono',monospace; color:var(--ink); }
-        .buyer-overview-container .tile-value.accent{ color:var(--brass); }
-        .buyer-overview-container .tile-sub{ font-size:12px; color:var(--slate-light); margin-top:6px; }
-        .buyer-overview-container .tile-cta{ margin-top:14px; }
-
-        .buyer-overview-container .company-facts{ display:flex; flex-wrap:wrap; gap:10px; }
-        .buyer-overview-container .fact{ font-size:11.5px; color:var(--slate); border:1px solid var(--line); padding:5px 10px; border-radius:20px; }
-
-        .buyer-overview-container .badge{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:500; padding:3px 9px; border-radius:20px; }
-        .buyer-overview-container .badge.amber{ background:var(--amber-soft); color:var(--amber); }
-        .buyer-overview-container .badge.teal{ background:var(--green-soft); color:var(--green); }
-        .buyer-overview-container .badge.purple{ background:var(--purple-soft); color:var(--purple); }
-        .buyer-overview-container .badge.coral{ background:var(--coral-soft); color:var(--coral); }
-
-        .buyer-overview-container .qa-item{ padding:9px 0; border-bottom:1px solid var(--line-soft); font-size:12.5px; }
-        .buyer-overview-container .qa-item:last-child{ border-bottom:none; }
-        .buyer-overview-container .qa-item .q{ color:var(--ink); }
-        .buyer-overview-container .qa-item .meta{ color:var(--slate-light); font-size:11px; margin-top:2px; }
-
-        .buyer-overview-container footer{ padding:16px 28px 34px 28px; color:var(--slate-light); font-size:11.5px; display:flex; justify-content:space-between; border-top:1px solid var(--line-soft); margin:26px 28px 0 28px; }
-      `}</style>
-
-      <div className="buyer-overview-container">
-        <div className="subnav">
-          <Link href="/bidding/buyer-side" className="active">Overview</Link>
-          <Link href="/bidding/buyer-side/data-room">Data room</Link>
-          <Link href="/bidding/buyer-side/my-bid">My bid</Link>
-          <Link href="/bidding/buyer-side/bid-history">Bid history</Link>
-          <Link href="/bidding/buyer-side/messages">Messages</Link>
-          <Link href="/bidding/buyer-side/term-sheet">Term sheet</Link>
-        </div>
-
-        <div className="shell">
-
-          <div className="deal-header">
-            <div className="deal-header-top">
-              <div>
-                <div className="deal-title">
-                  Project Alpha
-                  <span className="stage-pill"><span className="dot"></span> Bid evaluation in progress</span>
-                </div>
-                <div className="deal-sub">Invited 12 Aug 2026 &nbsp;·&nbsp; Asking price $100M &nbsp;·&nbsp; Seller advisor: Linklane LLP</div>
-                <div className="company-facts" style={{ marginTop: '12px' }}>
-                  <span className="fact">Enterprise SaaS</span>
-                  <span className="fact">340 employees</span>
-                  <span className="fact">$25M ARR · 38% YoY growth</span>
-                  <span className="fact">EBITDA positive</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <a href="#" className="btn btn-ghost">Message seller</a>
-                <a href="#" className="btn btn-primary">Go to my bid</a>
-              </div>
-            </div>
-          </div>
-
-          <div className="tracker">
-            <div className="tstep done"><div className="n">01</div><div className="l">NDA signed</div></div>
-            <div className="tstep done"><div className="n">02</div><div className="l">Data room access</div></div>
-            <div className="tstep done"><div className="n">03</div><div className="l">Bid submitted</div></div>
-            <div className="tstep current"><div className="n">04</div><div className="l">Seller evaluation</div></div>
-            <div className="tstep"><div className="n">05</div><div className="l">Term sheet</div></div>
-            <div className="tstep"><div className="n">06</div><div className="l">Closing</div></div>
-          </div>
-
-          <div className="grid-3">
-            <div className="panel tile">
-              <div className="tile-label">My current offer</div>
-              <div className="tile-value accent">$95.0M</div>
-              <div className="tile-sub">Seller countered at $100.0M · response due 6 Sep</div>
-              <div className="tile-cta"><a href="#" className="btn btn-ghost" style={{ width: '100%', textAlign: 'center', display: 'block' }}>Respond to counter</a></div>
-            </div>
-            <div className="panel tile">
-              <div className="tile-label">Data room activity</div>
-              <div className="tile-value">18<span style={{ color: 'var(--slate-light)', fontSize: '16px' }}>&nbsp;/ 24 docs</span></div>
-              <div className="tile-sub">3 new documents added this week</div>
-              <div className="tile-cta"><a href="#" className="btn btn-ghost" style={{ width: '100%', textAlign: 'center', display: 'block' }}>Open data room</a></div>
-            </div>
-            <div className="panel tile">
-              <div className="tile-label">Bid deadline</div>
-              <div className="tile-value" style={{ color: 'var(--red)' }}>2d 6h</div>
-              <div className="tile-sub">18:00 IST, 6 Sep 2026</div>
-              <div className="tile-cta"><a href="#" className="btn btn-ghost" style={{ width: '100%', textAlign: 'center', display: 'block' }}>View timeline</a></div>
-            </div>
-          </div>
-
-          <div className="grid">
-            <div className="panel">
-              <div className="panel-head"><h2>Recent Q&amp;A</h2><a href="#">View data room →</a></div>
-              <div className="panel-body">
-                <div className="qa-item"><div className="q">Seller responded — "Customer contracts are auto-renewing, 92% retention"</div><div className="meta">Legal DD folder · 2 hrs ago</div></div>
-                <div className="qa-item"><div className="q">You asked — "Can we get the Q2 cohort revenue breakdown?"</div><div className="meta">Financials folder · Yesterday</div></div>
-                <div className="qa-item"><div className="q">Seller uploaded — Updated cap table v3.xlsx</div><div className="meta">Corporate folder · 2 days ago</div></div>
-              </div>
-            </div>
-            <div className="panel">
-              <div className="panel-head"><h2>Deal timeline</h2><a href="#">Full history →</a></div>
-              <div className="panel-body">
-                <div className="kv"><span className="k">NDA signed</span><span className="v">14 Aug</span></div>
-                <div className="kv"><span className="k">Initial bid submitted</span><span className="v">1 Sep</span></div>
-                <div className="kv"><span className="k">Seller countered</span><span className="v">3 Sep</span></div>
-                <div className="kv"><span className="k">Your response due</span><span className="v" style={{ color: 'var(--red)' }}>6 Sep</span></div>
-                <div className="kv"><span className="k">Expected term sheet</span><span className="v" style={{ color: 'var(--slate-light)' }}>Mid Sep</span></div>
-              </div>
-            </div>
-          </div>
-
-          <footer>
-            <span>All activity on this deal is logged to the audit trail and visible to Meridian DMS compliance.</span>
-            <span>Access level: Bidder — NDA-gated</span>
-          </footer>
-
-        </div>
+    <div className="bg-[#F8F9FB] text-slate-900 font-sans text-[14px] leading-relaxed min-h-screen antialiased">
+      <div className="flex gap-[2px] px-7 border-b border-slate-200 bg-white">
+        <Link href="/bidding/buyer-side" className="px-4 py-[13px] text-[13px] text-slate-900 border-b-2 border-blue-600 font-medium">Overview</Link>
+        {/* <Link href="/bidding/buyer-side/data-room" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Data room</Link> */}
+        <Link href="/bidding/buyer-side/my-bid" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">My bid</Link>
+        <Link href="/bidding/buyer-side/bid-history" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Bid history</Link>
+        <Link href="/bidding/buyer-side/messages" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Messages</Link>
+        <Link href="/bidding/buyer-side/term-sheet" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Term sheet</Link>
       </div>
-    </>
+
+      <div className="max-w-[1280px] mx-auto pb-8">
+
+        <div className="pt-6.5 px-7">
+          <div className="flex justify-between items-start gap-6 flex-wrap">
+            <div>
+              <div className="text-[27px] text-slate-900 flex items-baseline gap-3 flex-wrap">
+                <span className="font-serif font-medium">Project Alpha</span>
+                <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-600 border border-blue-100 font-sans tracking-wide">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span> Bid evaluation in progress
+                </span>
+              </div>
+              <div className="text-slate-500 text-[13px] mt-1.5">Invited 12 Aug 2026 &nbsp;·&nbsp; Asking price $100M &nbsp;·&nbsp; Seller advisor: Linklane LLP</div>
+              <div className="flex flex-wrap gap-2.5 mt-3">
+                <span className="text-[11.5px] text-slate-500 border border-slate-200 px-2.5 py-1 rounded-full">Enterprise SaaS</span>
+                <span className="text-[11.5px] text-slate-500 border border-slate-200 px-2.5 py-1 rounded-full">340 employees</span>
+                <span className="text-[11.5px] text-slate-500 border border-slate-200 px-2.5 py-1 rounded-full">$25M ARR · 38% YoY growth</span>
+                <span className="text-[11.5px] text-slate-500 border border-slate-200 px-2.5 py-1 rounded-full">EBITDA positive</span>
+              </div>
+            </div>
+            <div className="flex gap-2.5">
+              <a href="#" className="font-sans text-[13px] font-medium px-4 py-2.5 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-white hover:text-slate-900 hover:border-slate-300 transition-colors shadow-sm bg-transparent">Message seller</a>
+              <a href="#" className="font-sans text-[13px] font-medium px-4 py-2.5 rounded-lg cursor-pointer border border-slate-900 bg-slate-900 text-white hover:opacity-90 transition-opacity shadow-sm">Go to my bid</a>
+            </div>
+          </div>
+        </div>
+
+        <div className="mx-7 mt-6.5 flex bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+          <div className="flex-1 p-3.5 border-r border-slate-100 relative bg-green-50">
+            <div className="text-[11px] font-mono text-green-600">01</div>
+            <div className="text-[13px] mt-1 text-green-600 font-medium">NDA signed</div>
+          </div>
+          <div className="flex-1 p-3.5 border-r border-slate-100 relative bg-green-50">
+            <div className="text-[11px] font-mono text-green-600">02</div>
+            <div className="text-[13px] mt-1 text-green-600 font-medium">Data room access</div>
+          </div>
+          <div className="flex-1 p-3.5 border-r border-slate-100 relative bg-green-50">
+            <div className="text-[11px] font-mono text-green-600">03</div>
+            <div className="text-[13px] mt-1 text-green-600 font-medium">Bid submitted</div>
+          </div>
+          <div className="flex-1 p-3.5 border-r border-slate-100 relative bg-amber-50">
+            <div className="text-[11px] font-mono text-amber-600">04</div>
+            <div className="text-[13px] mt-1 text-amber-600 font-medium">Seller evaluation</div>
+          </div>
+          <div className="flex-1 p-3.5 border-r border-slate-100 relative">
+            <div className="text-[11px] font-mono text-slate-400">05</div>
+            <div className="text-[13px] mt-1 text-slate-500">Term sheet</div>
+          </div>
+          <div className="flex-1 p-3.5 relative">
+            <div className="text-[11px] font-mono text-slate-400">06</div>
+            <div className="text-[13px] mt-1 text-slate-500">Closing</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mx-7 mt-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-5.5 shadow-sm">
+            <div className="text-[11.5px] text-slate-500 mb-2">My current offer</div>
+            <div className="text-[24px] font-mono text-blue-600">$95.0M</div>
+            <div className="text-[12px] text-slate-400 mt-1.5">Seller countered at $100.0M · response due 6 Sep</div>
+            <div className="mt-3.5">
+              <a href="#" className="block w-full text-center font-sans text-[13px] font-medium px-4 py-2 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-[#F8F9FB] hover:text-slate-900 transition-colors">Respond to counter</a>
+            </div>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-xl p-5.5 shadow-sm">
+            <div className="text-[11.5px] text-slate-500 mb-2">Data room activity</div>
+            <div className="text-[24px] font-mono text-slate-900">18<span className="text-slate-400 text-[16px]">&nbsp;/ 24 docs</span></div>
+            <div className="text-[12px] text-slate-400 mt-1.5">3 new documents added this week</div>
+            <div className="mt-3.5">
+              <a href="#" className="block w-full text-center font-sans text-[13px] font-medium px-4 py-2 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-[#F8F9FB] hover:text-slate-900 transition-colors">Open data room</a>
+            </div>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-xl p-5.5 shadow-sm">
+            <div className="text-[11.5px] text-slate-500 mb-2">Bid deadline</div>
+            <div className="text-[24px] font-mono text-red-600">2d 6h</div>
+            <div className="text-[12px] text-slate-400 mt-1.5">18:00 IST, 6 Sep 2026</div>
+            <div className="mt-3.5">
+              <a href="#" className="block w-full text-center font-sans text-[13px] font-medium px-4 py-2 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-[#F8F9FB] hover:text-slate-900 transition-colors">View timeline</a>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mx-7 mt-5.5">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+              <h2 className="text-[15px] font-serif font-medium m-0">Recent Q&amp;A</h2>
+              <a href="#" className="text-[12px] text-slate-500 hover:text-slate-900 transition-colors">View data room →</a>
+            </div>
+            <div className="p-4.5">
+              <div className="py-2.5 border-b border-slate-100 text-[12.5px] first:pt-0 last:border-b-0 last:pb-0">
+                <div className="text-slate-900">Seller responded — "Customer contracts are auto-renewing, 92% retention"</div>
+                <div className="text-slate-400 text-[11px] mt-0.5">Legal DD folder · 2 hrs ago</div>
+              </div>
+              <div className="py-2.5 border-b border-slate-100 text-[12.5px] last:border-b-0 last:pb-0">
+                <div className="text-slate-900">You asked — "Can we get the Q2 cohort revenue breakdown?"</div>
+                <div className="text-slate-400 text-[11px] mt-0.5">Financials folder · Yesterday</div>
+              </div>
+              <div className="py-2.5 border-b border-slate-100 text-[12.5px] last:border-b-0 last:pb-0">
+                <div className="text-slate-900">Seller uploaded — Updated cap table v3.xlsx</div>
+                <div className="text-slate-400 text-[11px] mt-0.5">Corporate folder · 2 days ago</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+              <h2 className="text-[15px] font-serif font-medium m-0">Deal timeline</h2>
+              <a href="#" className="text-[12px] text-slate-500 hover:text-slate-900 transition-colors">Full history →</a>
+            </div>
+            <div className="p-4.5">
+              <div className="flex justify-between py-1.5 text-[13px] border-b border-slate-100 first:pt-0 last:border-b-0 last:pb-0">
+                <span className="text-slate-500">NDA signed</span>
+                <span className="text-slate-900 font-mono">14 Aug</span>
+              </div>
+              <div className="flex justify-between py-1.5 text-[13px] border-b border-slate-100 last:border-b-0 last:pb-0">
+                <span className="text-slate-500">Initial bid submitted</span>
+                <span className="text-slate-900 font-mono">1 Sep</span>
+              </div>
+              <div className="flex justify-between py-1.5 text-[13px] border-b border-slate-100 last:border-b-0 last:pb-0">
+                <span className="text-slate-500">Seller countered</span>
+                <span className="text-slate-900 font-mono">3 Sep</span>
+              </div>
+              <div className="flex justify-between py-1.5 text-[13px] border-b border-slate-100 last:border-b-0 last:pb-0">
+                <span className="text-slate-500">Your response due</span>
+                <span className="text-red-600 font-mono">6 Sep</span>
+              </div>
+              <div className="flex justify-between py-1.5 text-[13px] border-b border-slate-100 last:border-b-0 last:pb-0">
+                <span className="text-slate-500">Expected term sheet</span>
+                <span className="text-slate-400 font-mono">Mid Sep</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <footer className="px-7 pt-4 pb-8 text-slate-400 text-[11.5px] flex justify-between border-t border-slate-200 mx-7 mt-6.5">
+          <span>All activity on this deal is logged to the audit trail and visible to Meridian DMS compliance.</span>
+          <span>Access level: Bidder — NDA-gated</span>
+        </footer>
+      </div>
+    </div>
   );
 }

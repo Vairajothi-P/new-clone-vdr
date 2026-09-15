@@ -5,288 +5,207 @@ import Link from 'next/link';
 
 export default function MyBidPage() {
   return (
-    <>
-      <style>{`
-        :root{
-          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
-          --slate:#64748b; --slate-light:#94a3b8;
-          --line:#e2e8f0; --line-soft:#f1f5f9;
-          --brass:#2563eb; --brass-soft:#dbeafe;
-          --green:#16a34a; --green-soft:#dcfce7;
-          --red:#dc2626; --red-soft:#fee2e2;
-          --amber:#d97706; --amber-soft:#fef3c7;
-          --blue:#2563eb; --blue-soft:#dbeafe;
-          --purple:#7c3aed; --purple-soft:#ede9fe;
-          --coral:#ea580c; --coral-soft:#ffedd5;
-          --radius:8px;
-        }
-        .my-bid-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; -webkit-font-smoothing:antialiased; font-size:14px; line-height:1.5; min-height:100vh; }
-        .my-bid-container .num,.my-bid-container .tabular{ font-family:'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
-        .my-bid-container h1, .my-bid-container h2, .my-bid-container h3{ font-family:'Source Serif 4', serif; font-weight:500; margin:0; }
-        .my-bid-container .shell{ max-width:1280px; margin:0 auto; }
-        .my-bid-container .subnav{ display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); }
-        .my-bid-container .subnav a{ padding:13px 16px; font-size:13px; color:var(--slate); border-bottom:2px solid transparent; text-decoration:none; }
-        .my-bid-container .subnav a.active{ color:var(--ink); border-bottom-color:var(--brass); font-weight:500; }
-        .my-bid-container .subnav a:hover{ color:var(--ink); }
-
-        .my-bid-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
-        .my-bid-container .topbar-left{ display:flex; align-items:center; gap:18px; }
-        .my-bid-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .my-bid-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
-        .my-bid-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
-        .my-bid-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
-        .my-bid-container .crumbs b{ color:var(--paper); font-weight:500; }
-        .my-bid-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
-        .my-bid-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
-
-        .my-bid-container .deal-header{ padding:26px 28px 0 28px; }
-        .my-bid-container .deal-header-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap; }
-        .my-bid-container .deal-id{ color:var(--slate); font-size:12px; font-family:'IBM Plex Mono',monospace; letter-spacing:.3px; margin-bottom:6px;}
-        .my-bid-container .deal-title{ font-size:27px; color:var(--ink); display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
-        .my-bid-container .deal-sub{ color:var(--slate); font-size:13px; margin-top:5px; }
-        .my-bid-container .stage-pill{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:500; padding:4px 10px; border-radius:20px; letter-spacing:.2px; background:var(--blue-soft); color:var(--blue); border:1px solid var(--blue-soft); }
-        .my-bid-container .stage-pill .dot{ width:6px;height:6px;border-radius:50%; background:var(--blue); }
-        .my-bid-container .deadline-note{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--red); margin-top:14px; }
-        .my-bid-container .deadline-note b{ font-family:'IBM Plex Mono',monospace; }
-        .my-bid-container .deadline-note .tick{ width:6px; height:6px; border-radius:50%; background:var(--red); }
-
-        .my-bid-container .body-grid{ display:grid; grid-template-columns:1fr 380px; gap:22px; margin:24px 28px 40px 28px; align-items:start; }
-        .my-bid-container .panel{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); }
-        .my-bid-container .panel-head{ padding:16px 20px; border-bottom:1px solid var(--line-soft); display:flex; justify-content:space-between; align-items:center; }
-        .my-bid-container .panel-head h2{ font-size:16px; }
-        .my-bid-container .panel-head .hint{ font-size:12px; color:var(--slate-light); }
-
-        .my-bid-container .counter-banner{
-          margin:0 0 20px 0; padding:16px 20px; background:var(--amber-soft); border:1px solid var(--amber-soft); border-radius:var(--radius);
-          display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;
-        }
-        .my-bid-container .counter-banner .ct{ font-size:13px; color:var(--amber); }
-        .my-bid-container .counter-banner b{ font-family:'IBM Plex Mono',monospace; }
-        .my-bid-container .counter-actions{ display:flex; gap:8px; }
-
-        .my-bid-container .form-body{ padding:22px 24px; }
-        .my-bid-container .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
-        .my-bid-container .field{ display:flex; flex-direction:column; gap:6px; }
-        .my-bid-container .field.full{ grid-column:1 / -1; }
-        .my-bid-container label{ font-size:12px; color:var(--slate); font-weight:500; }
-        .my-bid-container label .opt{ color:var(--slate-light); font-weight:400; }
-        .my-bid-container input[type=text], .my-bid-container input[type=number], .my-bid-container input[type=date], .my-bid-container textarea, .my-bid-container select{
-          font-family:'IBM Plex Sans',sans-serif; font-size:14px; color:var(--ink);
-          border:1px solid var(--line); border-radius:var(--radius); padding:10px 12px; background:var(--paper);
-        }
-        .my-bid-container input:focus, .my-bid-container textarea:focus, .my-bid-container select:focus{ outline:none; border-color:var(--ink); background:var(--panel); }
-        .my-bid-container .amount-input{ position:relative; }
-        .my-bid-container .amount-input span{ position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--slate); font-family:'IBM Plex Mono',monospace; }
-        .my-bid-container .amount-input input{ padding-left:26px; font-family:'IBM Plex Mono',monospace; font-size:16px; width:100%; box-sizing:border-box;}
-
-        .my-bid-container .structure-slider{ display:flex; align-items:center; gap:12px; margin-top:6px; }
-        .my-bid-container input[type=range]{ flex:1; accent-color:var(--ink); }
-        .my-bid-container .structure-readout{ display:flex; justify-content:space-between; font-size:11.5px; color:var(--slate); margin-top:6px; }
-        .my-bid-container .structure-readout b{ color:var(--ink); font-family:'IBM Plex Mono',monospace; }
-
-        .my-bid-container .upload-zone{
-          border:1.5px dashed var(--line); border-radius:var(--radius); padding:18px; text-align:center;
-          color:var(--slate); font-size:12.5px; background:var(--paper);
-        }
-        .my-bid-container .upload-zone b{ color:var(--ink); }
-        .my-bid-container .file-chip{ display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border:1px solid var(--line); border-radius:var(--radius); font-size:12.5px; margin-top:8px; }
-        .my-bid-container .file-chip .fname{ color:var(--ink); }
-        .my-bid-container .file-chip .rm{ color:var(--red); cursor:pointer; font-size:11px; }
-
-        .my-bid-container .form-footer{ display:flex; justify-content:space-between; align-items:center; padding:16px 24px; border-top:1px solid var(--line-soft); }
-        .my-bid-container .form-footer .note{ font-size:11.5px; color:var(--slate-light); }
-        .my-bid-container .btn{ font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:500; padding:10px 18px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--ink); background:transparent; color:var(--ink); }
-        .my-bid-container .btn:hover{ background:var(--ink); color:var(--paper); }
-        .my-bid-container .btn-primary{ background:var(--ink); color:var(--paper); }
-        .my-bid-container .btn-primary:hover{ opacity:.88; }
-        .my-bid-container .btn-ghost{ border-color:var(--line); color:var(--slate); }
-        .my-bid-container .btn-ghost:hover{ background:var(--paper); color:var(--ink); }
-        .my-bid-container .btn-approve{ background:var(--green); border-color:var(--green); color:#fff; }
-        .my-bid-container .btn-approve:hover{ opacity:.9; background:var(--green); }
-
-        .my-bid-container .status-card{ position:sticky; top:18px; }
-        .my-bid-container .status-head{ padding:20px; border-bottom:1px solid var(--line-soft); }
-        .my-bid-container .status-badge{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:500; padding:4px 10px; border-radius:20px; background:var(--amber-soft); color:var(--amber); }
-        .my-bid-container .status-badge .dot{ width:6px;height:6px;border-radius:50%; background:var(--amber); }
-        .my-bid-container .status-amount{ font-size:28px; font-family:'IBM Plex Mono',monospace; margin-top:12px; color:var(--ink); }
-        .my-bid-container .status-sub{ font-size:12px; color:var(--slate-light); margin-top:4px; }
-
-        .my-bid-container .status-section{ padding:16px 20px; border-bottom:1px solid var(--line-soft); }
-        .my-bid-container .status-section h3{ font-size:11.5px; font-weight:600; color:var(--slate); letter-spacing:.3px; margin-bottom:12px; }
-        .my-bid-container .kv{ display:flex; justify-content:space-between; padding:6px 0; font-size:13px; }
-        .my-bid-container .kv .k{ color:var(--slate); }
-        .my-bid-container .kv .v{ color:var(--ink); font-family:'IBM Plex Mono',monospace; }
-
-        .my-bid-container .timeline-item{ display:flex; gap:10px; padding:8px 0; font-size:12.5px; }
-        .my-bid-container .timeline-dot{ width:6px; height:6px; border-radius:50%; background:var(--line); margin-top:5px; flex:none; }
-        .my-bid-container .timeline-item.done .timeline-dot{ background:var(--green); }
-        .my-bid-container .timeline-item.current .timeline-dot{ background:var(--amber); }
-        .my-bid-container .timeline-text{ color:var(--ink); }
-        .my-bid-container .timeline-meta{ color:var(--slate-light); font-size:11px; margin-top:1px; }
-
-        .my-bid-container .status-actions{ padding:18px 20px; display:flex; flex-direction:column; gap:8px; }
-        .my-bid-container .status-actions .btn{ width:100%; text-align:center; }
-
-        .my-bid-container footer{ padding:16px 28px 34px 28px; color:var(--slate-light); font-size:11.5px; display:flex; justify-content:space-between; border-top:1px solid var(--line-soft); margin:0 28px; }
-
-        @media (max-width: 980px){ .my-bid-container .body-grid{ grid-template-columns:1fr; } .my-bid-container .field-row{ grid-template-columns:1fr; } }
-      `}</style>
-      <div className="my-bid-container">
-        <div className="subnav">
-          <Link href="/bidding/buyer-side">Overview</Link>
-          <Link href="/bidding/buyer-side/data-room">Data room</Link>
-          <Link href="/bidding/buyer-side/my-bid" className="active">My bid</Link>
-          <Link href="/bidding/buyer-side/bid-history">Bid history</Link>
-          <Link href="/bidding/buyer-side/messages">Messages</Link>
-          <Link href="/bidding/buyer-side/term-sheet">Term sheet</Link>
-        </div>
-
-        <div className="shell">
-          <div className="deal-header">
-            <div className="deal-header-top">
-              <div>
-                <div className="deal-id">ABC TECHNOLOGIES &nbsp;·&nbsp; SaaS &nbsp;·&nbsp; ARR $25M</div>
-                <div className="deal-title">
-                  Project Alpha
-                  <span className="stage-pill"><span className="dot"></span> NDA signed · VDR access active</span>
-                </div>
-                <div className="deal-sub">Invited 12 Aug 2026 &nbsp;·&nbsp; Asking price $100M &nbsp;·&nbsp; Seller: ABC Technologies board</div>
-              </div>
-            </div>
-            <div className="deadline-note"><span className="tick"></span> Bid deadline in <b>2 days 6 hrs</b> — 18:00 IST, 6 Sep 2026</div>
-          </div>
-
-          <div className="body-grid">
-            <div>
-              <div className="counter-banner">
-                <div className="ct">The seller has sent a <b>counter-offer</b> on your $95.0M bid — they're asking for <b>$100.0M</b>. Review and respond below.</div>
-                <div className="counter-actions">
-                  <button className="btn btn-ghost">View seller's note</button>
-                  <button className="btn btn-primary">Match counter</button>
-                </div>
-              </div>
-
-              <div className="panel">
-                <div className="panel-head">
-                  <h2>Revise your bid</h2>
-                  <span className="hint">Editable until deadline · last saved 2 min ago</span>
-                </div>
-
-                <div className="form-body">
-                  <div className="field-row">
-                    <div className="field">
-                      <label>Offer amount</label>
-                      <div className="amount-input">
-                        <span>$</span>
-                        <input type="number" defaultValue="95000000" />
-                      </div>
-                    </div>
-                    <div className="field">
-                      <label>Expected close date</label>
-                      <input type="date" defaultValue="2026-12-15" />
-                    </div>
-                  </div>
-
-                  <div className="field-row">
-                    <div className="field full structure-field">
-                      <label>Deal structure — cash vs. stock</label>
-                      <div className="structure-slider">
-                        <input type="range" min="0" max="100" defaultValue="70" />
-                      </div>
-                      <div className="structure-readout"><span>Cash <b>70%</b></span><span>Stock <b>30%</b></span></div>
-                    </div>
-                  </div>
-
-                  <div className="field-row">
-                    <div className="field">
-                      <label>Financing type</label>
-                      <select defaultValue="Committed debt + equity">
-                        <option>Committed debt + equity</option>
-                        <option>All-equity</option>
-                        <option>Subject to financing</option>
-                      </select>
-                    </div>
-                    <div className="field">
-                      <label>Contingencies <span className="opt">(optional)</span></label>
-                      <input type="text" placeholder="e.g. Regulatory approval, key employee retention" />
-                    </div>
-                  </div>
-
-                  <div className="field-row">
-                    <div className="field full">
-                      <label>Note to seller <span className="opt">(optional)</span></label>
-                      <textarea rows="3" placeholder="Add context on your offer, timeline, or terms..."></textarea>
-                    </div>
-                  </div>
-
-                  <div className="field-row">
-                    <div className="field full">
-                      <label>Supporting documents</label>
-                      <div className="upload-zone"><b>Drop files</b> or click to upload — LOI, proof of financing, term sheet draft</div>
-                      <div className="file-chip"><span className="fname">Letter of Intent — Halcyon.pdf</span><span className="rm">Remove</span></div>
-                      <div className="file-chip"><span className="fname">Financing confirmation.pdf</span><span className="rm">Remove</span></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="form-footer">
-                  <span className="note">Submitting notifies the seller immediately and is logged to the deal audit trail.</span>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className="btn btn-ghost">Save draft</button>
-                    <button className="btn btn-primary">Submit revised bid</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="panel status-card">
-              <div className="status-head">
-                <span className="status-badge"><span className="dot"></span> Counter-offer received</span>
-                <div className="status-amount">$95.0M</div>
-                <div className="status-sub">Your current offer · 70% cash / 30% stock</div>
-              </div>
-
-              <div className="status-section">
-                <h3>Deal snapshot</h3>
-                <div className="kv"><span className="k">Asking price</span><span className="v">$100.0M</span></div>
-                <div className="kv"><span className="k">Your offer</span><span className="v">$95.0M</span></div>
-                <div className="kv"><span className="k">Seller's counter</span><span className="v" style={{ color: 'var(--amber)' }}>$100.0M</span></div>
-                <div className="kv"><span className="k">Expected close</span><span className="v">Dec 2026</span></div>
-              </div>
-
-              <div className="status-section">
-                <h3>Bid timeline</h3>
-                <div className="timeline-item done">
-                  <div className="timeline-dot"></div>
-                  <div><div className="timeline-text">NDA signed, VDR access granted</div><div className="timeline-meta">14 Aug, 10:20 AM</div></div>
-                </div>
-                <div className="timeline-item done">
-                  <div className="timeline-dot"></div>
-                  <div><div className="timeline-text">Initial bid submitted — $95.0M</div><div className="timeline-meta">1 Sep, 3:40 PM</div></div>
-                </div>
-                <div className="timeline-item current">
-                  <div className="timeline-dot"></div>
-                  <div><div className="timeline-text">Seller countered at $100.0M</div><div className="timeline-meta">3 Sep, 9:05 AM</div></div>
-                </div>
-                <div className="timeline-item">
-                  <div className="timeline-dot"></div>
-                  <div><div className="timeline-text">Awaiting your response</div><div className="timeline-meta">Due before 6 Sep, 6:00 PM</div></div>
-                </div>
-              </div>
-
-              <div className="status-actions">
-                <button className="btn btn-approve">Match counter — $100.0M</button>
-                <button className="btn btn-ghost">Send a different revised offer</button>
-                <button className="btn btn-ghost">Message the seller</button>
-              </div>
-            </div>
-          </div>
-          <footer>
-            <span>Your bid activity and document views are visible to the deal's seller-side team.</span>
-            <span>Access level: Bidder — NDA-gated</span>
-          </footer>
-        </div>
+    <div className="bg-[#F8F9FB] text-slate-900 font-sans text-[14px] leading-relaxed min-h-screen antialiased">
+      <div className="flex gap-[2px] px-7 border-b border-slate-200 bg-white">
+        <Link href="/bidding/buyer-side" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Overview</Link>
+        {/* <Link href="/bidding/buyer-side/data-room" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Data room</Link> */}
+        <Link href="/bidding/buyer-side/my-bid" className="px-4 py-[13px] text-[13px] text-slate-900 border-b-2 border-blue-600 font-medium">My bid</Link>
+        <Link href="/bidding/buyer-side/bid-history" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Bid history</Link>
+        <Link href="/bidding/buyer-side/messages" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Messages</Link>
+        <Link href="/bidding/buyer-side/term-sheet" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Term sheet</Link>
       </div>
-    </>
+
+      <div className="max-w-[1280px] mx-auto pb-8">
+        <div className="pt-6.5 px-7">
+          <div className="flex justify-between items-start gap-6 flex-wrap">
+            <div>
+              <div className="text-[12px] text-slate-500 font-mono tracking-wide mb-1.5 uppercase">ABC Technologies &nbsp;·&nbsp; SaaS &nbsp;·&nbsp; ARR $25M</div>
+              <div className="text-[27px] text-slate-900 flex items-baseline gap-3 flex-wrap">
+                <span className="font-serif font-medium">Project Alpha</span>
+                <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-600 border border-blue-100 font-sans tracking-wide">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span> NDA signed · VDR access active
+                </span>
+              </div>
+              <div className="text-[13px] text-slate-500 mt-1.5">Invited 12 Aug 2026 &nbsp;·&nbsp; Asking price $100M &nbsp;·&nbsp; Seller: ABC Technologies board</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-[12.5px] text-red-600 mt-3.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span> Bid deadline in <b className="font-mono">2 days 6 hrs</b> — 18:00 IST, 6 Sep 2026
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 mt-6 px-7 items-start">
+          <div className="flex flex-col gap-5">
+            <div className="px-5 py-4 bg-amber-50 border border-amber-100 rounded-lg flex justify-between items-center gap-4 flex-wrap">
+              <div className="text-[13px] text-amber-700">The seller has sent a <b>counter-offer</b> on your $95.0M bid — they're asking for <b className="font-mono">$100.0M</b>. Review and respond below.</div>
+              <div className="flex gap-2 shrink-0">
+                <button className="font-sans text-[13px] font-medium px-4 py-2 rounded-lg cursor-pointer border border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors">View seller's note</button>
+                <button className="font-sans text-[13px] font-medium px-4 py-2 rounded-lg cursor-pointer border border-slate-900 bg-slate-900 text-white hover:opacity-90 transition-opacity shadow-sm">Match counter</button>
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+              <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h2 className="text-[16px] font-serif font-medium m-0">Revise your bid</h2>
+                <span className="text-[12px] text-slate-400">Editable until deadline · last saved 2 min ago</span>
+              </div>
+
+              <div className="p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4.5 mb-4.5">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[12px] font-medium text-slate-500">Offer amount</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono">$</span>
+                      <input type="number" defaultValue="95000000" className="w-full pl-7 pr-3 py-2.5 font-mono text-[16px] text-slate-900 border border-slate-200 rounded-lg bg-[#FAFAFA] focus:bg-white focus:border-slate-400 outline-none transition-colors" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[12px] font-medium text-slate-500">Expected close date</label>
+                    <input type="date" defaultValue="2026-12-15" className="w-full px-3 py-2.5 font-sans text-[14px] text-slate-900 border border-slate-200 rounded-lg bg-[#FAFAFA] focus:bg-white focus:border-slate-400 outline-none transition-colors" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4.5 mb-4.5">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[12px] font-medium text-slate-500">Deal structure — cash vs. stock</label>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <input type="range" min="0" max="100" defaultValue="70" className="flex-1 accent-slate-900" />
+                    </div>
+                    <div className="flex justify-between text-[11.5px] text-slate-500 mt-1.5">
+                      <span>Cash <b className="text-slate-900 font-mono">70%</b></span>
+                      <span>Stock <b className="text-slate-900 font-mono">30%</b></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4.5 mb-4.5">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[12px] font-medium text-slate-500">Financing type</label>
+                    <select defaultValue="Committed debt + equity" className="w-full px-3 py-2.5 font-sans text-[14px] text-slate-900 border border-slate-200 rounded-lg bg-[#FAFAFA] focus:bg-white focus:border-slate-400 outline-none transition-colors">
+                      <option>Committed debt + equity</option>
+                      <option>All-equity</option>
+                      <option>Subject to financing</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[12px] font-medium text-slate-500">Contingencies <span className="text-slate-400 font-normal">(optional)</span></label>
+                    <input type="text" placeholder="e.g. Regulatory approval, key employee retention" className="w-full px-3 py-2.5 font-sans text-[14px] text-slate-900 border border-slate-200 rounded-lg bg-[#FAFAFA] focus:bg-white focus:border-slate-400 outline-none transition-colors" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4.5 mb-4.5">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[12px] font-medium text-slate-500">Note to seller <span className="text-slate-400 font-normal">(optional)</span></label>
+                    <textarea rows="3" placeholder="Add context on your offer, timeline, or terms..." className="w-full px-3 py-2.5 font-sans text-[14px] text-slate-900 border border-slate-200 rounded-lg bg-[#FAFAFA] focus:bg-white focus:border-slate-400 outline-none transition-colors resize-y"></textarea>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4.5">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[12px] font-medium text-slate-500">Supporting documents</label>
+                    <div className="border-[1.5px] border-dashed border-slate-200 rounded-lg p-4.5 text-center text-slate-500 text-[12.5px] bg-[#FAFAFA] cursor-pointer hover:bg-slate-50 transition-colors">
+                      <b className="text-slate-900 font-medium">Drop files</b> or click to upload — LOI, proof of financing, term sheet draft
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-2 border border-slate-200 rounded-lg text-[12.5px] mt-2 bg-white">
+                      <span className="text-slate-900">Letter of Intent — Halcyon.pdf</span>
+                      <span className="text-red-500 cursor-pointer text-[11px] hover:underline">Remove</span>
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-2 border border-slate-200 rounded-lg text-[12.5px] mt-2 bg-white">
+                      <span className="text-slate-900">Financing confirmation.pdf</span>
+                      <span className="text-red-500 cursor-pointer text-[11px] hover:underline">Remove</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-slate-100 flex justify-between items-center bg-white flex-wrap gap-4">
+                <span className="text-[11.5px] text-slate-400">Submitting notifies the seller immediately and is logged to the deal audit trail.</span>
+                <div className="flex gap-2.5">
+                  <button className="font-sans text-[13px] font-medium px-4 py-2.5 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-[#F8F9FB] hover:text-slate-900 transition-colors bg-transparent">Save draft</button>
+                  <button className="font-sans text-[13px] font-medium px-4 py-2.5 rounded-lg cursor-pointer border border-slate-900 bg-slate-900 text-white hover:opacity-90 transition-opacity">Submit revised bid</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm sticky top-6">
+            <div className="p-5 border-b border-slate-100">
+              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span> Counter-offer received
+              </span>
+              <div className="text-[28px] font-mono mt-3 text-slate-900">$95.0M</div>
+              <div className="text-[12px] text-slate-400 mt-1">Your current offer · 70% cash / 30% stock</div>
+            </div>
+
+            <div className="p-5 border-b border-slate-100">
+              <h3 className="text-[11.5px] font-semibold text-slate-500 tracking-wide mb-3 uppercase">Deal snapshot</h3>
+              <div className="flex justify-between py-1.5 text-[13px]">
+                <span className="text-slate-500">Asking price</span>
+                <span className="text-slate-900 font-mono">$100.0M</span>
+              </div>
+              <div className="flex justify-between py-1.5 text-[13px]">
+                <span className="text-slate-500">Your offer</span>
+                <span className="text-slate-900 font-mono">$95.0M</span>
+              </div>
+              <div className="flex justify-between py-1.5 text-[13px]">
+                <span className="text-slate-500">Seller's counter</span>
+                <span className="text-amber-600 font-mono">$100.0M</span>
+              </div>
+              <div className="flex justify-between py-1.5 text-[13px]">
+                <span className="text-slate-500">Expected close</span>
+                <span className="text-slate-900 font-mono">Dec 2026</span>
+              </div>
+            </div>
+
+            <div className="p-5 border-b border-slate-100">
+              <h3 className="text-[11.5px] font-semibold text-slate-500 tracking-wide mb-3 uppercase">Bid timeline</h3>
+              
+              <div className="flex gap-2.5 py-2 text-[12.5px]">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 shrink-0"></div>
+                <div>
+                  <div className="text-slate-900">NDA signed, VDR access granted</div>
+                  <div className="text-slate-400 text-[11px] mt-0.5">14 Aug, 10:20 AM</div>
+                </div>
+              </div>
+              
+              <div className="flex gap-2.5 py-2 text-[12.5px]">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 shrink-0"></div>
+                <div>
+                  <div className="text-slate-900">Initial bid submitted — $95.0M</div>
+                  <div className="text-slate-400 text-[11px] mt-0.5">1 Sep, 3:40 PM</div>
+                </div>
+              </div>
+              
+              <div className="flex gap-2.5 py-2 text-[12.5px]">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <div>
+                  <div className="text-slate-900">Seller countered at $100.0M</div>
+                  <div className="text-slate-400 text-[11px] mt-0.5">3 Sep, 9:05 AM</div>
+                </div>
+              </div>
+              
+              <div className="flex gap-2.5 py-2 text-[12.5px]">
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-200 mt-1.5 shrink-0"></div>
+                <div>
+                  <div className="text-slate-900">Awaiting your response</div>
+                  <div className="text-slate-400 text-[11px] mt-0.5">Due before 6 Sep, 6:00 PM</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4.5 flex flex-col gap-2">
+              <button className="w-full text-center font-sans text-[13px] font-medium px-4 py-2.5 rounded-lg cursor-pointer border border-green-600 bg-green-600 text-white hover:opacity-90 transition-opacity">Match counter — $100.0M</button>
+              <button className="w-full text-center font-sans text-[13px] font-medium px-4 py-2.5 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-[#F8F9FB] hover:text-slate-900 transition-colors bg-transparent">Send a different revised offer</button>
+              <button className="w-full text-center font-sans text-[13px] font-medium px-4 py-2.5 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-[#F8F9FB] hover:text-slate-900 transition-colors bg-transparent">Message the seller</button>
+            </div>
+          </div>
+        </div>
+
+        <footer className="px-7 pt-4 pb-8 text-slate-400 text-[11.5px] flex justify-between border-t border-slate-200 mx-7 mt-6.5">
+          <span>Your bid activity and document views are visible to the deal's seller-side team.</span>
+          <span>Access level: Bidder — NDA-gated</span>
+        </footer>
+      </div>
+    </div>
   );
 }

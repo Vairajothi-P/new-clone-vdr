@@ -10,7 +10,7 @@ export default function MergeLayout({ children }) {
 
   const navLinks = [
     { name: 'Overview', href: '/bidding/merge' },
-    { name: 'Data room', href: '/bidding/merge/data-room' },
+    // { name: 'Data room', href: '/bidding/merge/data-room' },
     { name: 'Proposal', href: '/bidding/merge/proposal' },
     { name: 'Governance', href: '/bidding/merge/governance' },
     { name: 'Merger agreement', href: '/bidding/merge/agreement' },
