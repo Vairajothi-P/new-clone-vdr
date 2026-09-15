@@ -7,204 +7,187 @@ export default function SellerBuyersPage() {
   const [showInviteForm, setShowInviteForm] = useState(false);
 
   return (
-    <>
-      <style>{`
-        :root{
-          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
-          --slate:#64748b; --slate-light:#94a3b8;
-          --line:#e2e8f0; --line-soft:#f1f5f9;
-          --brass:#2563eb; --brass-soft:#dbeafe;
-          --green:#16a34a; --green-soft:#dcfce7;
-          --red:#dc2626; --red-soft:#fee2e2;
-          --amber:#d97706; --amber-soft:#fef3c7;
-          --blue:#2563eb; --blue-soft:#dbeafe;
-          --purple:#7c3aed; --purple-soft:#ede9fe;
-          --coral:#ea580c; --coral-soft:#ffedd5;
-          --radius:8px;
-        }
-        .seller-buyers-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; font-size:14px; line-height:1.5; min-height: 100vh; }
-        .seller-buyers-container a{ color:inherit; text-decoration:none; }
-        .seller-buyers-container h1, .seller-buyers-container h2, .seller-buyers-container h3{ font-family:'Source Serif 4', serif; font-weight:500; margin:0; }
+    <div className="bg-[#F8F9FB] text-slate-900 font-sans text-[14px] leading-relaxed min-h-screen">
+      <div className="flex gap-[2px] px-7 border-b border-slate-200 bg-white">
+        <Link href="/bidding/seller-side" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Bidding</Link>
+        {/* <Link href="/bidding/seller-side/data-room" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Data room</Link> */}
+        <Link href="/bidding/seller-side/buyers" className="px-4 py-[13px] text-[13px] text-slate-900 border-b-2 border-blue-600 font-medium">Buyers</Link>
+        <Link href="/bidding/seller-side/term-sheet" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Term sheet</Link>
+        <Link href="/bidding/seller-side/messages" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Messages</Link>
+      </div>
 
-        .seller-buyers-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
-        .seller-buyers-container .topbar-left{ display:flex; align-items:center; gap:18px; }
-        .seller-buyers-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .seller-buyers-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
-        .seller-buyers-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
-        .seller-buyers-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
-        .seller-buyers-container .crumbs b{ color:var(--paper); font-weight:500; }
-        .seller-buyers-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
-        .seller-buyers-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
+      <div className="pt-5 px-7 flex justify-between items-start flex-wrap gap-3.5">
+        <div>
+          <h1 className="text-[22px] font-serif font-medium m-0">Buyers</h1>
+          <div className="text-[13px] text-slate-500 mt-1">Invite, manage access, and track every buyer's progress through the process</div>
+        </div>
+        <button className="font-sans text-[13px] font-medium px-4 py-2 rounded-lg cursor-pointer border border-slate-900 bg-slate-900 text-white hover:opacity-90 transition-opacity" onClick={() => setShowInviteForm(true)}>Invite buyer</button>
+      </div>
 
-        .seller-buyers-container .subnav{ display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); }
-        .seller-buyers-container .subnav a{ padding:13px 16px; font-size:13px; color:var(--slate); border-bottom:2px solid transparent; }
-        .seller-buyers-container .subnav a.active{ color:var(--ink); border-bottom-color:var(--brass); font-weight:500; }
+      <div className="flex gap-3.5 mt-4 px-7">
+        <span className="text-[12px] text-slate-500 border border-slate-200 px-3 py-1.5 rounded-full bg-white">Invited <b className="text-slate-900 font-mono">4</b></span>
+        <span className="text-[12px] text-slate-500 border border-slate-200 px-3 py-1.5 rounded-full bg-white">NDA signed <b className="text-slate-900 font-mono">3</b></span>
+        <span className="text-[12px] text-slate-500 border border-slate-200 px-3 py-1.5 rounded-full bg-white">Bids received <b className="text-slate-900 font-mono">3</b></span>
+        <span className="text-[12px] text-slate-500 border border-slate-200 px-3 py-1.5 rounded-full bg-white">Declined <b className="text-slate-900 font-mono">1</b></span>
+      </div>
 
-        .seller-buyers-container .page-head{ padding:22px 28px 0 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px; }
-        .seller-buyers-container .page-head h1{ font-size:22px; }
-        .seller-buyers-container .page-head .sub{ font-size:13px; color:var(--slate); margin-top:5px; }
-        .seller-buyers-container .btn{ font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:500; padding:9px 16px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--ink); background:transparent; color:var(--ink); }
-        .seller-buyers-container .btn:hover{ background:var(--ink); color:var(--paper); }
-        .seller-buyers-container .btn-primary{ background:var(--ink); color:var(--paper); }
-        .seller-buyers-container .btn-primary:hover{ opacity:.88; }
-        .seller-buyers-container .btn-ghost{ border-color:var(--line); color:var(--slate); font-size:12px; padding:6px 11px; }
-
-        .seller-buyers-container .summary{ display:flex; gap:14px; margin:18px 28px 0 28px; }
-        .seller-buyers-container .schip{ font-size:12px; color:var(--slate); border:1px solid var(--line); padding:6px 12px; border-radius:20px; background:var(--panel); }
-        .seller-buyers-container .schip b{ color:var(--ink); font-family:'IBM Plex Mono',monospace; }
-
-        .seller-buyers-container .panel{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); margin:20px 28px 40px 28px; }
-        .seller-buyers-container table.buyers{ width:100%; border-collapse:collapse; }
-        .seller-buyers-container table.buyers thead th{ text-align:left; font-size:11px; color:var(--slate); font-weight:500; padding:10px 18px; border-bottom:1px solid var(--line); background:var(--paper); }
-        .seller-buyers-container table.buyers td{ padding:13px 18px; border-bottom:1px solid var(--line-soft); font-size:13px; vertical-align:middle; }
-        .seller-buyers-container table.buyers tr:last-child td{ border-bottom:none; }
-        .seller-buyers-container .buyer-cell{ display:flex; align-items:center; gap:10px; }
-        .seller-buyers-container .buyer-mark{ width:30px; height:30px; border-radius:50%; background:var(--ink); color:var(--paper); display:flex; align-items:center; justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; flex:none; }
-        .seller-buyers-container .buyer-name{ font-weight:500; font-size:13.5px; color:var(--ink); }
-        .seller-buyers-container .buyer-type{ font-size:11.5px; color:var(--slate-light); }
-
-        .seller-buyers-container .badge{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:500; padding:3px 9px; border-radius:20px; }
-        .seller-buyers-container .badge.green{ background:var(--green-soft); color:var(--green); }
-        .seller-buyers-container .badge.amber{ background:var(--amber-soft); color:var(--amber); }
-        .seller-buyers-container .badge.red{ background:var(--red-soft); color:var(--red); }
-        .seller-buyers-container .badge.blue{ background:var(--blue-soft); color:var(--blue); }
-        .seller-buyers-container .badge.gray{ background:var(--line-soft); color:var(--slate); }
-
-        .seller-buyers-container .access-select{ font-family:'IBM Plex Sans',sans-serif; font-size:12px; color:var(--ink); border:1px solid var(--line); border-radius:var(--radius); padding:5px 8px; background:var(--paper); }
-        .seller-buyers-container .row-actions{ display:flex; gap:6px; }
-
-        .seller-buyers-container .panel-head{ display:flex; justify-content:space-between; align-items:center; padding:16px 18px; border-bottom:1px solid var(--line-soft); }
-        .seller-buyers-container .panel-head h2{ font-size:15px; }
-
-        .seller-buyers-container .invite-form{ padding:18px; display:grid; grid-template-columns:1fr 1fr; gap:14px; background:var(--paper); border-top:1px solid var(--line-soft); }
-        .seller-buyers-container .invite-form .field{ display:flex; flex-direction:column; gap:6px; }
-        .seller-buyers-container .invite-form label{ font-size:11.5px; color:var(--slate); font-weight:500; }
-        .seller-buyers-container .invite-form input, .seller-buyers-container .invite-form select{ font-family:'IBM Plex Sans',sans-serif; font-size:13px; padding:9px 11px; border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); }
-        .seller-buyers-container .invite-form .full{ grid-column:1 / -1; display:flex; justify-content:flex-end; gap:10px; }
-      `}</style>
-      <div className="seller-buyers-container">
-        <div className="subnav">
-          <Link href="/bidding/seller-side">Bidding</Link>
-          <Link href="/bidding/seller-side/data-room">Data room</Link>
-          <Link href="/bidding/seller-side/buyers" className="active">Buyers</Link>
-          <Link href="/bidding/seller-side/term-sheet">Term sheet</Link>
-          <Link href="/bidding/seller-side/messages">Messages</Link>
+      <div className="bg-white border border-slate-200 rounded-xl my-5 mx-7 mb-10 shadow-sm overflow-hidden">
+        <div className="flex justify-between items-center px-4 py-4 border-b border-slate-100 bg-white">
+          <h2 className="text-[15px] font-serif font-medium m-0">All buyers</h2>
+          <span className="text-[12px] text-slate-400">4 invited</span>
         </div>
 
-        <div className="page-head">
-          <div>
-            <h1>Buyers</h1>
-            <div className="sub">Invite, manage access, and track every buyer's progress through the process</div>
-          </div>
-          <button className="btn btn-primary" onClick={() => setShowInviteForm(true)}>Invite buyer</button>
-        </div>
-
-        <div className="summary">
-          <span className="schip">Invited <b>4</b></span>
-          <span className="schip">NDA signed <b>3</b></span>
-          <span className="schip">Bids received <b>3</b></span>
-          <span className="schip">Declined <b>1</b></span>
-        </div>
-
-        <div className="panel">
-          <div className="panel-head"><h2>All buyers</h2><span style={{ fontSize: '12px', color: 'var(--slate-light)' }}>4 invited</span></div>
-
-          <table className="buyers">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
-              <tr><th>Buyer</th><th>Status</th><th>Offer</th><th>Data room access</th><th>Last activity</th><th></th></tr>
+              <tr className="bg-[#F8F9FB] border-b border-slate-200">
+                <th className="text-left text-[11px] text-slate-500 font-medium px-4 py-2.5">Buyer</th>
+                <th className="text-left text-[11px] text-slate-500 font-medium px-4 py-2.5">Status</th>
+                <th className="text-left text-[11px] text-slate-500 font-medium px-4 py-2.5">Offer</th>
+                <th className="text-left text-[11px] text-slate-500 font-medium px-4 py-2.5">Data room access</th>
+                <th className="text-left text-[11px] text-slate-500 font-medium px-4 py-2.5">Last activity</th>
+                <th className="text-left text-[11px] text-slate-500 font-medium px-4 py-2.5"></th>
+              </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>
-                  <div className="buyer-cell">
-                    <div className="buyer-mark">HG</div>
-                    <div><div className="buyer-name">Halcyon Growth</div><div className="buyer-type">PE Firm · Melbourne, AU</div></div>
+              <tr className="border-b border-slate-100">
+                <td className="px-4 py-3.5 align-middle">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-[30px] h-[30px] rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px] font-mono font-medium shrink-0">HG</div>
+                    <div>
+                      <div className="font-medium text-[13.5px] text-slate-900">Halcyon Growth</div>
+                      <div className="text-[11.5px] text-slate-400">PE Firm · Melbourne, AU</div>
+                    </div>
                   </div>
                 </td>
-                <td><span className="badge green">Shortlisted</span></td>
-                <td className="tabular" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>$100.0M</td>
-                <td><select className="access-select"><option>Full access</option><option>Restricted</option><option>No access</option></select></td>
-                <td style={{ color: 'var(--slate-light)', fontSize: '12px' }}>Live now</td>
-                <td>
-                  <div className="row-actions">
-                    <Link href="/bidding/seller-side/messages" className="btn btn-ghost">Message</Link>
-                    <Link href="/bidding/seller-side/bidding" className="btn btn-ghost">View bid</Link>
+                <td className="px-4 py-3.5 align-middle"><span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-700">Shortlisted</span></td>
+                <td className="px-4 py-3.5 align-middle font-mono text-[13px] text-slate-900 tabular-nums">$100.0M</td>
+                <td className="px-4 py-3.5 align-middle">
+                  <select className="font-sans text-[12px] text-slate-900 border border-slate-200 rounded-lg px-2 py-1 bg-white outline-none focus:border-slate-400">
+                    <option>Full access</option>
+                    <option>Restricted</option>
+                    <option>No access</option>
+                  </select>
+                </td>
+                <td className="px-4 py-3.5 align-middle text-slate-400 text-[12px]">Live now</td>
+                <td className="px-4 py-3.5 align-middle">
+                  <div className="flex gap-1.5">
+                    <Link href="/bidding/seller-side/messages" className="font-sans text-[12px] font-medium px-3 py-1.5 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors">Message</Link>
+                    <Link href="/bidding/seller-side/bidding" className="font-sans text-[12px] font-medium px-3 py-1.5 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors">View bid</Link>
+                  </div>
+                </td>
+              </tr>
+              <tr className="border-b border-slate-100">
+                <td className="px-4 py-3.5 align-middle">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-[30px] h-[30px] rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px] font-mono font-medium shrink-0">XC</div>
+                    <div>
+                      <div className="font-medium text-[13.5px] text-slate-900">XYZ Capital</div>
+                      <div className="text-[11.5px] text-slate-400">Strategic Buyer · Singapore</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3.5 align-middle"><span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">Under review</span></td>
+                <td className="px-4 py-3.5 align-middle font-mono text-[13px] text-slate-900 tabular-nums">$95.0M</td>
+                <td className="px-4 py-3.5 align-middle">
+                  <select className="font-sans text-[12px] text-slate-900 border border-slate-200 rounded-lg px-2 py-1 bg-white outline-none focus:border-slate-400" defaultValue="Restricted">
+                    <option>Full access</option>
+                    <option value="Restricted">Restricted</option>
+                    <option>No access</option>
+                  </select>
+                </td>
+                <td className="px-4 py-3.5 align-middle text-slate-400 text-[12px]">Yesterday, 4:12 PM</td>
+                <td className="px-4 py-3.5 align-middle">
+                  <div className="flex gap-1.5">
+                    <Link href="/bidding/seller-side/messages" className="font-sans text-[12px] font-medium px-3 py-1.5 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors">Message</Link>
+                    <Link href="/bidding/seller-side/bidding" className="font-sans text-[12px] font-medium px-3 py-1.5 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors">View bid</Link>
+                  </div>
+                </td>
+              </tr>
+              <tr className="border-b border-slate-100">
+                <td className="px-4 py-3.5 align-middle">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-[30px] h-[30px] rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px] font-mono font-medium shrink-0">CB</div>
+                    <div>
+                      <div className="font-medium text-[13.5px] text-slate-900">Cardinal Buyers Inc.</div>
+                      <div className="text-[11.5px] text-slate-400">Corporate Buyer · London, UK</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3.5 align-middle"><span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-red-50 text-red-700">Declined</span></td>
+                <td className="px-4 py-3.5 align-middle font-mono text-[13px] text-slate-900 tabular-nums">$90.0M</td>
+                <td className="px-4 py-3.5 align-middle">
+                  <select className="font-sans text-[12px] text-slate-900 border border-slate-200 rounded-lg px-2 py-1 bg-white outline-none focus:border-slate-400" defaultValue="No access">
+                    <option>Full access</option>
+                    <option>Restricted</option>
+                    <option value="No access">No access</option>
+                  </select>
+                </td>
+                <td className="px-4 py-3.5 align-middle text-slate-400 text-[12px]">29 Aug, 5:30 PM</td>
+                <td className="px-4 py-3.5 align-middle">
+                  <div className="flex gap-1.5">
+                    <Link href="/bidding/seller-side/messages" className="font-sans text-[12px] font-medium px-3 py-1.5 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors">Message</Link>
                   </div>
                 </td>
               </tr>
               <tr>
-                <td>
-                  <div className="buyer-cell">
-                    <div className="buyer-mark">XC</div>
-                    <div><div className="buyer-name">XYZ Capital</div><div className="buyer-type">Strategic Buyer · Singapore</div></div>
+                <td className="px-4 py-3.5 align-middle">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-[30px] h-[30px] rounded-full bg-slate-900 text-white flex items-center justify-center text-[11px] font-mono font-medium shrink-0">MP</div>
+                    <div>
+                      <div className="font-medium text-[13.5px] text-slate-900">Meridian Partners</div>
+                      <div className="text-[11.5px] text-slate-400">PE Firm · New York, US</div>
+                    </div>
                   </div>
                 </td>
-                <td><span className="badge amber">Under review</span></td>
-                <td className="tabular" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>$95.0M</td>
-                <td><select className="access-select" defaultValue="Restricted"><option>Full access</option><option value="Restricted">Restricted</option><option>No access</option></select></td>
-                <td style={{ color: 'var(--slate-light)', fontSize: '12px' }}>Yesterday, 4:12 PM</td>
-                <td>
-                  <div className="row-actions">
-                    <Link href="/bidding/seller-side/messages" className="btn btn-ghost">Message</Link>
-                    <Link href="/bidding/seller-side/bidding" className="btn btn-ghost">View bid</Link>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div className="buyer-cell">
-                    <div className="buyer-mark">CB</div>
-                    <div><div className="buyer-name">Cardinal Buyers Inc.</div><div className="buyer-type">Corporate Buyer · London, UK</div></div>
-                  </div>
-                </td>
-                <td><span className="badge red">Declined</span></td>
-                <td className="tabular" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>$90.0M</td>
-                <td><select className="access-select" defaultValue="No access"><option>Full access</option><option>Restricted</option><option value="No access">No access</option></select></td>
-                <td style={{ color: 'var(--slate-light)', fontSize: '12px' }}>29 Aug, 5:30 PM</td>
-                <td>
-                  <div className="row-actions">
-                    <Link href="/bidding/seller-side/messages" className="btn btn-ghost">Message</Link>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div className="buyer-cell">
-                    <div className="buyer-mark">MP</div>
-                    <div><div className="buyer-name">Meridian Partners</div><div className="buyer-type">PE Firm · New York, US</div></div>
-                  </div>
-                </td>
-                <td><span className="badge blue">NDA pending</span></td>
-                <td className="tabular" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>—</td>
-                <td><span className="badge gray">No access yet</span></td>
-                <td style={{ color: 'var(--slate-light)', fontSize: '12px' }}>Invited 4 Sep</td>
-                <td>
-                  <div className="row-actions">
-                    <button className="btn btn-ghost">Resend NDA</button>
+                <td className="px-4 py-3.5 align-middle"><span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">NDA pending</span></td>
+                <td className="px-4 py-3.5 align-middle font-mono text-[13px] text-slate-900 tabular-nums">—</td>
+                <td className="px-4 py-3.5 align-middle"><span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">No access yet</span></td>
+                <td className="px-4 py-3.5 align-middle text-slate-400 text-[12px]">Invited 4 Sep</td>
+                <td className="px-4 py-3.5 align-middle">
+                  <div className="flex gap-1.5">
+                    <button className="font-sans text-[12px] font-medium px-3 py-1.5 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors">Resend NDA</button>
                   </div>
                 </td>
               </tr>
             </tbody>
           </table>
-
-          {showInviteForm && (
-            <div className="invite-form">
-              <div className="field"><label>Company name</label><input type="text" placeholder="e.g. Summit Capital Partners" /></div>
-              <div className="field"><label>Contact email</label><input type="text" placeholder="lead@summitcapital.com" /></div>
-              <div className="field"><label>Buyer type</label>
-                <select><option>PE Firm</option><option>Strategic Buyer</option><option>Corporate Buyer</option><option>Individual / Family Office</option></select>
-              </div>
-              <div className="field"><label>Initial data room access</label>
-                <select><option>Restricted (Corporate + Financials only)</option><option>Full access</option><option>NDA required first</option></select>
-              </div>
-              <div className="full">
-                <button className="btn btn-ghost" onClick={() => setShowInviteForm(false)}>Cancel</button>
-                <button className="btn btn-primary" onClick={() => setShowInviteForm(false)}>Send invitation &amp; NDA</button>
-              </div>
-            </div>
-          )}
         </div>
+
+        {showInviteForm && (
+          <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#F8F9FB] border-t border-slate-100">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11.5px] text-slate-500 font-medium">Company name</label>
+              <input type="text" placeholder="e.g. Summit Capital Partners" className="font-sans text-[13px] px-3 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:border-slate-400" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11.5px] text-slate-500 font-medium">Contact email</label>
+              <input type="text" placeholder="lead@summitcapital.com" className="font-sans text-[13px] px-3 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:border-slate-400" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11.5px] text-slate-500 font-medium">Buyer type</label>
+              <select className="font-sans text-[13px] px-3 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:border-slate-400">
+                <option>PE Firm</option>
+                <option>Strategic Buyer</option>
+                <option>Corporate Buyer</option>
+                <option>Individual / Family Office</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11.5px] text-slate-500 font-medium">Initial data room access</label>
+              <select className="font-sans text-[13px] px-3 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:border-slate-400">
+                <option>Restricted (Corporate + Financials only)</option>
+                <option>Full access</option>
+                <option>NDA required first</option>
+              </select>
+            </div>
+            <div className="col-span-1 md:col-span-2 flex justify-end gap-2.5 mt-2">
+              <button className="font-sans text-[12px] font-medium px-4 py-2 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-white hover:text-slate-900 transition-colors" onClick={() => setShowInviteForm(false)}>Cancel</button>
+              <button className="font-sans text-[12px] font-medium px-4 py-2 rounded-lg cursor-pointer border border-slate-900 bg-slate-900 text-white hover:opacity-90 transition-opacity" onClick={() => setShowInviteForm(false)}>Send invitation &amp; NDA</button>
+            </div>
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }

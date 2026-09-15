@@ -5,163 +5,143 @@ import Link from 'next/link';
 
 export default function SellerDataRoomPage() {
   return (
-    <>
-      <style>{`
-        :root{
-          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
-          --slate:#64748b; --slate-light:#94a3b8;
-          --line:#e2e8f0; --line-soft:#f1f5f9;
-          --brass:#2563eb; --brass-soft:#dbeafe;
-          --green:#16a34a; --green-soft:#dcfce7;
-          --red:#dc2626; --red-soft:#fee2e2;
-          --amber:#d97706; --amber-soft:#fef3c7;
-          --blue:#2563eb; --blue-soft:#dbeafe;
-          --purple:#7c3aed; --purple-soft:#ede9fe;
-          --coral:#ea580c; --coral-soft:#ffedd5;
-          --radius:8px;
-        }
-        .seller-data-room-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; font-size:14px; line-height:1.5; min-height: 100vh; }
-        .seller-data-room-container a{ color:inherit; text-decoration:none; }
-        .seller-data-room-container h1, .seller-data-room-container h2, .seller-data-room-container h3{ font-family:'Source Serif 4', serif; font-weight:500; margin:0; }
+    <div className="bg-[#F8F9FB] text-slate-900 font-sans text-[14px] leading-relaxed min-h-screen">
+      <div className="flex gap-[2px] px-7 border-b border-slate-200 bg-white">
+        <Link href="/bidding/seller-side" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Bidding</Link>
+        {/* <Link href="/bidding/seller-side/data-room" className="px-4 py-[13px] text-[13px] text-slate-900 border-b-2 border-blue-600 font-medium">Data room</Link> */}
+        <Link href="/bidding/seller-side/buyers" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Buyers</Link>
+        <Link href="/bidding/seller-side/term-sheet" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Term sheet</Link>
+        <Link href="/bidding/seller-side/messages" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Messages</Link>
+      </div>
 
-        .seller-data-room-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
-        .seller-data-room-container .topbar-left{ display:flex; align-items:center; gap:18px; }
-        .seller-data-room-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .seller-data-room-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
-        .seller-data-room-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
-        .seller-data-room-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
-        .seller-data-room-container .crumbs b{ color:var(--paper); font-weight:500; }
-        .seller-data-room-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
-        .seller-data-room-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
+      <div className="flex items-center justify-between px-7 py-4 gap-4 flex-wrap">
+        <div className="flex-1 max-w-[320px]">
+          <input type="text" placeholder="Search documents, folders, Q&A..." className="w-full font-sans text-[13px] px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900 outline-none focus:border-slate-400" />
+        </div>
+        <div className="flex gap-2.5">
+          <button className="font-sans text-[13px] font-medium px-4 py-2 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-white hover:text-slate-900 transition-colors">New folder</button>
+          <button className="font-sans text-[13px] font-medium px-4 py-2 rounded-lg cursor-pointer border border-slate-900 bg-slate-900 text-white hover:opacity-90 transition-opacity">Upload documents</button>
+        </div>
+      </div>
 
-        .seller-data-room-container .subnav{ display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); }
-        .seller-data-room-container .subnav a{ padding:13px 16px; font-size:13px; color:var(--slate); border-bottom:2px solid transparent; }
-        .seller-data-room-container .subnav a.active{ color:var(--ink); border-bottom-color:var(--brass); font-weight:500; }
-
-        .seller-data-room-container .toolbar{ display:flex; align-items:center; justify-content:space-between; padding:16px 28px; gap:16px; flex-wrap:wrap; }
-        .seller-data-room-container .search{ flex:1; max-width:320px; }
-        .seller-data-room-container .search input{ width:100%; font-family:'IBM Plex Sans',sans-serif; font-size:13px; padding:9px 12px; border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); color:var(--ink); }
-        .seller-data-room-container .search input:focus{ outline:none; border-color:var(--slate); }
-        .seller-data-room-container .btn{ font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:500; padding:9px 16px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--ink); background:transparent; color:var(--ink); }
-        .seller-data-room-container .btn:hover{ background:var(--ink); color:var(--paper); }
-        .seller-data-room-container .btn-primary{ background:var(--ink); color:var(--paper); }
-        .seller-data-room-container .btn-primary:hover{ opacity:.88; }
-
-        .seller-data-room-container .layout{ display:grid; grid-template-columns:220px 1fr 300px; gap:0; margin:0 28px 40px 28px; border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); overflow:hidden; align-items:stretch; }
-
-        .seller-data-room-container .tree{ border-right:1px solid var(--line-soft); padding:14px 0; }
-        .seller-data-room-container .tree-item{ padding:9px 20px; font-size:13px; color:var(--slate); cursor:pointer; display:flex; justify-content:space-between; }
-        .seller-data-room-container .tree-item.active{ background:var(--brass-soft); color:var(--ink); font-weight:500; border-right:2px solid var(--brass); }
-        .seller-data-room-container .tree-item .count{ font-size:11px; color:var(--slate-light); font-family:'IBM Plex Mono',monospace; }
-        .seller-data-room-container .tree-heading{ padding:8px 20px 4px 20px; font-size:10.5px; letter-spacing:.4px; color:var(--slate-light); text-transform:uppercase; }
-
-        .seller-data-room-container .file-panel-head{ display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--line-soft); }
-        .seller-data-room-container table.files{ width:100%; border-collapse:collapse; }
-        .seller-data-room-container table.files thead th{ text-align:left; font-size:11px; color:var(--slate); font-weight:500; padding:9px 20px; border-bottom:1px solid var(--line); background:var(--paper); }
-        .seller-data-room-container table.files td{ padding:12px 20px; border-bottom:1px solid var(--line-soft); font-size:13px; }
-        .seller-data-room-container table.files tbody tr{ cursor:pointer; }
-        .seller-data-room-container table.files tbody tr:hover{ background:var(--paper); }
-        .seller-data-room-container table.files tbody tr.selected{ background:var(--brass-soft); }
-        .seller-data-room-container .fname{ display:flex; align-items:center; gap:9px; }
-        .seller-data-room-container .ficon{ width:26px; height:26px; border-radius:4px; background:var(--blue-soft); color:var(--blue); display:flex; align-items:center; justify-content:center; font-size:10px; font-family:'IBM Plex Mono',monospace; flex:none; }
-        .seller-data-room-container .fname b{ font-weight:500; color:var(--ink); font-size:13px; }
-        .seller-data-room-container .fmeta{ color:var(--slate-light); font-size:11px; }
-        .seller-data-room-container .badge{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:500; padding:3px 9px; border-radius:20px; }
-        .seller-data-room-container .badge.green{ background:var(--green-soft); color:var(--green); }
-        .seller-data-room-container .badge.amber{ background:var(--amber-soft); color:var(--amber); }
-
-        .seller-data-room-container .detail{ border-left:1px solid var(--line-soft); padding:20px; }
-        .seller-data-room-container .detail h3{ font-size:15px; margin-bottom:4px; }
-        .seller-data-room-container .detail .dsub{ font-size:12px; color:var(--slate-light); margin-bottom:16px; }
-        .seller-data-room-container .perm-row{ display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line-soft); font-size:12.5px; }
-        .seller-data-room-container .perm-row:last-child{ border-bottom:none; }
-        .seller-data-room-container .toggle{ width:32px; height:18px; border-radius:9px; background:var(--line); position:relative; cursor:pointer; }
-        .seller-data-room-container .toggle.on{ background:var(--green); }
-        .seller-data-room-container .toggle::after{ content:""; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; }
-        .seller-data-room-container .toggle.on::after{ left:16px; }
-        .seller-data-room-container .detail-actions{ margin-top:16px; display:flex; flex-direction:column; gap:8px; }
-        .seller-data-room-container .detail-actions a{ text-align:center; display:block; font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:500; padding:9px 16px; border-radius:var(--radius); border:1px solid var(--line); color:var(--slate); }
-        .seller-data-room-container .detail-actions a:hover{ border-color:var(--ink); color:var(--ink); }
-      `}</style>
-      <div className="seller-data-room-container">
-        <div className="subnav">
-          <Link href="/bidding/seller-side">Bidding</Link>
-          <Link href="/bidding/seller-side/data-room" className="active">Data room</Link>
-          <Link href="/bidding/seller-side/buyers">Buyers</Link>
-          <Link href="/bidding/seller-side/term-sheet">Term sheet</Link>
-          <Link href="/bidding/seller-side/messages">Messages</Link>
+      <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_300px] mx-7 mb-10 border border-slate-200 rounded-xl bg-white overflow-hidden items-stretch shadow-sm">
+        <div className="border-b md:border-b-0 md:border-r border-slate-100 py-3.5">
+          <div className="px-5 py-2 text-[10.5px] tracking-wide text-slate-400 uppercase">Folders</div>
+          <div className="px-5 py-2 text-[13px] text-slate-500 cursor-pointer flex justify-between hover:bg-slate-50 transition-colors"><span>Corporate</span><span className="text-[11px] text-slate-400 font-mono">6</span></div>
+          <div className="px-5 py-2 text-[13px] text-slate-900 font-medium cursor-pointer flex justify-between bg-blue-50 border-r-2 border-blue-600"><span>Financials</span><span className="text-[11px] text-slate-400 font-mono">9</span></div>
+          <div className="px-5 py-2 text-[13px] text-slate-500 cursor-pointer flex justify-between hover:bg-slate-50 transition-colors"><span>Legal</span><span className="text-[11px] text-slate-400 font-mono">5</span></div>
+          <div className="px-5 py-2 text-[13px] text-slate-500 cursor-pointer flex justify-between hover:bg-slate-50 transition-colors"><span>Operations</span><span className="text-[11px] text-slate-400 font-mono">4</span></div>
+          <div className="px-5 py-2 text-[13px] text-slate-500 cursor-pointer flex justify-between hover:bg-slate-50 transition-colors"><span>HR &amp; Talent</span><span className="text-[11px] text-slate-400 font-mono">3</span></div>
+          <div className="px-5 pt-3 pb-1 text-[10.5px] tracking-wide text-slate-400 uppercase mt-2">Discussion</div>
+          <div className="px-5 py-2 text-[13px] text-slate-500 cursor-pointer flex justify-between hover:bg-slate-50 transition-colors"><span>Q&amp;A inbox</span><span className="text-[11px] text-slate-400 font-mono">2</span></div>
         </div>
 
-        <div className="toolbar">
-          <div className="search"><input type="text" placeholder="Search documents, folders, Q&A..." /></div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <a href="#" className="btn">New folder</a>
-            <a href="#" className="btn btn-primary">Upload documents</a>
+        <div className="flex flex-col min-w-0">
+          <div className="flex justify-between items-center px-5 py-4 border-b border-slate-100 flex-wrap gap-2">
+            <h2 className="text-[16px] font-serif font-medium m-0">Financials <span className="text-slate-400 font-sans font-normal text-[13px]">· 9 files</span></h2>
+            <span className="text-[12px] text-slate-400">Sort: Recently added</span>
           </div>
-        </div>
-
-        <div className="layout">
-          <div className="tree">
-            <div className="tree-heading">Folders</div>
-            <div className="tree-item"><span>Corporate</span><span className="count">6</span></div>
-            <div className="tree-item active"><span>Financials</span><span className="count">9</span></div>
-            <div className="tree-item"><span>Legal</span><span className="count">5</span></div>
-            <div className="tree-item"><span>Operations</span><span className="count">4</span></div>
-            <div className="tree-item"><span>HR &amp; Talent</span><span className="count">3</span></div>
-            <div className="tree-heading">Discussion</div>
-            <div className="tree-item"><span>Q&amp;A inbox</span><span className="count">2</span></div>
-          </div>
-
-          <div>
-            <div className="file-panel-head">
-              <h2 style={{ fontSize: '16px' }}>Financials <span style={{ color: 'var(--slate-light)', fontWeight: 400, fontSize: '13px' }}>· 9 files</span></h2>
-              <span style={{ fontSize: '12px', color: 'var(--slate-light)' }}>Sort: Recently added</span>
-            </div>
-            <table className="files">
-              <thead><tr><th>Name</th><th>Size</th><th>Added</th><th>Visibility</th></tr></thead>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-[#F8F9FB] border-b border-slate-200">
+                  <th className="text-left text-[11px] text-slate-500 font-medium px-5 py-2.5">Name</th>
+                  <th className="text-left text-[11px] text-slate-500 font-medium px-5 py-2.5">Size</th>
+                  <th className="text-left text-[11px] text-slate-500 font-medium px-5 py-2.5">Added</th>
+                  <th className="text-left text-[11px] text-slate-500 font-medium px-5 py-2.5">Visibility</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr className="selected">
-                  <td><div className="fname"><div className="ficon">XLS</div><div><b>Revenue &amp; cohort breakdown.xlsx</b><div className="fmeta">Viewed by 3 of 4 buyers</div></div></div></td>
-                  <td className="fmeta">2.1 MB</td><td className="fmeta">2 Sep</td>
-                  <td><span className="badge green">All buyers</span></td>
+                <tr className="border-b border-slate-100 bg-blue-50 cursor-pointer">
+                  <td className="px-5 py-3 align-middle">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-[26px] h-[26px] rounded bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-mono shrink-0">XLS</div>
+                      <div>
+                        <b className="font-medium text-slate-900 text-[13px]">Revenue &amp; cohort breakdown.xlsx</b>
+                        <div className="text-slate-400 text-[11px]">Viewed by 3 of 4 buyers</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3 align-middle text-slate-400 text-[11px]">2.1 MB</td>
+                  <td className="px-5 py-3 align-middle text-slate-400 text-[11px]">2 Sep</td>
+                  <td className="px-5 py-3 align-middle"><span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-green-50 text-green-700">All buyers</span></td>
                 </tr>
-                <tr>
-                  <td><div className="fname"><div className="ficon">PDF</div><div><b>Audited financials FY25.pdf</b><div className="fmeta">Viewed by 3 of 4 buyers</div></div></div></td>
-                  <td className="fmeta">4.8 MB</td><td className="fmeta">18 Aug</td>
-                  <td><span className="badge green">All buyers</span></td>
+                <tr className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <td className="px-5 py-3 align-middle">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-[26px] h-[26px] rounded bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-mono shrink-0">PDF</div>
+                      <div>
+                        <b className="font-medium text-slate-900 text-[13px]">Audited financials FY25.pdf</b>
+                        <div className="text-slate-400 text-[11px]">Viewed by 3 of 4 buyers</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3 align-middle text-slate-400 text-[11px]">4.8 MB</td>
+                  <td className="px-5 py-3 align-middle text-slate-400 text-[11px]">18 Aug</td>
+                  <td className="px-5 py-3 align-middle"><span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-green-50 text-green-700">All buyers</span></td>
                 </tr>
-                <tr>
-                  <td><div className="fname"><div className="ficon">XLS</div><div><b>Updated cap table v3.xlsx</b><div className="fmeta">Viewed by 1 of 4 buyers</div></div></div></td>
-                  <td className="fmeta">640 KB</td><td className="fmeta">4 Sep</td>
-                  <td><span className="badge amber">Shortlisted only</span></td>
+                <tr className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <td className="px-5 py-3 align-middle">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-[26px] h-[26px] rounded bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-mono shrink-0">XLS</div>
+                      <div>
+                        <b className="font-medium text-slate-900 text-[13px]">Updated cap table v3.xlsx</b>
+                        <div className="text-slate-400 text-[11px]">Viewed by 1 of 4 buyers</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3 align-middle text-slate-400 text-[11px]">640 KB</td>
+                  <td className="px-5 py-3 align-middle text-slate-400 text-[11px]">4 Sep</td>
+                  <td className="px-5 py-3 align-middle"><span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700">Shortlisted only</span></td>
                 </tr>
-                <tr>
-                  <td><div className="fname"><div className="ficon">PDF</div><div><b>Debt schedule.pdf</b><div className="fmeta">Viewed by 2 of 4 buyers</div></div></div></td>
-                  <td className="fmeta">310 KB</td><td className="fmeta">16 Aug</td>
-                  <td><span className="badge green">All buyers</span></td>
+                <tr className="hover:bg-slate-50 cursor-pointer transition-colors">
+                  <td className="px-5 py-3 align-middle">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-[26px] h-[26px] rounded bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-mono shrink-0">PDF</div>
+                      <div>
+                        <b className="font-medium text-slate-900 text-[13px]">Debt schedule.pdf</b>
+                        <div className="text-slate-400 text-[11px]">Viewed by 2 of 4 buyers</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3 align-middle text-slate-400 text-[11px]">310 KB</td>
+                  <td className="px-5 py-3 align-middle text-slate-400 text-[11px]">16 Aug</td>
+                  <td className="px-5 py-3 align-middle"><span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-green-50 text-green-700">All buyers</span></td>
                 </tr>
               </tbody>
             </table>
           </div>
+        </div>
 
-          <div className="detail">
-            <h3>Revenue &amp; cohort breakdown.xlsx</h3>
-            <div className="dsub">Uploaded 2 Sep 2026 · Financials</div>
+        <div className="border-t md:border-t-0 md:border-l border-slate-100 p-5 bg-[#F8F9FB]">
+          <h3 className="text-[15px] font-medium mb-1">Revenue &amp; cohort breakdown.xlsx</h3>
+          <div className="text-[12px] text-slate-400 mb-4">Uploaded 2 Sep 2026 · Financials</div>
 
-            <div style={{ fontSize: '11.5px', color: 'var(--slate)', fontWeight: 500, marginBottom: '6px' }}>Visibility by buyer</div>
-            <div className="perm-row"><span>Halcyon Growth</span><div className="toggle on"></div></div>
-            <div className="perm-row"><span>XYZ Capital</span><div className="toggle on"></div></div>
-            <div className="perm-row"><span>Cardinal Buyers</span><div className="toggle"></div></div>
-            <div className="perm-row"><span>Meridian Partners</span><div className="toggle"></div></div>
+          <div className="text-[11.5px] text-slate-500 font-medium mb-1.5">Visibility by buyer</div>
+          <div className="flex justify-between items-center py-2 border-b border-slate-200 text-[12.5px]">
+            <span>Halcyon Growth</span>
+            <div className="w-[32px] h-[18px] rounded-full bg-green-600 relative cursor-pointer"><div className="absolute top-[2px] left-[16px] w-[14px] h-[14px] rounded-full bg-white"></div></div>
+          </div>
+          <div className="flex justify-between items-center py-2 border-b border-slate-200 text-[12.5px]">
+            <span>XYZ Capital</span>
+            <div className="w-[32px] h-[18px] rounded-full bg-green-600 relative cursor-pointer"><div className="absolute top-[2px] left-[16px] w-[14px] h-[14px] rounded-full bg-white"></div></div>
+          </div>
+          <div className="flex justify-between items-center py-2 border-b border-slate-200 text-[12.5px]">
+            <span>Cardinal Buyers</span>
+            <div className="w-[32px] h-[18px] rounded-full bg-slate-200 relative cursor-pointer"><div className="absolute top-[2px] left-[2px] w-[14px] h-[14px] rounded-full bg-white"></div></div>
+          </div>
+          <div className="flex justify-between items-center py-2 text-[12.5px]">
+            <span>Meridian Partners</span>
+            <div className="w-[32px] h-[18px] rounded-full bg-slate-200 relative cursor-pointer"><div className="absolute top-[2px] left-[2px] w-[14px] h-[14px] rounded-full bg-white"></div></div>
+          </div>
 
-            <div className="detail-actions">
-              <a href="#">Replace file</a>
-              <a href="#">View access log</a>
-              <a href="#" style={{ color: 'var(--red)', borderColor: 'var(--red-soft)' }}>Remove document</a>
-            </div>
+          <div className="mt-4 flex flex-col gap-2">
+            <button className="text-center block font-sans text-[13px] font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-500 bg-white hover:border-slate-900 hover:text-slate-900 transition-colors w-full cursor-pointer">Replace file</button>
+            <button className="text-center block font-sans text-[13px] font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-500 bg-white hover:border-slate-900 hover:text-slate-900 transition-colors w-full cursor-pointer">View access log</button>
+            <button className="text-center block font-sans text-[13px] font-medium px-4 py-2 rounded-lg border border-red-200 text-red-600 bg-white hover:border-red-600 hover:text-red-700 hover:bg-red-50 transition-colors w-full cursor-pointer">Remove document</button>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

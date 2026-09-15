@@ -17,191 +17,123 @@ export default function BidDetailsPage() {
   const bid = bidsData[id] || bidsData['c'];
 
   return (
-    <>
-      <style>{`
-        :root{
-          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
-          --slate:#64748b; --slate-light:#94a3b8;
-          --line:#e2e8f0; --line-soft:#f1f5f9;
-          --brass:#2563eb; --brass-soft:#dbeafe;
-          --green:#16a34a; --green-soft:#dcfce7;
-          --red:#dc2626; --red-soft:#fee2e2;
-          --amber:#d97706; --amber-soft:#fef3c7;
-          --blue:#2563eb; --blue-soft:#dbeafe;
-          --purple:#7c3aed; --purple-soft:#ede9fe;
-          --coral:#ea580c; --coral-soft:#ffedd5;
-          --radius:8px;
-        }
-        .bid-details-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; min-height: 100vh; padding-bottom: 40px; }
-        .bid-details-container a { color:inherit; text-decoration:none; }
+    <div className="bg-[#F8F9FB] text-slate-900 font-sans min-h-screen pb-10">
+      <div className="flex gap-[2px] px-7 border-b border-slate-200 bg-white text-[14px]">
+        <Link href="/bidding/seller-side" className="px-4 py-[13px] text-[13px] text-slate-900 border-b-2 border-blue-600 font-medium">Bidding</Link>
+        {/* <Link href="/bidding/seller-side/data-room" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Data room</Link> */}
+        <Link href="/bidding/seller-side/buyers" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Buyers</Link>
+        <Link href="/bidding/seller-side/term-sheet" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Term sheet</Link>
+        <Link href="/bidding/seller-side/messages" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Messages</Link>
+      </div>
 
-        .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); font-size:14px; }
-        .topbar-left { display:flex; align-items:center; gap:18px; }
-        .brand { display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .brand-mark { width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none; }
-        .brand-mark::after { content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
-        .crumbs { color:var(--slate-light); font-size:12.5px; }
-        .crumbs b { color:var(--paper); font-weight:500; }
-        .topbar-right { display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
-        .avatar { width:26px; height:26px; border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex; align-items:center; justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
-
-        .subnav { display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); font-size:14px; }
-        .subnav a { padding:13px 16px; font-size:13px; color:var(--slate); border-bottom:2px solid transparent; }
-        .subnav a.active { color:var(--ink); border-bottom-color:var(--brass); font-weight:500; }
-
-        .page-head { padding:32px 28px 24px 28px; display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--line-soft); background:var(--panel); flex-wrap: wrap; gap:20px; }
-        
-        .buyer-header { display:flex; gap:20px; align-items:center; }
-        .buyer-mark { width:64px; height:64px; border-radius:50%; background:var(--ink); color:var(--paper); display:flex; align-items:center; justify-content:center; font-size:24px; font-family:'IBM Plex Mono',monospace; flex:none; }
-        .buyer-name { font-size:28px; font-family:'Source Serif 4',serif; margin-bottom:4px; margin-top:0; font-weight: 500; }
-        .buyer-type { color:var(--slate); font-size:14.5px; }
-        .tags-container { display:flex; gap:8px; margin-top:14px; flex-wrap: wrap; }
-        .tag { font-size:12px; color:var(--slate); border:1px solid var(--line); padding:5px 12px; border-radius:20px; }
-
-        .actions-group { display:flex; gap:12px; }
-        .btn { font-family:'IBM Plex Sans',sans-serif; font-size:13.5px; font-weight:500; padding:11px 20px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--ink); background:transparent; color:var(--ink); }
-        .btn-approve { background:var(--green); border-color:var(--green); color:#fff; }
-        .btn-approve:hover { opacity:.9; }
-        .btn-ghost { border-color:var(--line); color:var(--slate); }
-        .btn-ghost:hover { background:var(--panel); color:var(--ink); border-color:var(--ink); }
-        .btn-decline { border-color:var(--red); color:var(--red); }
-        .btn-decline:hover { background:var(--red); color:#fff; }
-
-        .layout-grid { display:grid; grid-template-columns: 1fr 400px; gap:24px; padding:28px; max-width: 1400px; margin:0 auto; align-items: start; }
-        @media (max-width: 980px) {
-          .layout-grid { grid-template-columns: 1fr; }
-        }
-
-        .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:24px; margin-bottom:24px; }
-        .panel-title { font-size:17px; font-family:'IBM Plex Sans',sans-serif; font-weight:600; margin-bottom:20px; color:var(--ink); border-bottom:1px solid var(--line-soft); padding-bottom:12px; }
-
-        .metrics-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:16px; margin-bottom:28px; }
-        .metric-box { border:1px solid var(--line-soft); border-radius:var(--radius); padding:18px; background:#FAFAFA; }
-        .metric-label { font-size:12.5px; color:var(--slate); margin-bottom:10px; font-weight: 500; }
-        .metric-value { font-size:24px; font-family:'IBM Plex Mono',monospace; color:var(--ink); }
-
-        .structure-bar { display:flex; height:12px; border-radius:6px; overflow:hidden; margin:16px 0 10px 0;}
-        .structure-bar div:first-child { background:var(--ink); }
-        .structure-bar div:last-child { background:var(--brass-soft); border-left:1px solid var(--panel); }
-        .structure-legend { display:flex; gap:24px; font-size:13.5px; color:var(--slate); }
-        .structure-legend span::before { content:"●"; margin-right:6px; font-size:10px; position:relative; top:-1px; }
-        .structure-legend span.cash::before { color:var(--ink); }
-        .structure-legend span.stock::before { color:var(--brass); }
-
-        .vdr-link { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border:1px solid var(--line); border-radius:var(--radius); font-size:14px; margin-bottom:12px; transition: background 0.15s; cursor: pointer; }
-        .vdr-link:hover { background: var(--paper); border-color: var(--slate-light); }
-        .vdr-link .fname { color:var(--ink); font-weight:500; }
-        .vdr-link .go { color:var(--slate-light); font-family:'IBM Plex Mono',monospace; font-size:12px; }
-
-        .activity-item { display:flex; gap:14px; padding:16px 0; font-size:13.5px; border-bottom:1px solid var(--line-soft); }
-        .activity-item:last-child { border-bottom:none; }
-        .activity-dot { width:8px; height:8px; border-radius:50%; background:var(--line); margin-top:6px; flex:none; }
-        .activity-item.live .activity-dot { background:var(--green); }
-        .activity-text { color:var(--ink); font-weight:500; }
-        .activity-meta { color:var(--slate-light); font-size:12px; margin-top:5px; }
-
-        .note-box { border:1px dashed var(--slate-light); border-radius:var(--radius); padding:20px; font-size:14.5px; color:var(--slate); background:#FAFAFA; font-style: italic; line-height: 1.6; }
-      `}</style>
-      <div className="bid-details-container">
-        <div className="subnav">
-          <Link href="/bidding/seller-side" className="active">Bidding</Link>
-          <Link href="/bidding/seller-side/data-room">Data room</Link>
-          <Link href="/bidding/seller-side/buyers">Buyers</Link>
-          <Link href="/bidding/seller-side/term-sheet">Term sheet</Link>
-          <Link href="/bidding/seller-side/messages">Messages</Link>
+      <div className="pt-8 px-7 pb-6 flex justify-between items-start border-b border-slate-100 bg-white flex-wrap gap-5">
+        <div className="flex gap-5 items-center">
+          <div className="w-16 h-16 rounded-full bg-slate-900 text-white flex items-center justify-center text-2xl font-mono shrink-0">{bid.mark}</div>
+          <div>
+            <h1 className="text-[28px] font-serif mb-1 mt-0 font-medium">{bid.name}</h1>
+            <div className="text-slate-500 text-[14.5px]">{bid.type}</div>
+            <div className="flex gap-2 mt-3.5 flex-wrap">
+              <span className="text-[12px] text-slate-500 border border-slate-200 px-3 py-1 rounded-full">NDA signed</span>
+              <span className="text-[12px] text-slate-500 border border-slate-200 px-3 py-1 rounded-full">Lead: R. Okafor</span>
+              <span className="text-[12px] text-slate-500 border border-slate-200 px-3 py-1 rounded-full">Advisor: Linklane LLP</span>
+            </div>
+          </div>
         </div>
+        <div className="flex gap-3">
+          <button className="font-sans text-[13.5px] font-medium px-5 py-2.5 rounded-lg cursor-pointer border border-red-600 text-red-600 bg-transparent hover:bg-red-600 hover:text-white transition-colors">Decline bid</button>
+          <button className="font-sans text-[13.5px] font-medium px-5 py-2.5 rounded-lg cursor-pointer border border-slate-200 text-slate-500 bg-transparent hover:bg-white hover:text-slate-900 hover:border-slate-900 transition-colors">Counter offer</button>
+          <Link href="/bidding/seller-side/term-sheet" className="font-sans text-[13.5px] font-medium px-5 py-2.5 rounded-lg cursor-pointer border border-green-600 bg-green-600 text-white hover:opacity-90 transition-opacity">Accept &amp; move to term sheet</Link>
+        </div>
+      </div>
 
-        <div className="page-head">
-          <div className="buyer-header">
-            <div className="buyer-mark">{bid.mark}</div>
-            <div>
-              <h1 className="buyer-name">{bid.name}</h1>
-              <div className="buyer-type">{bid.type}</div>
-              <div className="tags-container">
-                <span className="tag">NDA signed</span>
-                <span className="tag">Lead: R. Okafor</span>
-                <span className="tag">Advisor: Linklane LLP</span>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6 p-7 max-w-[1400px] mx-auto items-start">
+        <div className="flex flex-col gap-6">
+          <div className="bg-white border border-slate-200 rounded-xl p-5">
+            <div className="text-[16px] font-sans font-semibold mb-3.5 text-slate-900 border-b border-slate-100 pb-2">Offer Summary</div>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3 mb-4">
+              <div className="border border-slate-100 rounded-lg px-3.5 py-2.5 bg-[#FAFAFA]">
+                <div className="text-[11.5px] text-slate-500 mb-1 font-medium">Offer</div>
+                <div className="text-[20px] font-mono text-slate-900">{bid.offer}</div>
+              </div>
+              <div className="border border-slate-100 rounded-lg px-3.5 py-2.5 bg-[#FAFAFA]">
+                <div className="text-[11.5px] text-slate-500 mb-1 font-medium">vs. asking price</div>
+                <div className="text-[20px] font-mono" style={{ color: bid.vsColor }}>{bid.vsAsk}</div>
+              </div>
+              <div className="border border-slate-100 rounded-lg px-3.5 py-2.5 bg-[#FAFAFA]">
+                <div className="text-[11.5px] text-slate-500 mb-1 font-medium">Expected close</div>
+                <div className="text-[20px] font-mono text-slate-900">{bid.close}</div>
+              </div>
+              <div className="border border-slate-100 rounded-lg px-3.5 py-2.5 bg-[#FAFAFA]">
+                <div className="text-[11.5px] text-slate-500 mb-1 font-medium">Status</div>
+                <div className="text-[15px] font-sans font-medium text-slate-900 mt-0.5">{bid.status}</div>
+              </div>
+            </div>
+
+            <div className="mt-1">
+              <div className="text-[12.5px] text-slate-500 font-medium">Structure</div>
+              <div className="flex h-2.5 rounded-full overflow-hidden mt-2 mb-2.5">
+                <div className="bg-slate-900" style={{ width: bid.cash }}></div>
+                <div className="bg-blue-100 border-l border-white" style={{ width: bid.stock }}></div>
+              </div>
+              <div className="flex gap-6 text-[12.5px] text-slate-500">
+                <span className="flex items-center gap-1.5 before:content-['●'] before:text-[9px] before:relative before:-top-[1px] before:text-slate-900">Cash {bid.cash}</span>
+                <span className="flex items-center gap-1.5 before:content-['●'] before:text-[9px] before:relative before:-top-[1px] before:text-blue-600">Stock {bid.stock}</span>
               </div>
             </div>
           </div>
-          <div className="actions-group">
-            <button className="btn btn-decline">Decline bid</button>
-            <button className="btn btn-ghost">Counter offer</button>
-            <Link href="/bidding/seller-side/term-sheet" className="btn btn-approve">Accept &amp; move to term sheet</Link>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-6">
+            <div className="text-[17px] font-sans font-semibold mb-5 text-slate-900 border-b border-slate-100 pb-3">Submitted Documents</div>
+            <div className="flex items-center justify-between px-4.5 py-3.5 border border-slate-200 rounded-lg text-[14px] mb-3 hover:bg-[#F8F9FB] hover:border-slate-400 transition-colors cursor-pointer">
+              <span className="text-slate-900 font-medium">Letter of Intent — signed.pdf</span>
+              <span className="text-slate-400 font-mono text-[12px]">Open ↗</span>
+            </div>
+            <div className="flex items-center justify-between px-4.5 py-3.5 border border-slate-200 rounded-lg text-[14px] mb-3 hover:bg-[#F8F9FB] hover:border-slate-400 transition-colors cursor-pointer">
+              <span className="text-slate-900 font-medium">Financing confirmation.pdf</span>
+              <span className="text-slate-400 font-mono text-[12px]">Open ↗</span>
+            </div>
+            <div className="flex items-center justify-between px-4.5 py-3.5 border border-slate-200 rounded-lg text-[14px] mb-3 hover:bg-[#F8F9FB] hover:border-slate-400 transition-colors cursor-pointer">
+              <span className="text-slate-900 font-medium">Term sheet draft v2.docx</span>
+              <span className="text-slate-400 font-mono text-[12px]">Open ↗</span>
+            </div>
           </div>
         </div>
 
-        <div className="layout-grid">
-          <div className="col-main">
-            <div className="panel">
-              <div className="panel-title">Offer Summary</div>
-              <div className="metrics-grid">
-                <div className="metric-box">
-                  <div className="metric-label">Offer</div>
-                  <div className="metric-value">{bid.offer}</div>
-                </div>
-                <div className="metric-box">
-                  <div className="metric-label">vs. asking price</div>
-                  <div className="metric-value" style={{ color: bid.vsColor }}>{bid.vsAsk}</div>
-                </div>
-                <div className="metric-box">
-                  <div className="metric-label">Expected close</div>
-                  <div className="metric-value">{bid.close}</div>
-                </div>
-                <div className="metric-box">
-                  <div className="metric-label">Status</div>
-                  <div className="metric-value" style={{ fontFamily: 'inherit', fontSize: '18px', fontWeight: 500, marginTop: '2px' }}>{bid.status}</div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: '10px' }}>
-                <div style={{ fontSize: '13.5px', color: 'var(--slate)', fontWeight: 500 }}>Structure</div>
-                <div className="structure-bar">
-                  <div style={{ width: bid.cash }}></div>
-                  <div style={{ width: bid.stock }}></div>
-                </div>
-                <div className="structure-legend">
-                  <span className="cash">Cash {bid.cash}</span>
-                  <span className="stock">Stock {bid.stock}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="panel">
-              <div className="panel-title">Submitted Documents</div>
-              <div className="vdr-link"><span className="fname">Letter of Intent — signed.pdf</span><span className="go">Open ↗</span></div>
-              <div className="vdr-link"><span className="fname">Financing confirmation.pdf</span><span className="go">Open ↗</span></div>
-              <div className="vdr-link"><span className="fname">Term sheet draft v2.docx</span><span className="go">Open ↗</span></div>
+        <div className="flex flex-col gap-6">
+          <div className="bg-white border border-slate-200 rounded-xl p-6">
+            <div className="text-[17px] font-sans font-semibold mb-5 text-slate-900 border-b border-slate-100 pb-3">Internal Notes</div>
+            <div className="border border-dashed border-slate-400 rounded-lg p-5 text-[14.5px] text-slate-500 bg-[#FAFAFA] italic leading-relaxed">
+              "Financing letter checks out — board is comfortable with the stock component. Recommend proceeding to term sheet."<br /><br />
+              <span className="not-italic text-[12.5px] text-slate-400">— V. Sharma, Finance Advisor</span>
             </div>
           </div>
 
-          <div className="col-side">
-            <div className="panel">
-              <div className="panel-title">Internal Notes</div>
-              <div className="note-box">
-                "Financing letter checks out — board is comfortable with the stock component. Recommend proceeding to term sheet."<br /><br />
-                <span style={{ fontStyle: 'normal', fontSize: '12.5px', color: 'var(--slate-light)' }}>— V. Sharma, Finance Advisor</span>
+          <div className="bg-white border border-slate-200 rounded-xl p-6">
+            <div className="text-[17px] font-sans font-semibold mb-5 text-slate-900 border-b border-slate-100 pb-3">Recent Activity</div>
+            <div className="flex gap-3.5 py-4 text-[13.5px] border-b border-slate-100">
+              <div className="w-2 h-2 rounded-full bg-green-600 mt-1.5 shrink-0"></div>
+              <div>
+                <div className="text-slate-900 font-medium">Viewing Revenue.xlsx in VDR</div>
+                <div className="text-slate-400 text-[12px] mt-1">Live now · 6 min</div>
               </div>
             </div>
-
-            <div className="panel">
-              <div className="panel-title">Recent Activity</div>
-              <div className="activity-item live">
-                <div className="activity-dot"></div>
-                <div><div className="activity-text">Viewing Revenue.xlsx in VDR</div><div className="activity-meta">Live now · 6 min</div></div>
+            <div className="flex gap-3.5 py-4 text-[13.5px] border-b border-slate-100">
+              <div className="w-2 h-2 rounded-full bg-slate-200 mt-1.5 shrink-0"></div>
+              <div>
+                <div className="text-slate-900 font-medium">Asked a question on Legal DD</div>
+                <div className="text-slate-400 text-[12px] mt-1">Yesterday, 4:12 PM</div>
               </div>
-              <div className="activity-item">
-                <div className="activity-dot"></div>
-                <div><div className="activity-text">Asked a question on Legal DD</div><div className="activity-meta">Yesterday, 4:12 PM</div></div>
-              </div>
-              <div className="activity-item">
-                <div className="activity-dot"></div>
-                <div><div className="activity-text">Submitted revised offer — $100M</div><div className="activity-meta">2 Sep, 11:02 AM</div></div>
+            </div>
+            <div className="flex gap-3.5 py-4 text-[13.5px]">
+              <div className="w-2 h-2 rounded-full bg-slate-200 mt-1.5 shrink-0"></div>
+              <div>
+                <div className="text-slate-900 font-medium">Submitted revised offer — $100M</div>
+                <div className="text-slate-400 text-[12px] mt-1">2 Sep, 11:02 AM</div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

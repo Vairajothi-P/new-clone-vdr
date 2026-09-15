@@ -5,133 +5,95 @@ import Link from 'next/link';
 
 export default function BidHistoryPage() {
   return (
-    <>
-      <style>{`
-        :root{
-          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
-          --slate:#64748b; --slate-light:#94a3b8;
-          --line:#e2e8f0; --line-soft:#f1f5f9;
-          --brass:#2563eb; --brass-soft:#dbeafe;
-          --green:#16a34a; --green-soft:#dcfce7;
-          --red:#dc2626; --red-soft:#fee2e2;
-          --amber:#d97706; --amber-soft:#fef3c7;
-          --blue:#2563eb; --blue-soft:#dbeafe;
-          --purple:#7c3aed; --purple-soft:#ede9fe;
-          --coral:#ea580c; --coral-soft:#ffedd5;
-          --radius:8px;
-        }
-        .bid-history-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; font-size:14px; line-height:1.5; min-height: 100vh; }
-        .bid-history-container a{ color:inherit; text-decoration:none; }
-        .bid-history-container h1, .bid-history-container h2, .bid-history-container h3{ font-family:'Source Serif 4', serif; font-weight:500; margin:0; }
+    <div className="bg-[#F8F9FB] text-slate-900 font-sans text-[14px] leading-relaxed min-h-screen antialiased">
+      <div className="flex gap-[2px] px-7 border-b border-slate-200 bg-white">
+        <Link href="/bidding/buyer-side" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Overview</Link>
+        {/* <Link href="/bidding/buyer-side/data-room" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Data room</Link> */}
+        <Link href="/bidding/buyer-side/my-bid" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">My bid</Link>
+        <Link href="/bidding/buyer-side/bid-history" className="px-4 py-[13px] text-[13px] text-slate-900 border-b-2 border-blue-600 font-medium">Bid history</Link>
+        <Link href="/bidding/buyer-side/messages" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Messages</Link>
+        <Link href="/bidding/buyer-side/term-sheet" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Term sheet</Link>
+      </div>
 
-        .bid-history-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
-        .bid-history-container .topbar-left{ display:flex; align-items:center; gap:18px; }
-        .bid-history-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .bid-history-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
-        .bid-history-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
-        .bid-history-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
-        .bid-history-container .crumbs b{ color:var(--paper); font-weight:500; }
-        .bid-history-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
-        .bid-history-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
-
-        .bid-history-container .subnav{ display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); }
-        .bid-history-container .subnav a{ padding:13px 16px; font-size:13px; color:var(--slate); border-bottom:2px solid transparent; }
-        .bid-history-container .subnav a.active{ color:var(--ink); border-bottom-color:var(--brass); font-weight:500; }
-
-        .bid-history-container .page-head{ padding:24px 28px 0 28px; display:flex; justify-content:space-between; align-items:flex-start; }
-        .bid-history-container .page-head h1{ font-size:22px; }
-        .bid-history-container .page-head .sub{ font-size:13px; color:var(--slate); margin-top:5px; }
-
-        .bid-history-container .rail{ margin:24px 28px 40px 28px; }
-        .bid-history-container .version{ display:flex; gap:18px; padding:20px 0; border-bottom:1px solid var(--line-soft); }
-        .bid-history-container .version:last-child{ border-bottom:none; }
-        .bid-history-container .version-marker{ display:flex; flex-direction:column; align-items:center; flex:none; width:24px; }
-        .bid-history-container .version-dot{ width:14px; height:14px; border-radius:50%; background:var(--panel); border:2px solid var(--line); }
-        .bid-history-container .version-dot.current{ border-color:var(--amber); background:var(--amber-soft); }
-        .bid-history-container .version-dot.accepted{ border-color:var(--green); background:var(--green-soft); }
-        .bid-history-container .version-line{ width:1.5px; flex:1; background:var(--line); margin-top:4px; }
-
-        .bid-history-container .version-card{ flex:1; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px 20px; }
-        .bid-history-container .version-top{ display:flex; justify-content:space-between; align-items:center; }
-        .bid-history-container .version-title{ font-size:14px; font-weight:500; }
-        .bid-history-container .version-date{ font-size:11.5px; color:var(--slate-light); font-family:'IBM Plex Mono',monospace; }
-        .bid-history-container .version-amount{ font-size:20px; font-family:'IBM Plex Mono',monospace; margin-top:8px; }
-        .bid-history-container .version-terms{ font-size:12.5px; color:var(--slate); margin-top:4px; }
-        .bid-history-container .badge{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:500; padding:3px 9px; border-radius:20px; }
-        .bid-history-container .badge.amber{ background:var(--amber-soft); color:var(--amber); }
-        .bid-history-container .badge.green{ background:var(--green-soft); color:var(--green); }
-        .bid-history-container .badge.gray{ background:var(--line-soft); color:var(--slate); }
-        .bid-history-container .version-actions{ margin-top:12px; display:flex; gap:8px; }
-        .bid-history-container .btn{ font-family:'IBM Plex Sans',sans-serif; font-size:12px; font-weight:500; padding:7px 12px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--slate); }
-        .bid-history-container .btn:hover{ border-color:var(--ink); color:var(--ink); }
-        .bid-history-container .diff{ margin-top:12px; font-size:12px; color:var(--slate); background:var(--paper); border:1px dashed var(--line); border-radius:var(--radius); padding:10px 12px; }
-        .bid-history-container .diff b{ color:var(--ink); }
-        .bid-history-container .diff .up{ color:var(--green); } .bid-history-container .diff .down{ color:var(--red); }
-      `}</style>
-
-      <div className="bid-history-container">
-        <div className="subnav">
-          <Link href="/bidding/buyer-side">Overview</Link>
-          <Link href="/bidding/buyer-side/data-room">Data room</Link>
-          <Link href="/bidding/buyer-side/my-bid">My bid</Link>
-          <Link href="/bidding/buyer-side/bid-history" className="active">Bid history</Link>
-          <Link href="/bidding/buyer-side/messages">Messages</Link>
-          <Link href="/bidding/buyer-side/term-sheet">Term sheet</Link>
-        </div>
-
-        <div className="page-head">
+      <div className="max-w-[1280px] mx-auto pb-8">
+        <div className="pt-6 px-7 flex justify-between items-start">
           <div>
-            <h1>Bid history</h1>
-            <div className="sub">Every version you've submitted on Project Alpha, in order</div>
+            <h1 className="text-[22px] font-serif font-medium m-0 text-slate-900">Bid history</h1>
+            <div className="text-[13px] text-slate-500 mt-1.5">Every version you've submitted on Project Alpha, in order</div>
           </div>
         </div>
 
-        <div className="rail">
-          <div className="version">
-            <div className="version-marker"><div className="version-dot current"></div><div className="version-line"></div></div>
-            <div className="version-card">
-              <div className="version-top">
-                <span className="version-title">Version 3 — awaiting your response</span>
-                <span className="version-date">3 Sep, 9:05 AM</span>
+        <div className="mt-6 mx-7">
+          <div className="flex gap-4.5 py-5 border-b border-slate-100 last:border-b-0">
+            <div className="flex flex-col items-center shrink-0 w-6">
+              <div className="w-3.5 h-3.5 rounded-full bg-amber-50 border-2 border-amber-500"></div>
+              <div className="w-[1.5px] flex-1 bg-slate-200 mt-1.5 mb-[-20px]"></div>
+            </div>
+            <div className="flex-1 bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-[14px] font-medium text-slate-900">Version 3 — awaiting your response</span>
+                <span className="text-[11.5px] text-slate-400 font-mono">3 Sep, 9:05 AM</span>
               </div>
-              <div className="version-amount">$100.0M <span className="badge amber" style={{ marginLeft: '8px' }}>Seller counter</span></div>
-              <div className="version-terms">Seller countered your $95.0M offer, asking for full asking price</div>
-              <div className="diff">Change from v2: offer <span className="up">+$5.0M</span> requested by seller</div>
-              <div className="version-actions">
-                <a href="#" className="btn">Match counter</a>
-                <a href="#" className="btn">Send new offer</a>
+              <div className="text-[20px] font-mono mt-2 text-slate-900 flex items-center">
+                $100.0M 
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 ml-2 border border-amber-100">Seller counter</span>
+              </div>
+              <div className="text-[12.5px] text-slate-500 mt-1">Seller countered your $95.0M offer, asking for full asking price</div>
+              <div className="mt-3.5 text-[12px] text-slate-600 bg-[#FAFAFA] border border-dashed border-slate-200 rounded-lg px-3 py-2.5">
+                Change from v2: offer <span className="text-green-600 font-medium">+$5.0M</span> requested by seller
+              </div>
+              <div className="mt-3.5 flex gap-2">
+                <a href="#" className="font-sans text-[12.5px] font-medium px-3.5 py-1.5 rounded-lg cursor-pointer border border-slate-200 bg-transparent text-slate-500 hover:border-slate-900 hover:text-slate-900 transition-colors shadow-sm">Match counter</a>
+                <a href="#" className="font-sans text-[12.5px] font-medium px-3.5 py-1.5 rounded-lg cursor-pointer border border-slate-200 bg-transparent text-slate-500 hover:border-slate-900 hover:text-slate-900 transition-colors shadow-sm">Send new offer</a>
               </div>
             </div>
           </div>
 
-          <div className="version">
-            <div className="version-marker"><div className="version-dot"></div><div className="version-line"></div></div>
-            <div className="version-card">
-              <div className="version-top">
-                <span className="version-title">Version 2 — your bid</span>
-                <span className="version-date">1 Sep, 3:40 PM</span>
+          <div className="flex gap-4.5 py-5 border-b border-slate-100 last:border-b-0">
+            <div className="flex flex-col items-center shrink-0 w-6">
+              <div className="w-3.5 h-3.5 rounded-full bg-white border-2 border-slate-300 mt-1"></div>
+              <div className="w-[1.5px] flex-1 bg-slate-200 mt-1.5 mb-[-20px]"></div>
+            </div>
+            <div className="flex-1 bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-[14px] font-medium text-slate-900">Version 2 — your bid</span>
+                <span className="text-[11.5px] text-slate-400 font-mono">1 Sep, 3:40 PM</span>
               </div>
-              <div className="version-amount">$95.0M <span className="badge gray" style={{ marginLeft: '8px' }}>Submitted</span></div>
-              <div className="version-terms">70% cash / 30% stock · expected close Dec 2026</div>
-              <div className="diff">Change from v1: offer <span className="up">+$3.0M</span>, cash component <span className="down">-10%</span></div>
-              <div className="version-actions"><a href="#" className="btn">View full terms</a></div>
+              <div className="text-[20px] font-mono mt-2 text-slate-900 flex items-center">
+                $95.0M 
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-50 text-slate-500 border border-slate-200 ml-2">Submitted</span>
+              </div>
+              <div className="text-[12.5px] text-slate-500 mt-1">70% cash / 30% stock · expected close Dec 2026</div>
+              <div className="mt-3.5 text-[12px] text-slate-600 bg-[#FAFAFA] border border-dashed border-slate-200 rounded-lg px-3 py-2.5">
+                Change from v1: offer <span className="text-green-600 font-medium">+$3.0M</span>, cash component <span className="text-red-600 font-medium">-10%</span>
+              </div>
+              <div className="mt-3.5 flex gap-2">
+                <a href="#" className="font-sans text-[12.5px] font-medium px-3.5 py-1.5 rounded-lg cursor-pointer border border-slate-200 bg-transparent text-slate-500 hover:border-slate-900 hover:text-slate-900 transition-colors shadow-sm">View full terms</a>
+              </div>
             </div>
           </div>
 
-          <div className="version">
-            <div className="version-marker"><div className="version-dot"></div></div>
-            <div className="version-card">
-              <div className="version-top">
-                <span className="version-title">Version 1 — initial bid</span>
-                <span className="version-date">22 Aug, 11:15 AM</span>
+          <div className="flex gap-4.5 py-5 border-b border-slate-100 last:border-b-0">
+            <div className="flex flex-col items-center shrink-0 w-6">
+              <div className="w-3.5 h-3.5 rounded-full bg-white border-2 border-slate-300 mt-1"></div>
+            </div>
+            <div className="flex-1 bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-[14px] font-medium text-slate-900">Version 1 — initial bid</span>
+                <span className="text-[11.5px] text-slate-400 font-mono">22 Aug, 11:15 AM</span>
               </div>
-              <div className="version-amount">$92.0M <span className="badge gray" style={{ marginLeft: '8px' }}>Submitted</span></div>
-              <div className="version-terms">80% cash / 20% stock · expected close Jan 2027</div>
-              <div className="version-actions"><a href="#" className="btn">View full terms</a></div>
+              <div className="text-[20px] font-mono mt-2 text-slate-900 flex items-center">
+                $92.0M 
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-50 text-slate-500 border border-slate-200 ml-2">Submitted</span>
+              </div>
+              <div className="text-[12.5px] text-slate-500 mt-1">80% cash / 20% stock · expected close Jan 2027</div>
+              <div className="mt-3.5 flex gap-2">
+                <a href="#" className="font-sans text-[12.5px] font-medium px-3.5 py-1.5 rounded-lg cursor-pointer border border-slate-200 bg-transparent text-slate-500 hover:border-slate-900 hover:text-slate-900 transition-colors shadow-sm">View full terms</a>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

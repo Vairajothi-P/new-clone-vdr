@@ -5,163 +5,123 @@ import Link from 'next/link';
 
 export default function SellerTermSheetPage() {
   return (
-    <>
-      <style>{`
-        :root{
-          --ink:#0f172a; --ink-soft:#334155; --paper:#f8fafc; --panel:#ffffff;
-          --slate:#64748b; --slate-light:#94a3b8;
-          --line:#e2e8f0; --line-soft:#f1f5f9;
-          --brass:#2563eb; --brass-soft:#dbeafe;
-          --green:#16a34a; --green-soft:#dcfce7;
-          --red:#dc2626; --red-soft:#fee2e2;
-          --amber:#d97706; --amber-soft:#fef3c7;
-          --blue:#2563eb; --blue-soft:#dbeafe;
-          --purple:#7c3aed; --purple-soft:#ede9fe;
-          --coral:#ea580c; --coral-soft:#ffedd5;
-          --radius:8px;
-        }
-        .seller-term-sheet-container { background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans', sans-serif; font-size:14px; line-height:1.5; min-height: 100vh; }
-        .seller-term-sheet-container a{ color:inherit; text-decoration:none; }
-        .seller-term-sheet-container h1, .seller-term-sheet-container h2, .seller-term-sheet-container h3{ font-family:'Source Serif 4', serif; font-weight:500; margin:0; }
+    <div className="bg-[#F8F9FB] text-slate-900 font-sans text-[14px] leading-relaxed min-h-screen">
+      <div className="flex gap-[2px] px-7 border-b border-slate-200 bg-white">
+        <Link href="/bidding/seller-side" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Bidding</Link>
+        {/* <Link href="/bidding/seller-side/data-room" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Data room</Link> */}
+        <Link href="/bidding/seller-side/buyers" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Buyers</Link>
+        <Link href="/bidding/seller-side/term-sheet" className="px-4 py-[13px] text-[13px] text-slate-900 border-b-2 border-blue-600 font-medium">Term sheet</Link>
+        <Link href="/bidding/seller-side/messages" className="px-4 py-[13px] text-[13px] text-slate-500 hover:text-slate-900 border-b-2 border-transparent">Messages</Link>
+      </div>
 
-        .seller-term-sheet-container .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 28px; border-bottom:1px solid var(--line); background:var(--ink); color:var(--paper); }
-        .seller-term-sheet-container .topbar-left{ display:flex; align-items:center; gap:18px; }
-        .seller-term-sheet-container .brand{ display:flex; align-items:center; gap:9px; font-family:'Source Serif 4',serif; font-size:16px; }
-        .seller-term-sheet-container .brand-mark{ width:20px; height:20px; border:1.4px solid var(--brass); border-radius:2px; position:relative; flex:none;}
-        .seller-term-sheet-container .brand-mark::after{ content:""; position:absolute; inset:4px; border:1.4px solid var(--brass); opacity:.55; }
-        .seller-term-sheet-container .crumbs{ color:var(--slate-light); font-size:12.5px; }
-        .seller-term-sheet-container .crumbs b{ color:var(--paper); font-weight:500; }
-        .seller-term-sheet-container .topbar-right{ display:flex; align-items:center; gap:16px; font-size:12.5px; color:var(--slate-light); }
-        .seller-term-sheet-container .avatar{ width:26px;height:26px;border-radius:50%; background:var(--ink-soft); color:var(--paper); display:flex;align-items:center;justify-content:center; font-size:11px; font-family:'IBM Plex Mono',monospace; }
+      <div className="mx-7 mt-5 px-4 py-3 bg-green-50 border border-[#C7DFCB] rounded-xl text-[12.5px] text-green-700 flex justify-between items-center">
+        <span>Bid from Halcyon Growth ($100.0M) accepted on 6 Sep 2026 — draft this term sheet and send for buyer signature.</span>
+        <span>Stage 5 of 6</span>
+      </div>
 
-        .seller-term-sheet-container .subnav{ display:flex; gap:2px; padding:0 28px; border-bottom:1px solid var(--line); background:var(--panel); }
-        .seller-term-sheet-container .subnav a{ padding:13px 16px; font-size:13px; color:var(--slate); border-bottom:2px solid transparent; }
-        .seller-term-sheet-container .subnav a.active{ color:var(--ink); border-bottom-color:var(--brass); font-weight:500; }
+      <div className="pt-5 px-7 flex justify-between items-start flex-wrap gap-3.5">
+        <div>
+          <h1 className="text-[22px] font-serif font-medium m-0">Term sheet — Halcyon Growth</h1>
+          <div className="text-[13px] text-slate-500 mt-1">Draft v2 · editable until sent for signature</div>
+        </div>
+        <div className="flex gap-2.5">
+          <button className="font-sans text-[13px] font-medium px-4 py-2 rounded-lg cursor-pointer border border-slate-200 text-slate-500 bg-white hover:text-slate-900 hover:border-slate-900 transition-colors">Save draft</button>
+          <button className="font-sans text-[13px] font-medium px-4 py-2 rounded-lg cursor-pointer border border-slate-900 bg-slate-900 text-white hover:opacity-90 transition-opacity">Send to buyer</button>
+        </div>
+      </div>
 
-        .seller-term-sheet-container .status-strip{ margin:20px 28px 0 28px; padding:12px 18px; background:var(--green-soft); border:1px solid #C7DFCB; border-radius:var(--radius); font-size:12.5px; color:var(--green); display:flex; justify-content:space-between; align-items:center; }
-
-        .seller-term-sheet-container .page-head{ padding:22px 28px 0 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px; }
-        .seller-term-sheet-container .page-head h1{ font-size:22px; }
-        .seller-term-sheet-container .page-head .sub{ font-size:13px; color:var(--slate); margin-top:5px; }
-        .seller-term-sheet-container .btn{ font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:500; padding:9px 16px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--ink); background:transparent; color:var(--ink); }
-        .seller-term-sheet-container .btn:hover{ background:var(--ink); color:var(--paper); }
-        .seller-term-sheet-container .btn-primary{ background:var(--ink); color:var(--paper); }
-        .seller-term-sheet-container .btn-primary:hover{ opacity:.88; background:var(--ink); }
-        .seller-term-sheet-container .btn-ghost{ border-color:var(--line); color:var(--slate); }
-        .seller-term-sheet-container .btn-ghost:hover{ background:var(--panel); color:var(--ink); border-color:var(--ink); }
-
-        .seller-term-sheet-container .body-grid{ display:grid; grid-template-columns:1fr 340px; gap:22px; margin:22px 28px 40px 28px; align-items:start; }
-        .seller-term-sheet-container .panel{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); }
-        .seller-term-sheet-container .panel-head{ padding:16px 20px; border-bottom:1px solid var(--line-soft); display:flex; justify-content:space-between; align-items:center; }
-        .seller-term-sheet-container .panel-head h2{ font-size:15px; }
-
-        .seller-term-sheet-container table.terms{ width:100%; border-collapse:collapse; }
-        .seller-term-sheet-container table.terms td{ padding:12px 20px; border-bottom:1px solid var(--line-soft); font-size:13px; vertical-align:top; }
-        .seller-term-sheet-container table.terms tr:last-child td{ border-bottom:none; }
-        .seller-term-sheet-container table.terms td.tk{ color:var(--slate); width:190px; }
-        .seller-term-sheet-container table.terms td.tv input, .seller-term-sheet-container table.terms td.tv select{
-          width:100%; font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink);
-          border:1px solid var(--line); border-radius:var(--radius); padding:7px 10px; background:var(--paper); box-sizing:border-box;
-        }
-        .seller-term-sheet-container table.terms td.tv input:focus, .seller-term-sheet-container table.terms td.tv select:focus{ outline:none; border-color:var(--ink); background:var(--panel); }
-
-        .seller-term-sheet-container .comment-thread{ padding:16px 20px; }
-        .seller-term-sheet-container .comment{ display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--line-soft); font-size:12.5px; }
-        .seller-term-sheet-container .comment:last-child{ border-bottom:none; }
-        .seller-term-sheet-container .c-avatar{ width:26px;height:26px;border-radius:50%; background:var(--brass-soft); color:var(--brass); display:flex;align-items:center;justify-content:center; font-size:10px; font-family:'IBM Plex Mono',monospace; flex:none; }
-        .seller-term-sheet-container .c-body b{ color:var(--ink); }
-        .seller-term-sheet-container .c-text{ color:var(--slate); margin-top:2px; }
-        .seller-term-sheet-container .c-meta{ color:var(--slate-light); font-size:11px; margin-top:2px; }
-        .seller-term-sheet-container .comment-input{ padding:14px 20px; border-top:1px solid var(--line-soft); }
-        .seller-term-sheet-container .comment-input textarea{ width:100%; font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; padding:9px; border:1px solid var(--line); border-radius:var(--radius); resize:none; background:var(--paper); box-sizing:border-box;}
-
-        .seller-term-sheet-container .side-section{ padding:16px 20px; border-bottom:1px solid var(--line-soft); }
-        .seller-term-sheet-container .side-section h3{ font-size:11.5px; font-weight:600; color:var(--slate); letter-spacing:.3px; margin-bottom:12px; }
-        .seller-term-sheet-container .sig-row{ display:flex; justify-content:space-between; padding:8px 0; font-size:12.5px; }
-        .seller-term-sheet-container .sig-status{ display:flex; align-items:center; gap:6px; }
-        .seller-term-sheet-container .sig-dot{ width:7px; height:7px; border-radius:50%; }
-        .seller-term-sheet-container .sig-dot.done{ background:var(--green); }
-        .seller-term-sheet-container .sig-dot.pending{ background:var(--amber); }
-        .seller-term-sheet-container .side-actions{ padding:16px 20px; display:flex; flex-direction:column; gap:8px; }
-        .seller-term-sheet-container .side-actions .btn{ width:100%; text-align:center; }
-      `}</style>
-      <div className="seller-term-sheet-container">
-        <div className="subnav">
-          <Link href="/bidding/seller-side">Bidding</Link>
-          <Link href="/bidding/seller-side/data-room">Data room</Link>
-          <Link href="/bidding/seller-side/buyers">Buyers</Link>
-          <Link href="/bidding/seller-side/term-sheet" className="active">Term sheet</Link>
-          <Link href="/bidding/seller-side/messages">Messages</Link>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-[22px] mx-7 mt-[22px] mb-10 items-start">
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden row-span-2">
+          <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
+            <h2 className="text-[15px] font-serif font-medium m-0">Key terms</h2>
+            <span className="text-[12px] text-slate-400">Editable draft</span>
+          </div>
+          <table className="w-full border-collapse">
+            <tbody>
+              <tr>
+                <td className="w-[190px] text-slate-500 px-5 py-3 border-b border-slate-100 align-top text-[13px]">Purchase price</td>
+                <td className="px-5 py-3 border-b border-slate-100 align-top"><input type="text" className="w-full font-mono text-[13px] text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 bg-[#F8F9FB] outline-none focus:border-slate-900 focus:bg-white transition-colors" defaultValue="$100,000,000" /></td>
+              </tr>
+              <tr>
+                <td className="w-[190px] text-slate-500 px-5 py-3 border-b border-slate-100 align-top text-[13px]">Structure</td>
+                <td className="px-5 py-3 border-b border-slate-100 align-top"><input type="text" className="w-full font-mono text-[13px] text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 bg-[#F8F9FB] outline-none focus:border-slate-900 focus:bg-white transition-colors" defaultValue="60% cash at close / 40% acquirer stock, 12-month vest" /></td>
+              </tr>
+              <tr>
+                <td className="w-[190px] text-slate-500 px-5 py-3 border-b border-slate-100 align-top text-[13px]">Expected close</td>
+                <td className="px-5 py-3 border-b border-slate-100 align-top"><input type="text" className="w-full font-mono text-[13px] text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 bg-[#F8F9FB] outline-none focus:border-slate-900 focus:bg-white transition-colors" defaultValue="15 December 2026" /></td>
+              </tr>
+              <tr>
+                <td className="w-[190px] text-slate-500 px-5 py-3 border-b border-slate-100 align-top text-[13px]">Exclusivity period</td>
+                <td className="px-5 py-3 border-b border-slate-100 align-top"><input type="text" className="w-full font-mono text-[13px] text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 bg-[#F8F9FB] outline-none focus:border-slate-900 focus:bg-white transition-colors" defaultValue="45 days from execution" /></td>
+              </tr>
+              <tr>
+                <td className="w-[190px] text-slate-500 px-5 py-3 border-b border-slate-100 align-top text-[13px]">Key employee retention</td>
+                <td className="px-5 py-3 border-b border-slate-100 align-top"><input type="text" className="w-full font-mono text-[13px] text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 bg-[#F8F9FB] outline-none focus:border-slate-900 focus:bg-white transition-colors" defaultValue="90% of leadership team, 24-month terms" /></td>
+              </tr>
+              <tr>
+                <td className="w-[190px] text-slate-500 px-5 py-3 border-b border-slate-100 align-top text-[13px]">Escrow</td>
+                <td className="px-5 py-3 border-b border-slate-100 align-top"><input type="text" className="w-full font-mono text-[13px] text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 bg-[#F8F9FB] outline-none focus:border-slate-900 focus:bg-white transition-colors" defaultValue="10% of purchase price, 18-month holdback" /></td>
+              </tr>
+              <tr>
+                <td className="w-[190px] text-slate-500 px-5 py-3 border-b border-slate-100 align-top text-[13px]">Regulatory conditions</td>
+                <td className="px-5 py-3 border-b border-slate-100 align-top"><input type="text" className="w-full font-mono text-[13px] text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 bg-[#F8F9FB] outline-none focus:border-slate-900 focus:bg-white transition-colors" defaultValue="Subject to standard antitrust clearance" /></td>
+              </tr>
+              <tr>
+                <td className="w-[190px] text-slate-500 px-5 py-3 align-top text-[13px]">Governing law</td>
+                <td className="px-5 py-3 align-top"><input type="text" className="w-full font-mono text-[13px] text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 bg-[#F8F9FB] outline-none focus:border-slate-900 focus:bg-white transition-colors" defaultValue="Delaware, USA" /></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <div className="status-strip">
-          <span>Bid from Halcyon Growth ($100.0M) accepted on 6 Sep 2026 — draft this term sheet and send for buyer signature.</span>
-          <span>Stage 5 of 6</span>
-        </div>
-
-        <div className="page-head">
-          <div>
-            <h1>Term sheet — Halcyon Growth</h1>
-            <div className="sub">Draft v2 · editable until sent for signature</div>
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <a href="#" className="btn btn-ghost">Save draft</a>
-            <a href="#" className="btn btn-primary">Send to buyer</a>
-          </div>
-        </div>
-
-        <div className="body-grid">
-          <div className="panel">
-            <div className="panel-head"><h2>Key terms</h2><span style={{ fontSize: '12px', color: 'var(--slate-light)' }}>Editable draft</span></div>
-            <table className="terms">
-              <tbody>
-                <tr><td className="tk">Purchase price</td><td className="tv"><input type="text" defaultValue="$100,000,000" /></td></tr>
-                <tr><td className="tk">Structure</td><td className="tv"><input type="text" defaultValue="60% cash at close / 40% acquirer stock, 12-month vest" /></td></tr>
-                <tr><td className="tk">Expected close</td><td className="tv"><input type="text" defaultValue="15 December 2026" /></td></tr>
-                <tr><td className="tk">Exclusivity period</td><td className="tv"><input type="text" defaultValue="45 days from execution" /></td></tr>
-                <tr><td className="tk">Key employee retention</td><td className="tv"><input type="text" defaultValue="90% of leadership team, 24-month terms" /></td></tr>
-                <tr><td className="tk">Escrow</td><td className="tv"><input type="text" defaultValue="10% of purchase price, 18-month holdback" /></td></tr>
-                <tr><td className="tk">Regulatory conditions</td><td className="tv"><input type="text" defaultValue="Subject to standard antitrust clearance" /></td></tr>
-                <tr><td className="tk">Governing law</td><td className="tv"><input type="text" defaultValue="Delaware, USA" /></td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div className="panel">
-            <div className="panel-head"><h2>Counsel comments</h2></div>
-            <div className="comment-thread">
-              <div className="comment">
-                <div className="c-avatar">LC</div>
-                <div className="c-body"><b>Linklane LLP (your counsel)</b><div className="c-text">Updated exclusivity to 45 days per buyer request on the 6 Sep call.</div><div className="c-meta">7 Sep, 10:12 AM</div></div>
-              </div>
-              <div className="comment">
-                <div className="c-avatar">RO</div>
-                <div className="c-body"><b>Halcyon Growth</b><div className="c-text">Escrow holdback period works for us — no further changes on our side.</div><div className="c-meta">7 Sep, 11:40 AM</div></div>
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+          <div className="px-5 py-4 border-b border-slate-100"><h2 className="text-[15px] font-serif font-medium m-0">Counsel comments</h2></div>
+          <div className="p-5 flex flex-col">
+            <div className="flex gap-2.5 py-2.5 border-b border-slate-100 text-[12.5px]">
+              <div className="w-[26px] h-[26px] rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] font-mono shrink-0">LC</div>
+              <div>
+                <b className="text-slate-900">Linklane LLP (your counsel)</b>
+                <div className="text-slate-500 mt-0.5">Updated exclusivity to 45 days per buyer request on the 6 Sep call.</div>
+                <div className="text-slate-400 text-[11px] mt-0.5">7 Sep, 10:12 AM</div>
               </div>
             </div>
-            <div className="comment-input">
-              <textarea rows="2" placeholder="Add an internal or buyer-facing comment..."></textarea>
+            <div className="flex gap-2.5 py-2.5 text-[12.5px]">
+              <div className="w-[26px] h-[26px] rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] font-mono shrink-0">RO</div>
+              <div>
+                <b className="text-slate-900">Halcyon Growth</b>
+                <div className="text-slate-500 mt-0.5">Escrow holdback period works for us — no further changes on our side.</div>
+                <div className="text-slate-400 text-[11px] mt-0.5">7 Sep, 11:40 AM</div>
+              </div>
             </div>
           </div>
+          <div className="px-5 py-3.5 border-t border-slate-100 bg-[#F8F9FB]">
+            <textarea rows="2" placeholder="Add an internal or buyer-facing comment..." className="w-full font-sans text-[12.5px] px-3 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:border-slate-400 resize-none"></textarea>
+          </div>
+        </div>
 
-          <div className="panel" style={{ gridColumn: '2' }}>
-            <div className="side-section">
-              <h3>Signature status</h3>
-              <div className="sig-row"><span>ABC Technologies (you)</span><span className="sig-status"><span className="sig-dot done"></span>Signed</span></div>
-              <div className="sig-row"><span>Halcyon Growth</span><span className="sig-status"><span className="sig-dot pending"></span>Pending</span></div>
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden col-[1] lg:col-[2]">
+          <div className="p-5 border-b border-slate-100">
+            <h3 className="text-[11.5px] font-semibold text-slate-500 tracking-wide uppercase mb-3">Signature status</h3>
+            <div className="flex justify-between items-center py-2 text-[12.5px]">
+              <span className="text-slate-900">ABC Technologies (you)</span>
+              <span className="flex items-center gap-1.5 text-slate-500"><span className="w-2 h-2 rounded-full bg-green-600"></span>Signed</span>
             </div>
-            <div className="side-section">
-              <h3>Next steps</h3>
-              <div style={{ fontSize: '12.5px', color: 'var(--slate)' }}>Confirmatory due diligence and definitive agreement drafting begin once the buyer countersigns.</div>
+            <div className="flex justify-between items-center py-2 text-[12.5px]">
+              <span className="text-slate-900">Halcyon Growth</span>
+              <span className="flex items-center gap-1.5 text-slate-500"><span className="w-2 h-2 rounded-full bg-amber-500"></span>Pending</span>
             </div>
-            <div className="side-actions">
-              <a href="#" className="btn btn-primary">Send for buyer signature</a>
-              <a href="#" className="btn btn-ghost">Attach redlined document</a>
-              <a href="#" className="btn btn-ghost">Message Halcyon Growth</a>
-            </div>
+          </div>
+          <div className="p-5 border-b border-slate-100">
+            <h3 className="text-[11.5px] font-semibold text-slate-500 tracking-wide uppercase mb-3">Next steps</h3>
+            <div className="text-[12.5px] text-slate-500">Confirmatory due diligence and definitive agreement drafting begin once the buyer countersigns.</div>
+          </div>
+          <div className="p-5 flex flex-col gap-2">
+            <button className="text-center block font-sans text-[13px] font-medium px-4 py-2 rounded-lg border border-slate-900 text-white bg-slate-900 hover:opacity-90 transition-opacity w-full cursor-pointer">Send for buyer signature</button>
+            <button className="text-center block font-sans text-[13px] font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-500 bg-white hover:text-slate-900 hover:border-slate-900 transition-colors w-full cursor-pointer">Attach redlined document</button>
+            <button className="text-center block font-sans text-[13px] font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-500 bg-white hover:text-slate-900 hover:border-slate-900 transition-colors w-full cursor-pointer">Message Halcyon Growth</button>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
