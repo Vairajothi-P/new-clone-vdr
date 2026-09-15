@@ -1,20 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FaPowerOff, FaCog, FaDatabase, FaPlus, FaEllipsisV, FaShieldAlt, FaTimes, FaSave, FaArrowLeft, FaBell } from "react-icons/fa";
+import { FaPowerOff, FaCog, FaDatabase, FaPlus, FaEllipsisV, FaShieldAlt, FaTimes, FaSave, FaArrowLeft, FaBell, FaCheck } from "react-icons/fa";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 export default function DealDashboard() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const projectName = searchParams.get('project') || "Project";
   
   const [deals, setDeals] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddDealModalOpen, setIsAddDealModalOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [newDealName, setNewDealName] = useState("");
   const [newDealDesc, setNewDealDesc] = useState("");
+  const [showNotificationMenu, setShowNotificationMenu] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
   
   // Deal form state
   const [formData, setFormData] = useState({
@@ -37,6 +41,15 @@ export default function DealDashboard() {
         setDeals(JSON.parse(saved));
       } catch (e) {
         console.error("Failed to parse deals", e);
+      }
+    }
+    
+    const savedRequests = localStorage.getItem(`dms_requests_${projectName}`);
+    if (savedRequests) {
+      try {
+        setRequests(JSON.parse(savedRequests));
+      } catch (e) {
+        console.error("Failed to parse requests", e);
       }
     }
   }, [projectName]);
@@ -64,22 +77,59 @@ export default function DealDashboard() {
 
   const handleSaveDeal = (e) => {
     e.preventDefault();
-    alert("Teaser details saved successfully!");
-    setIsModalOpen(false);
     
-    // Reset form
-    setFormData({
-      name: "",
-      dealType: "Majority Acquisition",
-      geography: "North America",
-      sector: "B2B SaaS",
-      revenue: "TBD",
-      ebitda: "TBD",
-      growth: "--",
-      employees: "--",
-      overview: "A profitable mid-market company...",
-      askingPrice: "Available upon qualified access",
-    });
+    const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
+    const existingIndex = marketTeasers.findIndex(t => t.projectName === projectName);
+
+    const newTeaser = {
+      ...formData,
+      projectName: projectName,
+      id: existingIndex >= 0 ? marketTeasers[existingIndex].id : Date.now(),
+      status: 'Active'
+    };
+    
+    if (existingIndex >= 0) {
+      marketTeasers[existingIndex] = newTeaser;
+      alert("Teaser details updated successfully!");
+    } else {
+      marketTeasers.push(newTeaser);
+      alert("Teaser details saved successfully and published to marketplace!");
+    }
+    
+    localStorage.setItem('dms_market_teasers', JSON.stringify(marketTeasers));
+    setIsModalOpen(false);
+  };
+
+  const handleOpenTeaserModal = () => {
+    const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
+    const existingTeaser = marketTeasers.find(t => t.projectName === projectName);
+    if (existingTeaser) {
+      setFormData(existingTeaser);
+    } else {
+      setFormData({
+        name: "",
+        sector: "",
+        geography: "",
+        overview: "",
+        revenue: "",
+        ebitda: "",
+        growth: "",
+        employees: "",
+        dealType: "Majority Acquisition",
+        askingPrice: ""
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleRemoveTeaser = () => {
+    if (confirm("Are you sure you want to remove this teaser from the marketplace?")) {
+      const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
+      const updatedTeasers = marketTeasers.filter(t => t.projectName !== projectName);
+      localStorage.setItem('dms_market_teasers', JSON.stringify(updatedTeasers));
+      alert("Teaser removed from marketplace");
+      setIsModalOpen(false);
+    }
   };
 
   const handleFormChange = (e) => {
@@ -91,10 +141,43 @@ export default function DealDashboard() {
       
       {/* Top Right Buttons */}
       <div className="absolute top-8 right-8 flex items-center gap-3">
-        <button className="relative w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-500 flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm">
-          <FaBell className="text-sm" />
-          <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-        </button>
+        <div className="relative">
+          <button 
+            onClick={() => setShowNotificationMenu(!showNotificationMenu)}
+            className="relative w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-500 flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <FaBell className="text-sm" />
+            {requests.filter(r => r.status === 'PENDING').length > 0 && (
+              <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+            )}
+          </button>
+          
+          {/* Notification Dropdown */}
+          {showNotificationMenu && (
+            <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+              <div className="p-3 border-b border-gray-100 bg-gray-50">
+                <h3 className="text-sm font-bold text-gray-800">Notifications</h3>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                {requests.filter(r => r.status === 'PENDING').length === 0 ? (
+                  <div className="p-4 text-center text-sm text-gray-500">No new notifications</div>
+                ) : (
+                  requests.filter(r => r.status === 'PENDING').map(req => (
+                    <div 
+                      key={req.id} 
+                      onClick={() => { setSelectedRequest(req); setShowNotificationMenu(false); }}
+                      className="p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
+                    >
+                      <p className="text-sm text-gray-800 font-bold">{req.fullName} <span className="font-normal text-gray-600">requested access</span></p>
+                      <p className="text-xs text-gray-500 mt-1">{req.company} • {req.investorType}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <Link href="/dms/login">
           <button className="w-10 h-10 rounded-full border border-red-200 bg-white text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors shadow-sm">
             <FaPowerOff className="text-sm" />
@@ -152,7 +235,7 @@ export default function DealDashboard() {
             
             {/* Deal Teaser Card */}
             <div 
-              onClick={() => setIsModalOpen(true)} 
+              onClick={handleOpenTeaserModal} 
               className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] transition-all cursor-pointer group"
             >
               <div className="flex justify-between items-start mb-auto">
@@ -185,7 +268,11 @@ export default function DealDashboard() {
 
             {/* Existing Deals */}
             {deals.map((deal) => (
-              <div key={deal.id} className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] transition-all cursor-pointer group">
+              <div 
+                key={deal.id} 
+                onClick={() => router.push('/documents')}
+                className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] transition-all cursor-pointer group"
+              >
                 <div className="flex justify-between items-start mb-auto">
                   <span className="px-2 py-0.5 bg-[#fff8e6] text-[#b48629] text-[9px] font-bold rounded">
                     {deal.status}
@@ -235,6 +322,95 @@ export default function DealDashboard() {
       <div className="fixed bottom-6 left-6 w-8 h-8 rounded-full bg-[#303030] text-white flex items-center justify-center shadow-lg font-serif italic text-sm">
         N
       </div>
+
+      {/* Access Request Details Modal */}
+      {selectedRequest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl relative animate-in fade-in zoom-in duration-200 overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h2 className="text-xl font-bold text-gray-800">Access Request Details</h2>
+              <button onClick={() => setSelectedRequest(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <FaTimes className="text-lg" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+                <div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Full Name</p>
+                  <p className="text-sm font-medium text-gray-900">{selectedRequest.fullName}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Work Email</p>
+                  <p className="text-sm font-medium text-gray-900">{selectedRequest.email}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Company</p>
+                  <p className="text-sm font-medium text-gray-900">{selectedRequest.company}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Job Title</p>
+                  <p className="text-sm font-medium text-gray-900">{selectedRequest.jobTitle}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Investor Type</p>
+                  <p className="text-sm font-medium text-gray-900">{selectedRequest.investorType}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Investment Range</p>
+                  <p className="text-sm font-medium text-gray-900">{selectedRequest.investmentRange}</p>
+                </div>
+              </div>
+              
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2 mt-2">Message</p>
+                <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-700 min-h-[80px] border border-gray-100">
+                  {selectedRequest.message || "No message provided."}
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+              <button 
+                onClick={() => {
+                  const updatedReqs = requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'REJECTED' } : r);
+                  setRequests(updatedReqs);
+                  localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(updatedReqs));
+                  setSelectedRequest(null);
+                }}
+                className="px-5 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-bold transition-colors text-sm"
+              >
+                Reject Request
+              </button>
+              <button 
+                onClick={() => {
+                  // Update request status
+                  const updatedReqs = requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'ACCEPTED' } : r);
+                  setRequests(updatedReqs);
+                  localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(updatedReqs));
+                  
+                  // Auto-create a deal card based on company name
+                  const newDeal = { 
+                    name: selectedRequest.company || "New Deal", 
+                    desc: "Created automatically from approved access request.", 
+                    status: "DRAFT", 
+                    id: Date.now() 
+                  };
+                  const updatedDeals = [...deals, newDeal];
+                  setDeals(updatedDeals);
+                  localStorage.setItem(`dms_deals_${projectName}`, JSON.stringify(updatedDeals));
+                  
+                  setSelectedRequest(null);
+                  alert(`Deal card "${newDeal.name}" created automatically.`);
+                }}
+                className="px-5 py-2.5 bg-[#00c875] hover:bg-[#00a863] text-white rounded-lg font-bold transition-colors text-sm shadow-sm flex items-center gap-2"
+              >
+                <FaCheck /> Accept & Create Deal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create New Deal Modal */}
       {isAddDealModalOpen && (
@@ -380,22 +556,32 @@ export default function DealDashboard() {
             </div>
             
             {/* Modal Footer */}
-            <div className="p-6 bg-white border-t border-gray-200 rounded-b-sm flex justify-end gap-4 z-10">
+            <div className="p-6 bg-white border-t border-gray-200 rounded-b-sm flex justify-between items-center z-10">
               <button 
                 type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-6 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold rounded-sm transition-colors"
+                onClick={handleRemoveTeaser}
+                className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-bold text-sm rounded transition-colors flex items-center gap-2"
               >
-                Cancel
+                <FaTimes /> Remove from Marketplace
               </button>
-              <button 
-                type="submit" 
-                form="deal-form"
-                className="flex items-center gap-2 px-8 py-2.5 bg-[#0b1120] hover:bg-gray-800 text-white font-bold rounded-sm shadow-sm transition-colors"
-              >
-                <FaSave />
-                Save Details
-              </button>
+              
+              <div className="flex gap-4">
+                <button 
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-6 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold rounded-sm transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  form="deal-form"
+                  className="flex items-center gap-2 px-8 py-2.5 bg-[#0b1120] hover:bg-gray-800 text-white font-bold rounded-sm shadow-sm transition-colors"
+                >
+                  <FaSave />
+                  Save Details
+                </button>
+              </div>
             </div>
 
           </div>

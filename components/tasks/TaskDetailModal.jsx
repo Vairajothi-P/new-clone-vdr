@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 
-export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate }) {
+export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate, viewMode = 'Seller' }) {
   const [activeTab, setActiveTab] = useState('details');
   const [status, setStatus] = useState(task.status || 'in_progress');
 
@@ -17,8 +17,8 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && status !== 'completed';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-6xl rounded-xl shadow-xl border border-slate-200 flex overflow-hidden max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white/95 backdrop-blur-xl w-full max-w-6xl rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-white/40 flex overflow-hidden max-h-[90vh]">
         
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden border-r border-slate-200 bg-white">
@@ -83,7 +83,7 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
           </div>
 
           {/* Tab Content Area */}
-          <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {activeTab === 'details' && (
               <div className="flex gap-8">
                 {/* Left Mini Column */}
@@ -187,7 +187,70 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
                 </div>
               </div>
             )}
-            {activeTab !== 'details' && (
+            {activeTab === 'comments' && (
+              <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 text-purple-700 rounded-lg">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path></svg>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Task Discussion</h3>
+                    <p className="text-[11px] text-slate-500">Isolated thread for this task only.</p>
+                  </div>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {/* Mock Comment 1 */}
+                  <div className="flex gap-4">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--brand,theme(colors.blue.500))] to-purple-500 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-sm mt-1">
+                      AM
+                    </div>
+                    <div className="max-w-[80%]">
+                      <div className="flex items-baseline gap-2 mb-1.5 px-1">
+                        <span className="text-sm font-bold text-slate-900">Ananya Mehta</span>
+                        <span className="text-[10px] font-semibold text-slate-500">Yesterday, 2:30 PM</span>
+                      </div>
+                      <div className="bg-white p-4 rounded-2xl rounded-tl-sm border border-slate-200/80 shadow-sm text-[15px] leading-relaxed text-slate-700">
+                        Please review the latest draft attached. Pay special attention to the indemnity clauses.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mock Comment 2 */}
+                  <div className="flex gap-4 flex-row-reverse">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 text-slate-700 flex items-center justify-center text-sm font-bold shrink-0 shadow-sm mt-1 border border-slate-300">
+                      {task.assignee ? task.assignee.charAt(0) : 'P'}
+                    </div>
+                    <div className="flex flex-col items-end max-w-[80%]">
+                      <div className="flex items-baseline gap-2 mb-1.5 px-1 flex-row-reverse">
+                        <span className="text-sm font-bold text-slate-900">{task.assignee || 'Priya Menon'}</span>
+                        <span className="text-[10px] font-semibold text-slate-500">Today, 10:15 AM</span>
+                      </div>
+                      <div className="bg-gradient-to-br from-[var(--brand,theme(colors.blue.500))] to-[var(--brand,theme(colors.blue.600))] p-4 rounded-2xl rounded-tr-sm shadow-sm text-[15px] leading-relaxed text-white text-right">
+                        I've reviewed the draft. Left a few comments directly in the document. Ready for your sign-off.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border-t border-slate-200/80 bg-white flex gap-4 items-center">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-sm font-bold shrink-0 border border-slate-200">
+                    ME
+                  </div>
+                  <div className="flex-1 relative">
+                    <input 
+                      type="text" 
+                      placeholder="Type a message..." 
+                      className="w-full pl-5 pr-12 py-3 bg-slate-100/50 border border-slate-200 rounded-full text-sm focus:bg-white focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent outline-none transition-all shadow-inner"
+                    />
+                    <button className="absolute right-2.5 top-1.5 p-2 bg-[var(--brand,theme(colors.blue.500))] hover:bg-[var(--brand,theme(colors.blue.600))] text-white rounded-full transition-colors shadow-sm">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {activeTab !== 'details' && activeTab !== 'comments' && (
               <div className="flex items-center justify-center h-full text-slate-400 font-medium">
                 {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} tracking coming soon.
               </div>
@@ -196,44 +259,79 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
         </div>
 
         {/* Right Sidebar - Actions */}
-        <div className="w-72 shrink-0 bg-slate-50 border-l border-slate-200 p-6 flex flex-col">
+        <div className="w-72 shrink-0 bg-slate-50 border-l border-slate-200 p-6 flex flex-col overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4">Actions</h3>
           
           <div className="space-y-3">
-            {status === 'under_review' && (
-              <button 
-                onClick={() => handleStatusChange('completed')}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--brand,theme(colors.blue.600))] hover:bg-[var(--brand,theme(colors.blue.700))] text-white rounded-lg shadow-sm text-sm font-bold transition-colors focus:outline-none"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Approve Task
-              </button>
+            {/* Buyer Actions */}
+            {viewMode === 'Buyer' && (
+              <>
+                {status === 'not_started' && (
+                  <button 
+                    onClick={() => handleStatusChange('in_progress')}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--brand,theme(colors.blue.600))] hover:bg-[var(--brand,theme(colors.blue.700))] text-white rounded-lg shadow-sm text-sm font-bold transition-colors focus:outline-none"
+                  >
+                    Start Task
+                  </button>
+                )}
+                {status === 'in_progress' && (
+                  <button 
+                    onClick={() => handleStatusChange('audit')}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-sm text-sm font-bold transition-colors focus:outline-none"
+                  >
+                    Submit for Audit
+                  </button>
+                )}
+              </>
             )}
 
-            {status !== 'completed' && status !== 'under_review' && (
-              <button 
-                onClick={() => handleStatusChange('completed')}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                Mark as Complete
-              </button>
+            {/* Seller Actions */}
+            {viewMode === 'Seller' && (
+              <>
+                {status === 'audit' && (
+                  <>
+                    <button 
+                      onClick={() => handleStatusChange('completed')}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm text-sm font-bold transition-colors focus:outline-none"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                      Pass Audit & Complete
+                    </button>
+                    <button 
+                      onClick={() => handleStatusChange('in_progress')}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-red-500 text-red-600 hover:bg-red-50 rounded-lg shadow-sm text-sm font-bold transition-colors"
+                    >
+                      Fail Audit (Return to Group)
+                    </button>
+                  </>
+                )}
+
+                {status !== 'completed' && status !== 'audit' && (
+                  <button 
+                    onClick={() => handleStatusChange('completed')}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                    Force Complete
+                  </button>
+                )}
+                
+                <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-[var(--brand,theme(colors.blue.600))] text-[var(--brand,theme(colors.blue.600))] hover:bg-[var(--brand-50,theme(colors.blue.50))] rounded-lg shadow-sm text-sm font-bold transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                  Send Reminder
+                </button>
+                
+                <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-red-500 text-red-600 hover:bg-red-50 rounded-lg shadow-sm text-sm font-bold transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                  Escalate
+                </button>
+                
+                <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg shadow-sm text-sm font-bold transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                  Reassign
+                </button>
+              </>
             )}
-            
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-[var(--brand,theme(colors.blue.600))] text-[var(--brand,theme(colors.blue.600))] hover:bg-[var(--brand-50,theme(colors.blue.50))] rounded-lg shadow-sm text-sm font-bold transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-              Send Reminder
-            </button>
-            
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-red-500 text-red-600 hover:bg-red-50 rounded-lg shadow-sm text-sm font-bold transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-              Escalate
-            </button>
-            
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg shadow-sm text-sm font-bold transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
-              Reassign
-            </button>
           </div>
           
         </div>
