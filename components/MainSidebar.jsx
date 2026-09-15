@@ -97,11 +97,11 @@ export default function MainSidebar() {
         {/* Nav Items */}
         <div className="flex flex-col gap-1.5 flex-1">
           {NAV_ITEMS.map((item) => {
+            if (item.key === 'deals' || item.key === 'teams') return null;
             if (item.key === 'groups' && !hasGroupsAccess) return null;
             if (item.key === 'settings' && !hasSettingsAccess) return null;
             if (item.key === 'analytics' && !isAdmin && !isSuperAdmin) return null;
             if (item.key === 'qa' && !hasQaAccess) return null;
-            if (item.key === 'deals' && !hasDealsAccess) return null;
             if (item.key === 'tasks' && !hasTasksAccess) return null;
             if (item.key === 'communication' && !hasCommunicationAccess) return null;
             if (item.key === 'control_audits' && !hasControlAuditsAccess) return null;
