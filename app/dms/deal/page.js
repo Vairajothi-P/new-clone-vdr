@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FaPowerOff, FaCog, FaDatabase, FaPlus, FaEllipsisV, FaShieldAlt, FaTimes, FaSave, FaArrowLeft, FaBell, FaCheck } from "react-icons/fa";
+import { FaPowerOff, FaCog, FaDatabase, FaPlus, FaEllipsisV, FaShieldAlt, FaTimes, FaSave, FaArrowLeft, FaBell, FaCheck, FaFolder, FaFileInvoiceDollar } from "react-icons/fa";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
@@ -12,13 +12,13 @@ export default function DealDashboard() {
 
   const [deals, setDeals] = useState([]);
   const [requests, setRequests] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddDealModalOpen, setIsAddDealModalOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [newDealName, setNewDealName] = useState("");
   const [newDealDesc, setNewDealDesc] = useState("");
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [activeTab, setActiveTab] = useState('teaser');
 
   // Deal form state
   const [formData, setFormData] = useState({
@@ -59,7 +59,13 @@ export default function DealDashboard() {
     if (savedTeasers) {
       try {
         const teasers = JSON.parse(savedTeasers);
-        setIsTeaserPublished(teasers.some(t => t.projectName === projectName));
+        const existingTeaser = teasers.find(t => t.projectName === projectName);
+        if (existingTeaser) {
+          setFormData(existingTeaser);
+          setIsTeaserPublished(true);
+        } else {
+          setIsTeaserPublished(false);
+        }
       } catch (e) {
         console.error("Failed to parse teasers", e);
       }
@@ -110,15 +116,15 @@ export default function DealDashboard() {
 
     localStorage.setItem('dms_market_teasers', JSON.stringify(marketTeasers));
     setIsTeaserPublished(true);
-    setIsModalOpen(false);
   };
 
-  const handleOpenTeaserModal = () => {
-    const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
-    const existingTeaser = marketTeasers.find(t => t.projectName === projectName);
-    if (existingTeaser) {
-      setFormData(existingTeaser);
-    } else {
+  const handleRemoveTeaser = () => {
+    if (confirm("Are you sure you want to remove this teaser from the marketplace?")) {
+      const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
+      const updatedTeasers = marketTeasers.filter(t => t.projectName !== projectName);
+      localStorage.setItem('dms_market_teasers', JSON.stringify(updatedTeasers));
+      alert("Teaser removed from marketplace");
+      setIsTeaserPublished(false);
       setFormData({
         name: "",
         sector: "",
@@ -132,18 +138,6 @@ export default function DealDashboard() {
         askingPrice: ""
       });
     }
-    setIsModalOpen(true);
-  };
-
-  const handleRemoveTeaser = () => {
-    if (confirm("Are you sure you want to remove this teaser from the marketplace?")) {
-      const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
-      const updatedTeasers = marketTeasers.filter(t => t.projectName !== projectName);
-      localStorage.setItem('dms_market_teasers', JSON.stringify(updatedTeasers));
-      alert("Teaser removed from marketplace");
-      setIsTeaserPublished(false);
-      setIsModalOpen(false);
-    }
   };
 
   const handleFormChange = (e) => {
@@ -151,197 +145,358 @@ export default function DealDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] relative p-8 md:p-16 flex justify-center items-start font-sans">
+    <div className="flex h-screen bg-[#F8F9FA] font-sans overflow-hidden">
 
-      {/* Top Right Buttons */}
-      <div className="absolute top-8 right-8 flex items-center gap-3">
-        <div className="relative">
-          <button
-            onClick={() => setShowNotificationMenu(!showNotificationMenu)}
-            className="relative w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-500 flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm"
-          >
-            <FaBell className="text-sm" />
-            {requests.filter(r => r.status === 'PENDING').length > 0 && (
-              <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            )}
-          </button>
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between py-6 z-40 shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+        <div>
+          <div className="px-6 mb-8 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#303030] text-white flex items-center justify-center shadow-lg font-serif italic text-sm">
+              N
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 tracking-tight">Deal Setup</h2>
+          </div>
 
-          {/* Notification Dropdown */}
-          {showNotificationMenu && (
-            <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-              <div className="p-3 border-b border-gray-100 bg-gray-50">
-                <h3 className="text-sm font-bold text-gray-800">Notifications</h3>
+          <nav className="flex flex-col gap-2 px-4">
+            <Link href="/dms/workspace" className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium transition-colors">
+              <FaFolder className="text-lg" />
+              <span>Project</span>
+            </Link>
+            <button
+              onClick={() => setActiveTab('teaser')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-colors ${activeTab === 'teaser' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+            >
+              <FaShieldAlt className="text-lg" />
+              <span>Teaser</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('deals')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'deals' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+            >
+              <FaDatabase className="text-lg" />
+              <span>Deals</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('proposals')}
+              className={`flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-colors w-full ${activeTab === 'proposals' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+            >
+              <div className="flex items-center gap-3">
+                <FaBell className="text-lg" />
+                <span>Deal Proposal</span>
               </div>
-              <div className="max-h-64 overflow-y-auto">
-                {requests.filter(r => r.status === 'PENDING').length === 0 ? (
-                  <div className="p-4 text-center text-sm text-gray-500">No new notifications</div>
-                ) : (
-                  requests.filter(r => r.status === 'PENDING').map(req => (
-                    <div
-                      key={req.id}
-                      onClick={() => { setSelectedRequest(req); setShowNotificationMenu(false); }}
-                      className="p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
-                    >
-                      <p className="text-sm text-gray-800 font-bold">{req.fullName} <span className="font-normal text-gray-600">requested access</span></p>
-                      <p className="text-xs text-gray-500 mt-1">{req.company} • {req.investorType}</p>
+              {requests.filter(r => r.status === 'PENDING').length > 0 && (
+                <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {requests.filter(r => r.status === 'PENDING').length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('bidding')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'bidding' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+            >
+              <FaFileInvoiceDollar className="text-lg" />
+              <span>Bidding Details</span>
+            </button>
+          </nav>
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="px-4 flex flex-col gap-2 relative">
+          <Link href="/dms/login" className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 font-medium transition-colors">
+            <FaPowerOff className="text-lg" />
+            <span>Logout</span>
+          </Link>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto p-8 relative flex justify-center items-start">
+
+        {/* Main Container */}
+        <div className="w-full max-w-5xl min-h-[60vh] bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col mt-4">
+
+          {/* Header Row */}
+          {activeTab === 'deals' && (
+            <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <Link href="/dms/workspace" className="text-gray-400 hover:text-gray-600 transition-colors mr-2">
+                  <FaArrowLeft />
+                </Link>
+                <h1 className="text-xl font-bold text-gray-900">{projectName}</h1>
+                <span className="px-3 py-1 bg-[#e6fbf2] text-[#00c875] text-xs font-bold rounded-full tracking-wide">Deal Setup</span>
+              </div>
+
+              <div className="flex items-center gap-8">
+                <div className="relative">
+                  <select className="appearance-none bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded pl-3 pr-8 py-1.5 outline-none hover:border-gray-300 transition-colors cursor-pointer shadow-sm">
+                    <option>Active</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#f0f7f8] text-[#337a85] flex items-center justify-center">
+                    <FaDatabase className="text-sm" />
+                  </div>
+                  <div className="flex flex-col w-32">
+                    <div className="flex justify-between items-center text-[10px] text-gray-400 font-semibold mb-1">
+                      <span>0 KB / 50 GB</span>
+                      <span>[0%]</span>
                     </div>
-                  ))
-                )}
+                    <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-[#337a85] w-0"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <button className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <FaCog className="text-lg" />
+                </button>
               </div>
             </div>
           )}
-        </div>
 
-        <Link href="/dms/login">
-          <button className="w-10 h-10 rounded-full border border-red-200 bg-white text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors shadow-sm">
-            <FaPowerOff className="text-sm" />
-          </button>
-        </Link>
-      </div>
-
-      {/* Main Container */}
-      <div className="w-full max-w-6xl min-h-[60vh] bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mt-12 flex flex-col">
-
-        {/* Header Row */}
-        <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Link href="/dms/workspace" className="text-gray-400 hover:text-gray-600 transition-colors mr-2">
-              <FaArrowLeft />
-            </Link>
-            <h1 className="text-xl font-bold text-gray-900">{projectName}</h1>
-            <span className="px-3 py-1 bg-[#e6fbf2] text-[#00c875] text-xs font-bold rounded-full tracking-wide">Deal Setup</span>
-          </div>
-
-          <div className="flex items-center gap-8">
-            <div className="relative">
-              <select className="appearance-none bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded pl-3 pr-8 py-1.5 outline-none hover:border-gray-300 transition-colors cursor-pointer shadow-sm">
-                <option>Active</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#f0f7f8] text-[#337a85] flex items-center justify-center">
-                <FaDatabase className="text-sm" />
-              </div>
-              <div className="flex flex-col w-32">
-                <div className="flex justify-between items-center text-[10px] text-gray-400 font-semibold mb-1">
-                  <span>0 KB / 50 GB</span>
-                  <span>[0%]</span>
-                </div>
-                <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#337a85] w-0"></div>
-                </div>
-              </div>
-            </div>
-
-            <button className="text-gray-400 hover:text-gray-600 transition-colors">
-              <FaCog className="text-lg" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content Grid */}
-        <div className="p-8 pb-12">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-
-            {/* Deal Teaser Card */}
-            <div
-              onClick={handleOpenTeaserModal}
-              className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] transition-all cursor-pointer group"
-            >
-              <div className="flex justify-between items-start mb-auto">
-                {isTeaserPublished ? (
-                  <span className="px-2 py-0.5 bg-[#e6fbf2] text-[#00c875] text-[9px] font-bold rounded">
-                    PUBLISHED
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 bg-[#fff8e6] text-[#b48629] text-[9px] font-bold rounded">
-                    SETUP REQUIRED
-                  </span>
-                )}
-                <button className="text-gray-400 hover:text-gray-600 p-1 opacity-60 hover:opacity-100">
-                  <FaEllipsisV className="text-[11px]" />
-                </button>
-              </div>
-
-              <div className="flex flex-col items-center justify-center flex-1 gap-2 pb-2">
-                <div className="w-12 h-12 rounded-full bg-[#f4f7f9] flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
-                  <FaShieldAlt className="text-2xl text-[#b48629]" />
-                </div>
-                <span className="font-bold text-gray-800 text-sm">Deal Teaser</span>
-              </div>
-            </div>
-
-            {/* Add New Deal Card */}
-            <button
-              onClick={() => setIsAddDealModalOpen(true)}
-              className="h-44 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center gap-3 hover:border-gray-400 hover:bg-gray-50 transition-all group"
-            >
-              <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center text-xl shadow-md group-hover:scale-105 transition-transform">
-                <FaPlus />
-              </div>
-              <span className="text-[13px] text-gray-500 font-medium">Add New Deal</span>
-            </button>
-
-            {/* Existing Deals */}
-            {deals.map((deal) => (
-              <div
-                key={deal.id}
-                onClick={() => router.push('/documents')}
-                className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] transition-all cursor-pointer group"
-              >
-                <div className="flex justify-between items-start mb-auto">
-                  <span className="px-2 py-0.5 bg-[#fff8e6] text-[#b48629] text-[9px] font-bold rounded">
-                    {deal.status}
-                  </span>
-
-                  <div className="relative">
+          {/* Content Grid */}
+          <div className="p-8 pb-12 flex-1">
+            {activeTab === 'teaser' && (
+              <div className="w-full max-w-4xl mx-auto">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Teaser Setup</h2>
+                    <p className="text-sm text-gray-500 mt-1">Configure the teaser details for the marketplace.</p>
+                  </div>
+                  {isTeaserPublished && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenDropdownId(openDropdownId === deal.id ? null : deal.id);
-                      }}
-                      className="text-gray-400 hover:text-gray-600 p-1 opacity-60 hover:opacity-100"
+                      type="button"
+                      onClick={handleRemoveTeaser}
+                      className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-bold text-sm rounded-lg transition-colors flex items-center gap-2 shadow-sm"
                     >
-                      <FaEllipsisV className="text-[11px]" />
+                      <FaTimes /> Remove from Marketplace
                     </button>
+                  )}
+                </div>
 
-                    {openDropdownId === deal.id && (
-                      <div className="absolute right-0 mt-1 w-24 bg-white rounded-md shadow-lg border border-gray-100 z-10 overflow-hidden">
+                <form id="deal-form" onSubmit={handleSaveDeal} className="space-y-6">
+                  {/* Deal Name */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-900 mb-6">Deal Information</h3>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Deal Name / Internal Code Name</label>
+                      <input type="text" name="name" required placeholder="e.g. Project Apollo" value={formData.name} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
+                    </div>
+                  </div>
+
+                  {/* Basic Info Section */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-900 mb-6">Teaser Overview</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Sector</label>
+                        <input type="text" name="sector" value={formData.sector} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Geography</label>
+                        <input type="text" name="geography" value={formData.geography} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Company Overview</label>
+                        <textarea name="overview" value={formData.overview} onChange={handleFormChange} rows="4" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875] resize-none"></textarea>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Financials Section */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-900 mb-6">Financial Snapshot</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Revenue</label>
+                        <input type="text" name="revenue" value={formData.revenue} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">EBITDA</label>
+                        <input type="text" name="ebitda" value={formData.ebitda} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">YoY Growth</label>
+                        <input type="text" name="growth" value={formData.growth} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Employees</label>
+                        <input type="text" name="employees" value={formData.employees} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Transaction Details */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-900 mb-6">Transaction Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Deal Type</label>
+                        <select name="dealType" value={formData.dealType} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875] bg-white">
+                          <option>Majority Acquisition</option>
+                          <option>Minority Investment</option>
+                          <option>Asset Sale</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Asking Price</label>
+                        <input type="text" name="askingPrice" value={formData.askingPrice} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4">
+                    <button
+                      type="submit"
+                      className="flex items-center gap-2 px-8 py-3 bg-[#0b1120] hover:bg-gray-800 text-white font-bold rounded-lg shadow-md transition-colors"
+                    >
+                      <FaSave />
+                      Save & Publish Teaser
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {activeTab === 'deals' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {/* Add New Deal Card */}
+                <button
+                  onClick={() => setIsAddDealModalOpen(true)}
+                  className="h-44 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center gap-3 hover:border-gray-400 hover:bg-gray-50 transition-all group"
+                >
+                  <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center text-xl shadow-md group-hover:scale-105 transition-transform">
+                    <FaPlus />
+                  </div>
+                  <span className="text-[13px] text-gray-500 font-medium">Add New Deal</span>
+                </button>
+
+                {/* Existing Deals */}
+                {deals.map((deal) => (
+                  <div
+                    key={deal.id}
+                    onClick={() => router.push('/documents')}
+                    className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] transition-all cursor-pointer group"
+                  >
+                    <div className="flex justify-between items-start mb-auto">
+                      <span className="px-2 py-0.5 bg-[#fff8e6] text-[#b48629] text-[9px] font-bold rounded">
+                        {deal.status}
+                      </span>
+
+                      <div className="relative">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteDeal(deal.id);
+                            setOpenDropdownId(openDropdownId === deal.id ? null : deal.id);
                           }}
-                          className="w-full text-left px-4 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors font-medium"
+                          className="text-gray-400 hover:text-gray-600 p-1 opacity-60 hover:opacity-100"
                         >
-                          Delete
+                          <FaEllipsisV className="text-[11px]" />
                         </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
 
-                <div className="flex flex-col items-center justify-center flex-1 gap-2 pb-2">
-                  <div className="w-12 h-12 rounded-full bg-[#f4f7f9] flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
-                    <FaShieldAlt className="text-2xl text-[#b48629]" />
+                        {openDropdownId === deal.id && (
+                          <div className="absolute right-0 mt-1 w-24 bg-white rounded-md shadow-lg border border-gray-100 z-10 overflow-hidden">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteDeal(deal.id);
+                              }}
+                              className="w-full text-left px-4 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors font-medium"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center flex-1 gap-2 pb-2">
+                      <div className="w-12 h-12 rounded-full bg-[#f4f7f9] flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                        <FaShieldAlt className="text-2xl text-[#b48629]" />
+                      </div>
+                      <span className="font-bold text-gray-800 text-sm">{deal.name}</span>
+                    </div>
                   </div>
-                  <span className="font-bold text-gray-800 text-sm">{deal.name}</span>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'proposals' && (
+              <div className="w-full">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Deal Proposals</h2>
+                  <p className="text-sm text-gray-500 mt-1">Review and manage access requests for this deal.</p>
+                </div>
+                
+                <div className="bg-white rounded-xl shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50/50 border-b border-gray-100 text-sm text-gray-500 font-bold uppercase tracking-wider">
+                        <th className="py-5 px-6">Applicant Name</th>
+                        <th className="py-5 px-6">Company</th>
+                        <th className="py-5 px-6">Role</th>
+                        <th className="py-5 px-6">Investor Type</th>
+                        <th className="py-5 px-6">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {requests.map((req) => (
+                        <tr 
+                          key={req.id} 
+                          onClick={() => setSelectedRequest(req)}
+                          className="hover:bg-[#f4f7f9] cursor-pointer transition-colors group"
+                        >
+                          <td className="py-5 px-6 text-base font-bold text-gray-800 group-hover:text-[#00c875] transition-colors">{req.fullName}</td>
+                          <td className="py-5 px-6 text-base text-gray-600 font-medium">{req.company}</td>
+                          <td className="py-5 px-6 text-base text-gray-500">{req.jobTitle}</td>
+                          <td className="py-5 px-6 text-base text-gray-500">{req.investorType}</td>
+                          <td className="py-5 px-6">
+                            <span className={`px-3 py-1.5 text-xs font-bold rounded-md tracking-wide ${
+                              req.status === 'PENDING' ? 'bg-red-50 text-red-600' : 
+                              req.status === 'ACCEPTED' ? 'bg-[#e6fbf2] text-[#00c875]' : 
+                              'bg-red-50 text-red-600'
+                            }`}>
+                              {req.status === 'PENDING' ? 'Pending' : req.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {requests.length === 0 && (
+                        <tr>
+                          <td colSpan="5" className="p-12 text-center text-gray-400 text-sm font-medium">No deal proposals found.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            ))}
+            )}
+
+            {activeTab === 'bidding' && (
+              <div className="w-full">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Bidding Details</h2>
+                  <p className="text-sm text-gray-500 mt-1">Review and manage the bidding information.</p>
+                </div>
+                
+                <div className="bg-white p-12 rounded-xl shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] border border-gray-100 flex flex-col items-center justify-center text-center">
+                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                    <FaFileInvoiceDollar className="text-3xl text-gray-300" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-700">No Bidding Details Yet</h3>
+                  <p className="text-sm text-gray-500 mt-2 max-w-sm">The bidding details section is currently empty. More information will appear here once the bidding phase begins.</p>
+                </div>
+              </div>
+            )}
 
           </div>
         </div>
-      </div>
 
-      {/* Bottom Left Logo */}
-      <div className="fixed bottom-6 left-6 w-8 h-8 rounded-full bg-[#303030] text-white flex items-center justify-center shadow-lg font-serif italic text-sm">
-        N
-      </div>
+      </main>
 
       {/* Access Request Details Modal */}
       {selectedRequest && (
@@ -475,135 +630,6 @@ export default function DealDashboard() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Add New Deal Modal Form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-[#0b1120]/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-[#f4f7f9] w-full max-w-[900px] rounded-sm shadow-2xl relative flex flex-col max-h-[95vh] overflow-hidden">
-
-            {/* Modal Header */}
-            <div className="p-6 border-b border-gray-200 bg-white flex justify-between items-center rounded-t-sm z-10">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Create New Deal</h2>
-                <p className="text-sm text-[#00c875] font-bold tracking-wide mt-1">FOR {projectName.toUpperCase()}</p>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-900 transition-colors p-2"
-              >
-                <FaTimes className="text-xl" />
-              </button>
-            </div>
-
-            {/* Modal Body (Scrollable) */}
-            <div className="p-8 overflow-y-auto bg-[#f4f7f9] flex-1">
-              <form id="deal-form" onSubmit={handleSaveDeal} className="space-y-8">
-
-                {/* Deal Name */}
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                  <h3 className="text-lg font-bold text-gray-900 mb-6">Deal Information</h3>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Deal Name / Internal Code Name</label>
-                    <input type="text" name="name" required placeholder="e.g. Project Apollo" value={formData.name} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
-                  </div>
-                </div>
-
-                {/* Basic Info Section */}
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                  <h3 className="text-lg font-bold text-gray-900 mb-6">Teaser Overview</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Sector</label>
-                      <input type="text" name="sector" value={formData.sector} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Geography</label>
-                      <input type="text" name="geography" value={formData.geography} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Company Overview</label>
-                      <textarea name="overview" value={formData.overview} onChange={handleFormChange} rows="4" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875] resize-none"></textarea>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Financials Section */}
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                  <h3 className="text-lg font-bold text-gray-900 mb-6">Financial Snapshot</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Revenue</label>
-                      <input type="text" name="revenue" value={formData.revenue} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">EBITDA</label>
-                      <input type="text" name="ebitda" value={formData.ebitda} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">YoY Growth</label>
-                      <input type="text" name="growth" value={formData.growth} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Employees</label>
-                      <input type="text" name="employees" value={formData.employees} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Transaction Details */}
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                  <h3 className="text-lg font-bold text-gray-900 mb-6">Transaction Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Deal Type</label>
-                      <select name="dealType" value={formData.dealType} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875] bg-white">
-                        <option>Majority Acquisition</option>
-                        <option>Minority Investment</option>
-                        <option>Asset Sale</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Asking Price</label>
-                      <input type="text" name="askingPrice" value={formData.askingPrice} onChange={handleFormChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875]" />
-                    </div>
-                  </div>
-                </div>
-
-              </form>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-6 bg-white border-t border-gray-200 rounded-b-sm flex justify-between items-center z-10">
-              <button
-                type="button"
-                onClick={handleRemoveTeaser}
-                className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-bold text-sm rounded transition-colors flex items-center gap-2"
-              >
-                <FaTimes /> Remove from Marketplace
-              </button>
-
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold rounded-sm transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  form="deal-form"
-                  className="flex items-center gap-2 px-8 py-2.5 bg-[#0b1120] hover:bg-gray-800 text-white font-bold rounded-sm shadow-sm transition-colors"
-                >
-                  <FaSave />
-                  Save Details
-                </button>
-              </div>
-            </div>
-
           </div>
         </div>
       )}
