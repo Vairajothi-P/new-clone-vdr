@@ -2,7 +2,10 @@
 
 import React, { useState } from 'react';
 
-export default function TaskCreationModal({ allTasks = [], onClose, onCreate }) {
+export default function TaskCreationModal({ allTasks = [], currentDealStage = 'preparation', onClose, onCreate }) {
+  const STAGES_ORDER = ['preparation', 'dd', 'negotiation', 'closing'];
+  const currentStageIndex = STAGES_ORDER.indexOf(currentDealStage);
+
   const [formData, setFormData] = useState({
     title: '',
     role: 'Legal',
@@ -19,7 +22,7 @@ export default function TaskCreationModal({ allTasks = [], onClose, onCreate }) 
     visibility: 'external',
     // Maintaining these for compatibility with rest of app
     taskType: 'subtask',
-    stage: 'preparation',
+    stage: currentDealStage,
     riskImpact: 'low'
   });
 
@@ -154,10 +157,10 @@ export default function TaskCreationModal({ allTasks = [], onClose, onCreate }) 
                 onChange={e => setFormData({ ...formData, stage: e.target.value })}
                 className="block w-full border-slate-200 rounded-lg shadow-sm focus:ring-1 focus:ring-[var(--brand)] focus:border-[var(--brand)] sm:text-sm py-2 px-3 outline-none"
               >
-                <option value="preparation">Preparation</option>
-                <option value="dd">Due Diligence</option>
-                <option value="negotiation">Negotiation</option>
-                <option value="closing">Closing</option>
+                <option value="preparation" disabled={currentStageIndex < 0}>Preparation</option>
+                <option value="dd" disabled={currentStageIndex < 1}>Due Diligence</option>
+                <option value="negotiation" disabled={currentStageIndex < 2}>Negotiation</option>
+                <option value="closing" disabled={currentStageIndex < 3}>Closing</option>
               </select>
             </div>
             <div>

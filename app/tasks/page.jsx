@@ -105,18 +105,18 @@ export default function TasksWorkflowPage() {
 
   let tabs = [
     { id: 'board', label: 'Task Board' },
-    { id: 'control', label: 'Control Center' },
-    { id: 'stakeholders', label: 'Stakeholders' },
-    { id: 'logs', label: 'Workflow Log' },
-    { id: 'report', label: 'Status Report' }
+    { id: 'control', label: 'Control Center' }
   ];
 
   if (viewMode === 'Buyer') {
     tabs = [
-      { id: 'board', label: 'My Tasks' },
-      { id: 'report', label: 'Status Report' }
+      { id: 'board', label: 'My Tasks' }
     ];
-    if (!tabs.find(t => t.id === activeTab)) setActiveTab('board');
+  }
+
+  // Ensure activeTab is always valid for the current viewMode
+  if (!tabs.find(t => t.id === activeTab)) {
+    setActiveTab('board');
   }
 
   const handleUpdateTask = (updatedTask) => {
@@ -241,6 +241,7 @@ export default function TasksWorkflowPage() {
       {isCreating && (
         <TaskCreationModal
           allTasks={tasks}
+          currentDealStage={currentDealStage}
           onClose={() => setIsCreating(false)}
           onCreate={handleCreateTask}
         />
