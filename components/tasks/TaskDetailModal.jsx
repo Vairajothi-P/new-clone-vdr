@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 
-export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate, viewMode = 'Seller' }) {
+export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate, onEdit, viewMode = 'Seller' }) {
   const [activeTab, setActiveTab] = useState('details');
   const [status, setStatus] = useState(task.status || 'in_progress');
   const [showFailReason, setShowFailReason] = useState(false);
@@ -11,6 +11,7 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
     { id: 1, name: 'Ananya Mehta', initials: 'AM', time: 'Yesterday, 2:30 PM', text: 'Please review the latest draft attached. Pay special attention to the indemnity clauses.', isMe: false },
     { id: 2, name: task.assignee || 'Priya Menon', initials: task.assignee ? task.assignee.charAt(0) : 'P', time: 'Today, 10:15 AM', text: "I've reviewed the draft. Left a few comments directly in the document. Ready for your sign-off.", isMe: true }
   ]);
+  const [activeAction, setActiveAction] = useState(null); // 'reminder', 'escalate', 'reassign', 'escalate_done', 'reassign_done'
 
   if (!task) return null;
 
@@ -60,7 +61,7 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
                 </div>
               </div>
               <div className="flex gap-2">
-                <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+                <button onClick={onEdit} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                   Edit Task
                 </button>
@@ -147,7 +148,7 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
                           <p className="text-[11px] text-slate-500 font-medium">Version 2 • Uploaded on May 13, 2025</p>
                         </div>
                       </div>
-                      <button className="text-xs font-bold text-[var(--brand,theme(colors.blue.600))] hover:underline">View</button>
+                      <button onClick={() => alert('Document viewer would open here.')} className="text-xs font-bold text-[var(--brand,theme(colors.blue.600))] hover:underline active:scale-95 transition-transform">View</button>
                     </div>
                   </div>
 
@@ -353,20 +354,59 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
                   </button>
                 )}
                 
-                <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-[var(--brand,theme(colors.blue.600))] text-[var(--brand,theme(colors.blue.600))] hover:bg-[var(--brand-50,theme(colors.blue.50))] rounded-lg shadow-sm text-sm font-bold transition-colors">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                  Send Reminder
-                </button>
+                {activeAction === 'reminder' ? (
+                  <div className="w-full bg-green-50 border border-green-200 rounded-lg p-3 text-center animate-in fade-in zoom-in-95 duration-200 shadow-sm">
+                    <p className="text-xs font-bold text-green-700">✅ Reminder sent successfully!</p>
+                  </div>
+                ) : (
+                  <button onClick={() => { setActiveAction('reminder'); setTimeout(() => setActiveAction(null), 3000); }} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-[var(--brand,theme(colors.blue.600))] text-[var(--brand,theme(colors.blue.600))] hover:bg-[var(--brand-50,theme(colors.blue.50))] active:scale-95 rounded-lg shadow-sm text-sm font-bold transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    Send Reminder
+                  </button>
+                )}
                 
-                <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-red-500 text-red-600 hover:bg-red-50 rounded-lg shadow-sm text-sm font-bold transition-colors">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                  Escalate
-                </button>
+                {activeAction === 'escalate' ? (
+                  <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 flex flex-col gap-2 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="text-xs font-bold text-red-700 uppercase tracking-wider">Escalate Task</label>
+                    <textarea className="w-full text-sm p-2 border border-red-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-red-400 resize-none" rows="2" placeholder="Reason for escalation..."></textarea>
+                    <div className="flex gap-2 mt-1">
+                      <button onClick={() => setActiveAction(null)} className="flex-1 py-1.5 bg-white border border-slate-300 text-slate-600 rounded text-xs font-bold hover:bg-slate-50">Cancel</button>
+                      <button onClick={() => { setActiveAction('escalate_done'); setTimeout(() => setActiveAction(null), 3000); }} className="flex-1 py-1.5 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700">Confirm</button>
+                    </div>
+                  </div>
+                ) : activeAction === 'escalate_done' ? (
+                  <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 text-center animate-in fade-in zoom-in-95 duration-200 shadow-sm">
+                    <p className="text-xs font-bold text-red-700">🚨 Escalated to Management</p>
+                  </div>
+                ) : (
+                  <button onClick={() => setActiveAction('escalate')} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-red-500 text-red-600 hover:bg-red-50 active:scale-95 rounded-lg shadow-sm text-sm font-bold transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    Escalate
+                  </button>
+                )}
                 
-                <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg shadow-sm text-sm font-bold transition-colors">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
-                  Reassign
-                </button>
+                {activeAction === 'reassign' ? (
+                  <div className="w-full bg-slate-100 border border-slate-200 rounded-lg p-3 flex flex-col gap-2 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Reassign Task To</label>
+                    <select className="w-full text-sm p-2 border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
+                      <option>Buyer Finance Group</option>
+                      <option>Seller Execs</option>
+                    </select>
+                    <div className="flex gap-2 mt-1">
+                      <button onClick={() => setActiveAction(null)} className="flex-1 py-1.5 bg-white border border-slate-300 text-slate-600 rounded text-xs font-bold hover:bg-slate-50">Cancel</button>
+                      <button onClick={() => { setActiveAction('reassign_done'); setTimeout(() => setActiveAction(null), 3000); }} className="flex-1 py-1.5 bg-slate-800 text-white rounded text-xs font-bold hover:bg-slate-900">Reassign</button>
+                    </div>
+                  </div>
+                ) : activeAction === 'reassign_done' ? (
+                  <div className="w-full bg-slate-100 border border-slate-200 rounded-lg p-3 text-center animate-in fade-in zoom-in-95 duration-200 shadow-sm">
+                    <p className="text-xs font-bold text-slate-700">🔄 Task Reassigned</p>
+                  </div>
+                ) : (
+                  <button onClick={() => setActiveAction('reassign')} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 active:scale-95 rounded-lg shadow-sm text-sm font-bold transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                    Reassign
+                  </button>
+                )}
               </>
             )}
           </div>

@@ -38,14 +38,6 @@ export const CONTROLS_AUDIT_NAV_ITEMS = [
     badgeType: "brand",
   },
   {
-    key: "approvals",
-    label: "Approvals",
-    href: "/control-audits/approvals",
-    icon: CheckSquare,
-    badge: 5,
-    badgeType: "amber",
-  },
-  {
     key: "audit-trail",
     label: "Audit Trail",
     href: "/control-audits/audit-trail",

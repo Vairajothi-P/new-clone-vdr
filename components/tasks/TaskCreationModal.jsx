@@ -2,37 +2,44 @@
 
 import React, { useState } from 'react';
 
-export default function TaskCreationModal({ allTasks = [], currentDealStage = 'preparation', onClose, onCreate }) {
+export default function TaskCreationModal({ allTasks = [], currentDealStage = 'preparation', initialData = null, onClose, onCreate, onUpdate }) {
   const STAGES_ORDER = ['preparation', 'dd', 'negotiation', 'closing'];
   const currentStageIndex = STAGES_ORDER.indexOf(currentDealStage);
 
   const [formData, setFormData] = useState({
-    title: '',
-    role: 'Legal',
-    assignee: '',
-    priority: 'High',
-    dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-    estimatedEffort: '',
-    reminderSchedule: '3 days before, 1 day before, On due date',
-    description: '',
-    linkedDocument: '',
-    dependencies: [],
-    claimable: false,
-    isStageGate: false,
-    visibility: 'external',
+    title: initialData?.title || '',
+    role: initialData?.role || 'Legal',
+    assignee: initialData?.assignee || '',
+    priority: initialData?.priority || 'High',
+    dueDate: initialData?.dueDate || new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    estimatedEffort: initialData?.estimatedEffort || '',
+    reminderSchedule: initialData?.reminderSchedule || '3 days before, 1 day before, On due date',
+    description: initialData?.description || '',
+    linkedDocument: initialData?.linkedDocument || '',
+    dependencies: initialData?.dependencies || [],
+    claimable: initialData?.claimable || false,
+    isStageGate: initialData?.isStageGate || false,
+    visibility: initialData?.visibility || 'external',
     // Maintaining these for compatibility with rest of app
-    taskType: 'subtask',
-    stage: currentDealStage,
-    riskImpact: 'low'
+    taskType: initialData?.taskType || 'subtask',
+    stage: initialData?.stage || currentDealStage,
+    riskImpact: initialData?.riskImpact || 'low'
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onCreate({
-      ...formData,
-      id: `task-${Date.now()}`,
-      status: 'not_started'
-    });
+    if (initialData) {
+      onUpdate({
+        ...initialData,
+        ...formData
+      });
+    } else {
+      onCreate({
+        ...formData,
+        id: `task-${Date.now()}`,
+        status: 'not_started'
+      });
+    }
     onClose();
   };
 
@@ -49,7 +56,9 @@ export default function TaskCreationModal({ allTasks = [], currentDealStage = 'p
 
         <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-white shrink-0">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Create New Task</h2>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+              {initialData ? 'Edit Task' : 'Create New Task'}
+            </h2>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-all">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -304,7 +313,7 @@ export default function TaskCreationModal({ allTasks = [], currentDealStage = 'p
               Cancel
             </button>
             <button type="submit" className="px-6 py-2.5 rounded-lg text-sm font-medium text-white bg-[var(--brand,theme(colors.blue.600))] hover:bg-[var(--brand,theme(colors.blue.700))] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand)]">
-              Create Task
+              {initialData ? 'Save Changes' : 'Create Task'}
             </button>
           </div>
         </form>
