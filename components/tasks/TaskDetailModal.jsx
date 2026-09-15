@@ -5,6 +5,12 @@ import React, { useState } from 'react';
 export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate, viewMode = 'Seller' }) {
   const [activeTab, setActiveTab] = useState('details');
   const [status, setStatus] = useState(task.status || 'in_progress');
+  const [showFailReason, setShowFailReason] = useState(false);
+  const [failReasonText, setFailReasonText] = useState('');
+  const [mockComments, setMockComments] = useState([
+    { id: 1, name: 'Ananya Mehta', initials: 'AM', time: 'Yesterday, 2:30 PM', text: 'Please review the latest draft attached. Pay special attention to the indemnity clauses.', isMe: false },
+    { id: 2, name: task.assignee || 'Priya Menon', initials: task.assignee ? task.assignee.charAt(0) : 'P', time: 'Today, 10:15 AM', text: "I've reviewed the draft. Left a few comments directly in the document. Ready for your sign-off.", isMe: true }
+  ]);
 
   if (!task) return null;
 
@@ -200,37 +206,30 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  {/* Mock Comment 1 */}
-                  <div className="flex gap-4">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--brand,theme(colors.blue.500))] to-purple-500 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-sm mt-1">
-                      AM
-                    </div>
-                    <div className="max-w-[80%]">
-                      <div className="flex items-baseline gap-2 mb-1.5 px-1">
-                        <span className="text-sm font-bold text-slate-900">Ananya Mehta</span>
-                        <span className="text-[10px] font-semibold text-slate-500">Yesterday, 2:30 PM</span>
+                  {mockComments.map(comment => (
+                    comment.isSystem ? (
+                      <div key={comment.id} className="flex justify-center my-4">
+                        <div className="bg-red-50 border border-red-100 px-4 py-2 rounded-full text-xs font-semibold text-red-700 shadow-sm">
+                          {comment.text}
+                        </div>
                       </div>
-                      <div className="bg-white p-4 rounded-2xl rounded-tl-sm border border-slate-200/80 shadow-sm text-[15px] leading-relaxed text-slate-700">
-                        Please review the latest draft attached. Pay special attention to the indemnity clauses.
+                    ) : (
+                      <div key={comment.id} className={`flex gap-4 ${comment.isMe ? 'flex-row-reverse' : ''}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 shadow-sm mt-1 ${comment.isMe ? 'bg-gradient-to-br from-slate-200 to-slate-300 text-slate-700 border border-slate-300' : 'bg-gradient-to-br from-[var(--brand,theme(colors.blue.500))] to-purple-500 text-white'}`}>
+                          {comment.initials}
+                        </div>
+                        <div className={`flex flex-col max-w-[80%] ${comment.isMe ? 'items-end' : ''}`}>
+                          <div className={`flex items-baseline gap-2 mb-1.5 px-1 ${comment.isMe ? 'flex-row-reverse' : ''}`}>
+                            <span className="text-sm font-bold text-slate-900">{comment.name}</span>
+                            <span className="text-[10px] font-semibold text-slate-500">{comment.time}</span>
+                          </div>
+                          <div className={`p-4 rounded-2xl shadow-sm text-[15px] leading-relaxed ${comment.isMe ? 'bg-gradient-to-br from-[var(--brand,theme(colors.blue.500))] to-[var(--brand,theme(colors.blue.600))] text-white rounded-tr-sm text-right' : 'bg-white border border-slate-200/80 text-slate-700 rounded-tl-sm'}`}>
+                            {comment.text}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Mock Comment 2 */}
-                  <div className="flex gap-4 flex-row-reverse">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 text-slate-700 flex items-center justify-center text-sm font-bold shrink-0 shadow-sm mt-1 border border-slate-300">
-                      {task.assignee ? task.assignee.charAt(0) : 'P'}
-                    </div>
-                    <div className="flex flex-col items-end max-w-[80%]">
-                      <div className="flex items-baseline gap-2 mb-1.5 px-1 flex-row-reverse">
-                        <span className="text-sm font-bold text-slate-900">{task.assignee || 'Priya Menon'}</span>
-                        <span className="text-[10px] font-semibold text-slate-500">Today, 10:15 AM</span>
-                      </div>
-                      <div className="bg-gradient-to-br from-[var(--brand,theme(colors.blue.500))] to-[var(--brand,theme(colors.blue.600))] p-4 rounded-2xl rounded-tr-sm shadow-sm text-[15px] leading-relaxed text-white text-right">
-                        I've reviewed the draft. Left a few comments directly in the document. Ready for your sign-off.
-                      </div>
-                    </div>
-                  </div>
+                    )
+                  ))}
                 </div>
 
                 <div className="p-4 border-t border-slate-200/80 bg-white flex gap-4 items-center">
@@ -297,12 +296,50 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                       Pass Audit & Complete
                     </button>
-                    <button 
-                      onClick={() => handleStatusChange('in_progress')}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-red-500 text-red-600 hover:bg-red-50 rounded-lg shadow-sm text-sm font-bold transition-colors"
-                    >
-                      Fail Audit (Return to Group)
-                    </button>
+                    {!showFailReason ? (
+                      <button 
+                        onClick={() => setShowFailReason(true)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-red-500 text-red-600 hover:bg-red-50 rounded-lg shadow-sm text-sm font-bold transition-colors"
+                      >
+                        Fail Audit (Return to Group)
+                      </button>
+                    ) : (
+                      <div className="w-full bg-red-50/50 border border-red-200 rounded-lg p-3 flex flex-col gap-2 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                        <label className="text-xs font-bold text-red-700 uppercase tracking-wider">Reason for Failure</label>
+                        <textarea 
+                          className="w-full text-sm p-2.5 border border-red-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent placeholder-slate-400 resize-none shadow-inner"
+                          rows="3"
+                          placeholder="Explain what needs to be fixed before they can resubmit..."
+                          value={failReasonText}
+                          onChange={(e) => setFailReasonText(e.target.value)}
+                        />
+                        <div className="flex gap-2 mt-1">
+                          <button 
+                            onClick={() => setShowFailReason(false)}
+                            className="flex-1 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (failReasonText.trim()) {
+                                setMockComments(prev => [...prev, {
+                                  id: Date.now(),
+                                  isSystem: true,
+                                  text: `🚨 Task returned to group: ${failReasonText}`
+                                }]);
+                              }
+                              handleStatusChange('in_progress');
+                              setShowFailReason(false);
+                              setFailReasonText('');
+                            }}
+                            className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-colors shadow-sm"
+                          >
+                            Return to Buyer
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
 
