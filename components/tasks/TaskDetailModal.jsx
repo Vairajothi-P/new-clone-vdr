@@ -11,9 +11,36 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
     { id: 1, name: 'Ananya Mehta', initials: 'AM', time: 'Yesterday, 2:30 PM', text: 'Please review the latest draft attached. Pay special attention to the indemnity clauses.', isMe: false },
     { id: 2, name: task.assignee || 'Priya Menon', initials: task.assignee ? task.assignee.charAt(0) : 'P', time: 'Today, 10:15 AM', text: "I've reviewed the draft. Left a few comments directly in the document. Ready for your sign-off.", isMe: true }
   ]);
+  const [newComment, setNewComment] = useState('');
+  const [mockFiles, setMockFiles] = useState([
+    { id: 1, name: 'NDA_Draft_v2.docx', size: '2.4 MB', uploadedAt: '13 May 2025', uploadedBy: 'Ananya Mehta' }
+  ]);
   const [activeAction, setActiveAction] = useState(null); // 'reminder', 'escalate', 'reassign', 'escalate_done', 'reassign_done'
 
   if (!task) return null;
+
+  const handleSendComment = () => {
+    if (!newComment.trim()) return;
+    setMockComments([...mockComments, {
+      id: Date.now(),
+      name: 'ME',
+      initials: 'M',
+      time: 'Just now',
+      text: newComment,
+      isMe: true
+    }]);
+    setNewComment('');
+  };
+
+  const handleFileUpload = () => {
+    setMockFiles([...mockFiles, {
+      id: Date.now(),
+      name: 'Revised_NDA_Signed.pdf',
+      size: '1.1 MB',
+      uploadedAt: 'Just now',
+      uploadedBy: 'ME'
+    }]);
+  };
 
   const handleStatusChange = (newStatus) => {
     setStatus(newStatus);
@@ -25,10 +52,10 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white/95 backdrop-blur-xl w-full max-w-6xl rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-white/40 flex overflow-hidden max-h-[90vh]">
+      <div className="bg-white/95 backdrop-blur-xl w-full max-w-6xl rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-white/40 flex flex-col md:flex-row overflow-hidden max-h-[90vh]">
         
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden border-r border-slate-200 bg-white">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden border-b md:border-b-0 md:border-r border-slate-200 bg-white">
           
           {/* Header */}
           <div className="p-6 border-b border-slate-200">
@@ -90,11 +117,11 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
           </div>
 
           {/* Tab Content Area */}
-          <div className="flex-1 overflow-y-auto p-6 bg-slate-50 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {activeTab === 'details' && (
-              <div className="flex gap-8">
+              <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
                 {/* Left Mini Column */}
-                <div className="w-48 shrink-0 space-y-6">
+                <div className="w-full lg:w-48 shrink-0 grid grid-cols-2 lg:flex lg:flex-col gap-4 lg:gap-6">
                   <div>
                     <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Role</p>
                     <p className="text-sm font-bold text-slate-900">{task.role || 'Legal'}</p>
@@ -241,16 +268,68 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
                     <input 
                       type="text" 
                       placeholder="Type a message..." 
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleSendComment(); }}
                       className="w-full pl-5 pr-12 py-3 bg-slate-100/50 border border-slate-200 rounded-full text-sm focus:bg-white focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent outline-none transition-all shadow-inner"
                     />
-                    <button className="absolute right-2.5 top-1.5 p-2 bg-[var(--brand,theme(colors.blue.500))] hover:bg-[var(--brand,theme(colors.blue.600))] text-white rounded-full transition-colors shadow-sm">
+                    <button 
+                      onClick={handleSendComment}
+                      className="absolute right-2.5 top-1.5 p-2 bg-[var(--brand,theme(colors.blue.500))] hover:bg-[var(--brand,theme(colors.blue.600))] text-white rounded-full transition-colors shadow-sm"
+                    >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                     </button>
                   </div>
                 </div>
               </div>
             )}
-            {activeTab !== 'details' && activeTab !== 'comments' && (
+            
+            {activeTab === 'files' && (
+              <div className="flex flex-col h-full bg-slate-50/50">
+                <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-white">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Task Documents</h3>
+                    <p className="text-[11px] text-slate-500">Files uploaded for this specific task.</p>
+                  </div>
+                  <button onClick={handleFileUpload} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Upload File
+                  </button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                  {mockFiles.map(file => (
+                    <div key={file.id} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-[var(--brand,theme(colors.blue.300))] transition-colors group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-[var(--brand-50,theme(colors.blue.50))] text-[var(--brand,theme(colors.blue.600))] rounded-lg flex items-center justify-center">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[var(--brand,theme(colors.blue.700))] transition-colors">{file.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[11px] font-medium text-slate-500">{file.size}</span>
+                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                            <span className="text-[11px] font-medium text-slate-500">Uploaded by {file.uploadedBy}</span>
+                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                            <span className="text-[11px] font-medium text-slate-500">{file.uploadedAt}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button className="p-2 text-slate-400 hover:text-[var(--brand)] bg-slate-50 hover:bg-[var(--brand-50)] rounded-lg transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </button>
+                        <button className="p-2 text-slate-400 hover:text-[var(--brand)] bg-slate-50 hover:bg-[var(--brand-50)] rounded-lg transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {activeTab !== 'details' && activeTab !== 'comments' && activeTab !== 'files' && (
               <div className="flex items-center justify-center h-full text-slate-400 font-medium">
                 {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} tracking coming soon.
               </div>
@@ -259,7 +338,7 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
         </div>
 
         {/* Right Sidebar - Actions */}
-        <div className="w-72 shrink-0 bg-slate-50 border-l border-slate-200 p-6 flex flex-col overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="w-full md:w-72 shrink-0 bg-slate-50 md:border-l border-t md:border-t-0 border-slate-200 p-6 flex flex-col md:overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4">Actions</h3>
           
           <div className="space-y-3">
@@ -281,6 +360,20 @@ export default function TaskDetailModal({ task, allTasks = [], onClose, onUpdate
                   >
                     Submit for Audit
                   </button>
+                )}
+                {status === 'audit' && (
+                  <div className="w-full bg-purple-50 border border-purple-200 rounded-lg p-4 flex flex-col items-center justify-center text-center shadow-sm">
+                    <svg className="w-6 h-6 text-purple-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <p className="text-sm font-bold text-purple-700">Submitted for Audit</p>
+                    <p className="text-xs text-purple-600 mt-1">Waiting for seller review</p>
+                  </div>
+                )}
+                {status === 'completed' && (
+                  <div className="w-full bg-green-50 border border-green-200 rounded-lg p-4 flex flex-col items-center justify-center text-center shadow-sm">
+                    <svg className="w-6 h-6 text-green-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <p className="text-sm font-bold text-green-700">Task Completed</p>
+                    <p className="text-xs text-green-600 mt-1">Approved by seller</p>
+                  </div>
                 )}
               </>
             )}

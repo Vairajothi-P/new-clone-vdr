@@ -17,7 +17,7 @@ export default function TasksNav() {
       ];
 
   return (
-    <div className="bg-white border-b border-slate-200 px-8 lg:px-10 shrink-0">
+    <div className="bg-white/80 backdrop-blur-md border-b border-[var(--brand-100,theme(colors.blue.100))] px-8 lg:px-10 shrink-0">
       <div className="flex space-x-2 mt-2 mb-4 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {tabs.map(tab => {
           const isActive = pathname === tab.path || pathname.startsWith(`${tab.path}/`);
@@ -25,10 +25,10 @@ export default function TasksNav() {
             <Link
               key={tab.id}
               href={tab.path}
-              className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-[13px] transition-colors duration-200 ${
+              className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-[13px] transition-all duration-200 ${
                 isActive
-                  ? 'bg-[var(--brand-50,theme(colors.blue.50))] text-[var(--brand,theme(colors.blue.700))] shadow-sm border border-[var(--brand-100,theme(colors.blue.100))]'
-                  : 'bg-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                  ? 'bg-gradient-to-r from-[var(--brand,theme(colors.blue.600))] to-[var(--brand-secondary,theme(colors.teal.500))] text-white shadow-md shadow-[var(--brand-200,theme(colors.blue.200))] border-transparent scale-[1.02]'
+                  : 'bg-transparent text-slate-500 hover:text-[var(--brand-dark,theme(colors.slate.800))] hover:bg-[var(--brand-50,theme(colors.slate.100))]'
               }`}
             >
               {tab.label}

@@ -72,6 +72,8 @@ function TeaserContent() {
       investmentRange: "Select range",
       message: ""
     });
+
+    router.push('/dms/tracker');
   };
 
   return (

@@ -8,8 +8,8 @@ export default function BoardPage() {
   const { visibleTasks, tasks, setSelectedTask, viewMode } = useTasks();
 
   return (
-    <div className="flex-1 w-full h-full px-8 lg:px-10 py-8 relative">
-      <div className="max-w-[1400px] mx-auto h-full">
+    <div className="flex-1 w-full h-full px-4 md:px-8 lg:px-10 py-6 md:py-8 relative">
+      <div className="w-full mx-auto h-full">
         <TaskBoard 
           tasks={visibleTasks} 
           allTasks={tasks} 
