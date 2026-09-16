@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { FaArrowLeft, FaSearch, FaEllipsisV, FaDownload, FaTimes, FaRegClock, FaFolder } from "react-icons/fa";
+import { FaArrowLeft, FaSearch, FaEllipsisV, FaDownload, FaTimes, FaRegClock, FaFolder, FaPowerOff } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import NDAModal from "../../../components/NDAModal";
 
@@ -54,27 +54,33 @@ export default function TrackerPage() {
   return (
     <main className="min-h-screen bg-[#f8fafc] text-gray-900 font-sans">
       {/* Header Navbar */}
-      <nav className="fixed top-0 left-0 w-full bg-white z-40 py-4 px-4 md:px-8 flex justify-between items-center border-b border-gray-200 shadow-sm">
+      <nav className="fixed top-0 left-0 w-full bg-[#0b1120]/95 backdrop-blur-md z-50 py-5 px-4 md:px-12 flex justify-between items-center border-b border-white/10 text-white">
         <div className="flex items-center">
-          <Link href="/dms/marketplace" className="flex items-center text-gray-500 hover:text-gray-900 transition-colors group mr-8">
-            <FaArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
-            <span className="font-medium text-sm">Back to Marketplace</span>
-          </Link>
-          <div className="hidden md:flex items-center gap-1 text-sm font-medium text-gray-400 uppercase tracking-widest">
-            <span className="text-[#b48629]">Diligence & Access</span>
-          </div>
+            <div className="flex items-center">
+              <Link href="/dms/marketplace" className="text-lg text-gray-300 hover:text-white font-medium transition-colors mr-20">
+                Marketplace
+              </Link>
+              <div className="flex items-center gap-20">
+                <Link href="#" className="text-lg text-gray-300 hover:text-white font-medium transition-colors">
+                  Profile
+                </Link>
+                <span className="text-xl font-bold text-white tracking-wide">
+                  Tracker
+                </span>
+              </div>
+            </div>
         </div>
-        
-        <div className="flex items-center gap-6">
-          <Link href="/dms/marketplace" className="text-sm text-gray-500 hover:text-gray-900 font-medium transition-colors">
-            Marketplace
-          </Link>
-          <Link href="/dms/tracker" className="text-sm text-[#b48629] font-bold transition-colors border-b-2 border-[#b48629] pb-1">
-            Tracker
-          </Link>
-          <div className="w-8 h-8 rounded-full bg-gray-200 border border-gray-300 flex items-center justify-center text-sm font-bold text-gray-600">
-            AM
-          </div>
+
+        {/* Right side - Auth */}
+        <div className="hidden md:flex items-center gap-4">
+            <Link href="/dms/login">
+              <button
+                onClick={() => localStorage.removeItem('userRole')}
+                className="text-white hover:text-red-400 border border-white/30 hover:border-red-400 px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap flex items-center gap-2"
+              >
+                <FaPowerOff /> Logout
+              </button>
+            </Link>
         </div>
       </nav>
 
