@@ -95,7 +95,7 @@ export default function MainSidebar() {
         </Link>
 
         {/* Nav Items */}
-        <div className="flex flex-col gap-1.5 flex-1">
+        <div className="flex flex-col flex-1">
           {NAV_ITEMS.map((item) => {
             if (item.key === 'deals' || item.key === 'teams') return null;
             if (item.key === 'groups' && !hasGroupsAccess) return null;
@@ -167,8 +167,8 @@ export default function MainSidebar() {
                           href={sub.href}
                           onClick={() => setOpenSubmenuKey(null)}
                           className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${isSubActive
-                              ? 'bg-[var(--brand)]/10 text-[var(--brand)]'
-                              : 'text-slate-600 hover:bg-slate-50 hover:text-[var(--brand)]'
+                            ? 'bg-[var(--brand)]/10 text-[var(--brand)]'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-[var(--brand)]'
                             }`}
                         >
                           {sub.label}

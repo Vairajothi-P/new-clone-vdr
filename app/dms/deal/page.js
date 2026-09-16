@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { FaPowerOff, FaCog, FaDatabase, FaPlus, FaEllipsisV, FaShieldAlt, FaTimes, FaSave, FaArrowLeft, FaBell, FaCheck, FaFolder, FaFileInvoiceDollar } from "react-icons/fa";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import NDAModal from "../../../components/NDAModal";
 
 export default function DealDashboard() {
   const searchParams = useSearchParams();
@@ -14,11 +15,16 @@ export default function DealDashboard() {
   const [requests, setRequests] = useState([]);
   const [isAddDealModalOpen, setIsAddDealModalOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [openProposalDropdownId, setOpenProposalDropdownId] = useState(null);
   const [newDealName, setNewDealName] = useState("");
   const [newDealDesc, setNewDealDesc] = useState("");
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [activeTab, setActiveTab] = useState('teaser');
+  
+  // NDA Modal State
+  const [showNDAModal, setShowNDAModal] = useState(false);
+  const [ndaTarget, setNdaTarget] = useState(null);
 
   // Deal form state
   const [formData, setFormData] = useState({
@@ -431,7 +437,7 @@ export default function DealDashboard() {
                   <h2 className="text-2xl font-bold text-gray-900">Deal Proposals</h2>
                   <p className="text-sm text-gray-500 mt-1">Review and manage access requests for this deal.</p>
                 </div>
-                
+
                 <div className="bg-white rounded-xl shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden">
                   <table className="w-full text-left border-collapse">
                     <thead>
@@ -441,12 +447,13 @@ export default function DealDashboard() {
                         <th className="py-5 px-6">Role</th>
                         <th className="py-5 px-6">Investor Type</th>
                         <th className="py-5 px-6">Status</th>
+                        <th className="py-5 px-6 text-center w-16">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {requests.map((req) => (
-                        <tr 
-                          key={req.id} 
+                        <tr
+                          key={req.id}
                           onClick={() => setSelectedRequest(req)}
                           className="hover:bg-[#f4f7f9] cursor-pointer transition-colors group"
                         >
@@ -455,19 +462,48 @@ export default function DealDashboard() {
                           <td className="py-5 px-6 text-base text-gray-500">{req.jobTitle}</td>
                           <td className="py-5 px-6 text-base text-gray-500">{req.investorType}</td>
                           <td className="py-5 px-6">
-                            <span className={`px-3 py-1.5 text-xs font-bold rounded-md tracking-wide ${
-                              req.status === 'PENDING' ? 'bg-red-50 text-red-600' : 
-                              req.status === 'ACCEPTED' ? 'bg-[#e6fbf2] text-[#00c875]' : 
-                              'bg-red-50 text-red-600'
-                            }`}>
+                            <span className={`px-3 py-1.5 text-xs font-bold rounded-md tracking-wide ${req.status === 'PENDING' ? 'bg-red-50 text-red-600' :
+                                req.status === 'ACCEPTED' ? 'bg-[#e6fbf2] text-[#00c875]' :
+                                  'bg-red-50 text-red-600'
+                              }`}>
                               {req.status === 'PENDING' ? 'Pending' : req.status}
                             </span>
+                          </td>
+                          <td className="py-5 px-6 text-center">
+                            <div className="relative inline-block text-left">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenProposalDropdownId(openProposalDropdownId === req.id ? null : req.id);
+                                }}
+                                className="text-gray-400 hover:text-gray-600 p-2 opacity-60 hover:opacity-100 transition-opacity"
+                              >
+                                <FaEllipsisV />
+                              </button>
+
+                              {openProposalDropdownId === req.id && (
+                                <div className="absolute right-0 bottom-full mb-2 w-32 bg-white rounded-md shadow-lg border border-gray-100 z-50 overflow-hidden">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const updatedReqs = requests.filter(r => r.id !== req.id);
+                                      setRequests(updatedReqs);
+                                      localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(updatedReqs));
+                                      setOpenProposalDropdownId(null);
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
                       {requests.length === 0 && (
                         <tr>
-                          <td colSpan="5" className="p-12 text-center text-gray-400 text-sm font-medium">No deal proposals found.</td>
+                          <td colSpan="6" className="p-12 text-center text-gray-400 text-sm font-medium">No deal proposals found.</td>
                         </tr>
                       )}
                     </tbody>
@@ -482,7 +518,7 @@ export default function DealDashboard() {
                   <h2 className="text-2xl font-bold text-gray-900">Bidding Details</h2>
                   <p className="text-sm text-gray-500 mt-1">Review and manage the bidding information.</p>
                 </div>
-                
+
                 <div className="bg-white p-12 rounded-xl shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] border border-gray-100 flex flex-col items-center justify-center text-center">
                   <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                     <FaFileInvoiceDollar className="text-3xl text-gray-300" />
@@ -546,42 +582,71 @@ export default function DealDashboard() {
             </div>
 
             <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  const updatedReqs = requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'REJECTED' } : r);
-                  setRequests(updatedReqs);
-                  localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(updatedReqs));
-                  setSelectedRequest(null);
-                }}
-                className="px-5 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-bold transition-colors text-sm"
-              >
-                Reject Request
-              </button>
-              <button
-                onClick={() => {
-                  // Update request status
-                  const updatedReqs = requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'ACCEPTED' } : r);
-                  setRequests(updatedReqs);
-                  localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(updatedReqs));
+              {selectedRequest.status === 'ACCEPTED' ? (
+                <button
+                  onClick={() => {
+                    setNdaTarget({
+                      projectName: projectName,
+                      dealName: selectedRequest.company || "New Deal"
+                    });
+                    setSelectedRequest(null);
+                    setShowNDAModal(true);
+                  }}
+                  className="px-6 py-2.5 bg-[var(--brand)] hover:bg-[var(--brand-secondary)] text-white rounded-lg font-bold transition-colors text-sm shadow-sm flex items-center gap-2"
+                >
+                  <FaFolder /> Open Deal
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      const updatedReqs = requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'REJECTED' } : r);
+                      setRequests(updatedReqs);
+                      localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(updatedReqs));
 
-                  // Auto-create a deal card based on company name
-                  const newDeal = {
-                    name: selectedRequest.company || "New Deal",
-                    desc: "Created automatically from approved access request.",
-                    status: "DRAFT",
-                    id: Date.now()
-                  };
-                  const updatedDeals = [...deals, newDeal];
-                  setDeals(updatedDeals);
-                  localStorage.setItem(`dms_deals_${projectName}`, JSON.stringify(updatedDeals));
+                      // Update global tracker
+                      const allReqs = JSON.parse(localStorage.getItem('dms_all_requests') || '[]');
+                      const updatedAllReqs = allReqs.map(r => r.id === selectedRequest.id ? { ...r, status: 'Rejected' } : r);
+                      localStorage.setItem('dms_all_requests', JSON.stringify(updatedAllReqs));
 
-                  setSelectedRequest(null);
-                  alert(`Deal card "${newDeal.name}" created automatically.`);
-                }}
-                className="px-5 py-2.5 bg-[#00c875] hover:bg-[#00a863] text-white rounded-lg font-bold transition-colors text-sm shadow-sm flex items-center gap-2"
-              >
-                <FaCheck /> Accept & Create Deal
-              </button>
+                      setSelectedRequest(null);
+                    }}
+                    className="px-5 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-bold transition-colors text-sm"
+                  >
+                    Reject Request
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Update request status locally
+                      const updatedReqs = requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'ACCEPTED' } : r);
+                      setRequests(updatedReqs);
+                      localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(updatedReqs));
+
+                      // Update global tracker
+                      const allReqs = JSON.parse(localStorage.getItem('dms_all_requests') || '[]');
+                      const updatedAllReqs = allReqs.map(r => r.id === selectedRequest.id ? { ...r, status: 'Approved' } : r);
+                      localStorage.setItem('dms_all_requests', JSON.stringify(updatedAllReqs));
+
+                      // Auto-create a deal card based on company name
+                      const newDeal = {
+                        name: selectedRequest.company || "New Deal",
+                        desc: "Created automatically from approved access request.",
+                        status: "DRAFT",
+                        id: Date.now()
+                      };
+                      const updatedDeals = [...deals, newDeal];
+                      setDeals(updatedDeals);
+                      localStorage.setItem(`dms_deals_${projectName}`, JSON.stringify(updatedDeals));
+
+                      setSelectedRequest(null);
+                      alert(`Deal card "${newDeal.name}" created automatically.`);
+                    }}
+                    className="px-5 py-2.5 bg-[#00c875] hover:bg-[#00a863] text-white rounded-lg font-bold transition-colors text-sm shadow-sm flex items-center gap-2"
+                  >
+                    <FaCheck /> Accept & Create Deal
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -633,6 +698,20 @@ export default function DealDashboard() {
           </div>
         </div>
       )}
+
+      {/* NDA Modal */}
+      <NDAModal 
+        isOpen={showNDAModal}
+        onClose={() => setShowNDAModal(false)}
+        projectName={ndaTarget?.projectName}
+        companyName={ndaTarget?.dealName}
+        onAccept={() => {
+          setShowNDAModal(false);
+          if (ndaTarget) {
+            router.push(`/dms/workspace?filterProject=${encodeURIComponent(ndaTarget.projectName)}&filterDeal=${encodeURIComponent(ndaTarget.dealName)}`);
+          }
+        }}
+      />
 
     </div>
   );
