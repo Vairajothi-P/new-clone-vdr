@@ -88,8 +88,8 @@ export default function TaskBoard({ tasks, allTasks, onTaskClick, viewMode }) {
             <div key={col.id} className="w-[85vw] sm:w-[320px] xl:w-auto shrink-0 bg-gradient-to-b from-[var(--brand-50,theme(colors.blue.50))] to-[var(--brand-50,theme(colors.slate.50))]/20 rounded-2xl p-4 flex flex-col max-h-full border border-[var(--brand-100,theme(colors.blue.100))] shadow-[0_4px_20px_-10px_rgba(var(--brand-rgb),0.15)] snap-center">
 
               <div className="flex justify-between items-center mb-4 px-2 pt-1">
-                <h3 className="text-[14px] font-bold text-[var(--brand-dark,theme(colors.slate.800))] tracking-wide">{col.label}</h3>
-                <span className="text-[11px] font-black bg-white text-[var(--brand,theme(colors.blue.600))] px-2.5 py-0.5 rounded-full border border-[var(--brand-100,theme(colors.blue.100))] shadow-sm">
+                <h3 className="text-sm font-semibold text-slate-800 tracking-wide">{col.label}</h3>
+                <span className="text-[10px] font-semibold bg-white text-slate-500 px-2 py-0.5 rounded-full border border-slate-200/80 shadow-sm">
                   {colTasks.length}
                 </span>
               </div>
@@ -115,30 +115,30 @@ export default function TaskBoard({ tasks, allTasks, onTaskClick, viewMode }) {
                       <div className="flex flex-wrap items-start gap-1.5 mb-3 shrink-0">
                         <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md border ${getPriorityStyle(task.priority)}`}>
                           <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80"></span>
-                          <span className="text-[9px] font-bold uppercase tracking-wider">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider">
                             {task.priority}
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-1.5 items-center">
                           {task.isStageGate && (
-                            <span className="text-[10px] uppercase font-black tracking-wider text-purple-600 bg-purple-50 border border-purple-100/80 px-2 py-0.5 rounded-md shadow-sm">
+                            <span className="text-[10px] uppercase font-semibold tracking-wider text-purple-600 bg-purple-50 border border-purple-100/80 px-2 py-0.5 rounded-md shadow-sm">
                               MILESTONE
                             </span>
                           )}
                           {isOverdue && (
-                            <span className="text-[10px] uppercase font-black tracking-wider text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-md shadow-sm">
+                            <span className="text-[10px] uppercase font-semibold tracking-wider text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-md shadow-sm">
                               OVERDUE
                             </span>
                           )}
                           {task.riskImpact === 'high' && !isOverdue && (
-                            <span className="text-[10px] uppercase font-black tracking-wider text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md shadow-sm">
+                            <span className="text-[10px] uppercase font-semibold tracking-wider text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md shadow-sm">
                               RISK
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <h4 className="text-sm font-bold text-slate-800 mb-2 leading-snug group-hover:text-[var(--brand,theme(colors.blue.600))] transition-colors line-clamp-2">
+                      <h4 className="text-sm font-semibold text-slate-800 mb-2 leading-snug group-hover:text-[var(--brand,theme(colors.blue.600))] transition-colors line-clamp-2">
                         {task.title}
                       </h4>
 
@@ -153,10 +153,10 @@ export default function TaskBoard({ tasks, allTasks, onTaskClick, viewMode }) {
 
                       <div className="flex items-center justify-between mt-auto pt-3 shrink-0 border-t border-slate-100/80">
                         <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-300 flex items-center justify-center text-[9px] font-black text-slate-600 shadow-sm">
+                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-300 flex items-center justify-center text-[9px] font-bold text-slate-600 shadow-sm">
                             {task.assignee.charAt(0)}
                           </div>
-                          <span className="text-[11px] font-semibold text-slate-500 truncate max-w-[70px]">
+                          <span className="text-xs text-slate-500 truncate max-w-[70px]">
                             {task.assignee}
                           </span>
                         </div>
