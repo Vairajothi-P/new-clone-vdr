@@ -7,25 +7,25 @@ export default function TasksHeader() {
   const { currentDealStage, viewMode, setViewMode, setIsCreating } = useTasks();
 
   return (
-    <div className="bg-white border-b border-slate-200 shrink-0 relative z-10">
-      {/* Clean top accent line */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-[var(--brand,theme(colors.blue.600))] opacity-90"></div>
+    <div className="bg-gradient-to-r from-[var(--brand-50,theme(colors.blue.50))] to-white border-b border-[var(--brand-100,theme(colors.blue.100))] shrink-0 relative z-10">
+      {/* Premium brand accent line */}
+      <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[var(--brand,theme(colors.blue.600))] to-[var(--brand-secondary,theme(colors.teal.500))]"></div>
 
       <div className="w-full px-8 lg:px-10">
-        <div className="flex justify-between items-center py-6">
+        <div className="flex flex-col lg:flex-row lg:justify-between items-start lg:items-center py-4 lg:py-6 gap-4 lg:gap-0">
           <div className="flex flex-col">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            <div className="flex flex-wrap items-center gap-2 lg:gap-4">
+              <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-[var(--brand-dark,theme(colors.slate.900))]">
                 Task & Workflow
               </h1>
-              <span className="text-[11px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+              <span className="text-[10px] lg:text-[11px] font-bold tracking-wider uppercase px-2 lg:px-2.5 py-1 rounded-md bg-white text-[var(--brand,theme(colors.blue.600))] border border-[var(--brand-200,theme(colors.blue.200))] flex items-center gap-1.5 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand,theme(colors.blue.500))] animate-pulse"></span>
                 STAGE: {currentDealStage}
               </span>
             </div>
-            <p className="text-sm text-slate-500 mt-1">Streamline deal execution and track milestones.</p>
+            <p className="text-xs lg:text-sm text-slate-500 mt-1">Streamline deal execution and track milestones.</p>
           </div>
-          <div className="flex items-center gap-5">
+          <div className="flex flex-wrap items-center gap-3 lg:gap-5 w-full lg:w-auto">
 
             {/* Premium Segmented Control */}
             <div className="flex items-center bg-slate-100/80 p-1 rounded-xl border border-slate-200 shadow-inner">

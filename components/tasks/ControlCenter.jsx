@@ -63,17 +63,19 @@ export default function ControlCenter({ tasks, currentDealStage }) {
       </div>
 
       {/* Execution Phases - Premium Card */}
-      <div className="bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-3xl p-8 shadow-sm">
-        <div className="mb-8 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800 tracking-tight">Execution Phases</h2>
+      <div className="bg-white border border-[var(--brand-100,theme(colors.blue.100))] rounded-3xl p-8 shadow-[0_4px_24px_-8px_rgba(var(--brand-rgb),0.1)] relative overflow-hidden">
+        {/* Decorative subtle background gradient */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--brand-50,theme(colors.blue.50))] rounded-full blur-3xl opacity-60 -translate-y-1/2 translate-x-1/3"></div>
+        <div className="mb-8 flex items-center justify-between relative z-10">
+          <h2 className="text-lg font-bold text-[var(--brand-dark,theme(colors.slate.800))] tracking-tight">Execution Phases</h2>
         </div>
         <div className="space-y-6">
           {phaseStats.map((p, idx) => {
             const isActive = p.id === currentDealStage;
             return (
               <div key={p.name} className={`p-4 rounded-lg border transition-colors ${isActive ? 'bg-[var(--brand-50,theme(colors.blue.50))] border-[var(--brand-200,theme(colors.blue.200))]' : 'bg-slate-50 border-slate-200'}`}>
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm font-medium text-slate-800 flex items-center gap-2">
+                <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-3 gap-3 md:gap-0">
+                  <span className="text-sm font-medium text-slate-800 flex flex-wrap items-center gap-2">
                     <span className={`w-6 h-6 flex items-center justify-center rounded-full text-[11px] font-semibold ${isActive ? 'bg-[var(--brand,theme(colors.blue.600))] text-white' : 'bg-slate-200 text-slate-600'}`}>
                       {idx + 1}
                     </span>
@@ -84,7 +86,7 @@ export default function ControlCenter({ tasks, currentDealStage }) {
                       </span>
                     )}
                   </span>
-                  <div className="flex items-center gap-4 text-xs font-medium">
+                  <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs font-medium w-full md:w-auto">
                     {p.totalMilestones > 0 && (
                       <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border ${isActive ? 'bg-purple-50 text-purple-700 border-purple-200/50' : 'bg-white text-slate-500 border-slate-200 shadow-sm'}`}>
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
