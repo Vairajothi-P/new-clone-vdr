@@ -159,7 +159,7 @@ export default function MyBidPage() {
 
             <div className="p-5 border-b border-slate-100">
               <h3 className="text-[11.5px] font-semibold text-slate-500 tracking-wide mb-3 uppercase">Bid timeline</h3>
-              
+
               <div className="flex gap-2.5 py-2 text-[12.5px]">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 shrink-0"></div>
                 <div>
@@ -167,7 +167,7 @@ export default function MyBidPage() {
                   <div className="text-slate-400 text-[11px] mt-0.5">14 Aug, 10:20 AM</div>
                 </div>
               </div>
-              
+
               <div className="flex gap-2.5 py-2 text-[12.5px]">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 shrink-0"></div>
                 <div>
@@ -175,7 +175,7 @@ export default function MyBidPage() {
                   <div className="text-slate-400 text-[11px] mt-0.5">1 Sep, 3:40 PM</div>
                 </div>
               </div>
-              
+
               <div className="flex gap-2.5 py-2 text-[12.5px]">
                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
                 <div>
@@ -183,7 +183,7 @@ export default function MyBidPage() {
                   <div className="text-slate-400 text-[11px] mt-0.5">3 Sep, 9:05 AM</div>
                 </div>
               </div>
-              
+
               <div className="flex gap-2.5 py-2 text-[12.5px]">
                 <div className="w-1.5 h-1.5 rounded-full bg-slate-200 mt-1.5 shrink-0"></div>
                 <div>
@@ -200,11 +200,6 @@ export default function MyBidPage() {
             </div>
           </div>
         </div>
-
-        <footer className="px-7 pt-4 pb-8 text-slate-400 text-[11.5px] flex justify-between border-t border-slate-200 mx-7 mt-6.5">
-          <span>Your bid activity and document views are visible to the deal's seller-side team.</span>
-          <span>Access level: Bidder — NDA-gated</span>
-        </footer>
       </div>
     </div>
   );

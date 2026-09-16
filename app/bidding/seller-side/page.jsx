@@ -229,11 +229,6 @@ export default function SellerBiddingPage() {
               </table>
             </div>
           </div>
-
-          <footer className="px-7 py-4 mb-8 text-slate-400 text-[11.5px] flex justify-between border-t border-slate-200 mx-7">
-            <span>Every view, download and comparison on this page is written to the deal audit trail.</span>
-            <span>Visible to: Seller Admin, Finance Advisor — 2 roles</span>
-          </footer>
         </div>
 
         {showCompare && (

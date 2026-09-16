@@ -33,10 +33,6 @@ export default function BuyerOverviewPage() {
                 <span className="text-[11.5px] text-slate-500 border border-slate-200 px-2.5 py-1 rounded-full">EBITDA positive</span>
               </div>
             </div>
-            <div className="flex gap-2.5">
-              <a href="#" className="font-sans text-[13px] font-medium px-4 py-2.5 rounded-lg cursor-pointer border border-slate-200 text-slate-500 hover:bg-white hover:text-slate-900 hover:border-slate-300 transition-colors shadow-sm bg-transparent">Message seller</a>
-              <a href="#" className="font-sans text-[13px] font-medium px-4 py-2.5 rounded-lg cursor-pointer border border-slate-900 bg-slate-900 text-white hover:opacity-90 transition-opacity shadow-sm">Go to my bid</a>
-            </div>
           </div>
         </div>
 
@@ -144,11 +140,6 @@ export default function BuyerOverviewPage() {
             </div>
           </div>
         </div>
-
-        <footer className="px-7 pt-4 pb-8 text-slate-400 text-[11.5px] flex justify-between border-t border-slate-200 mx-7 mt-6.5">
-          <span>All activity on this deal is logged to the audit trail and visible to Meridian DMS compliance.</span>
-          <span>Access level: Bidder — NDA-gated</span>
-        </footer>
       </div>
     </div>
   );
