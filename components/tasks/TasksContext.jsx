@@ -17,37 +17,37 @@ const MOCK_TASKS = [
   {
     id: 't1', title: 'Draft NDA', description: 'Draft the initial Non-Disclosure Agreement for the buyer.',
     status: 'completed', priority: 'High', stage: 'preparation', taskType: 'Document',
-    assignee: 'Buyer Legal Team', role: 'Legal', dueDate: '2023-11-01',
+    assignee: 'Buyer Legal Team', role: 'Legal', dueDate: '2027-11-01',
     dependencies: [], linkedDocumentId: 'doc_1', riskImpact: 'low', visibility: 'external', isStageGate: true
   },
   {
     id: 't2', title: 'Upload Financial Statements', description: 'Upload Q1-Q3 financial statements.',
     status: 'in_progress', priority: 'High', stage: 'dd', taskType: 'Data Request',
-    assignee: 'Buyer Finance Group', role: 'Financial', dueDate: '2023-11-10',
+    assignee: 'Buyer Finance Group', role: 'Financial', dueDate: '2027-11-10',
     dependencies: ['t1'], linkedDocumentId: null, riskImpact: 'high', visibility: 'external', isStageGate: true
   },
   {
     id: 't3', title: 'Review IP Portfolio', description: 'Review the provided IP portfolio documents.',
     status: 'audit', priority: 'Medium', stage: 'dd', taskType: 'Review',
-    assignee: 'Buyer Legal Team', role: 'Legal', dueDate: '2023-11-15',
+    assignee: 'Buyer Legal Team', role: 'Legal', dueDate: '2027-11-15',
     dependencies: ['t1'], linkedDocumentId: 'doc_3', riskImpact: 'medium', visibility: 'external', isStageGate: false
   },
   {
     id: 't4', title: 'Initial Offer Review', description: 'Review the initial offer from the buyer.',
     status: 'todo', priority: 'High', stage: 'negotiation', taskType: 'Review',
-    assignee: 'Seller Execs', role: 'Executive', dueDate: '2023-11-20',
+    assignee: 'Seller Execs', role: 'Executive', dueDate: '2027-11-20',
     dependencies: ['t2', 't3'], linkedDocumentId: 'doc_4', riskImpact: 'high', visibility: 'internal', isStageGate: true
   },
   {
     id: 't5', title: 'Prepare Disclosure Schedules', description: 'Prepare initial disclosure schedules.',
     status: 'in_progress', priority: 'Medium', stage: 'dd', taskType: 'Document',
-    assignee: 'Buyer Legal Team', role: 'Legal', dueDate: '2023-10-25', // Overdue
+    assignee: 'Buyer Legal Team', role: 'Legal', dueDate: '2026-08-25', // Overdue
     dependencies: [], linkedDocumentId: null, riskImpact: 'medium', visibility: 'external', isStageGate: false
   },
   {
     id: 't6', title: 'Finalize SPA', description: 'Finalize the Share Purchase Agreement.',
     status: 'todo', priority: 'High', stage: 'closing', taskType: 'Document',
-    assignee: 'Buyer Legal Team', role: 'Legal', dueDate: '2023-12-01',
+    assignee: 'Buyer Legal Team', role: 'Legal', dueDate: '2027-12-01',
     dependencies: ['t4'], linkedDocumentId: null, riskImpact: 'high', visibility: 'external', isStageGate: true
   }
 ];
