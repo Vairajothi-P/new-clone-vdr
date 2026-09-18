@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { FaArrowLeft, FaSearch, FaEllipsisV, FaDownload, FaTimes, FaRegClock, FaFolder, FaFolderOpen, FaPowerOff, FaLock } from "react-icons/fa";
+import { FaArrowLeft, FaSearch, FaEllipsisV, FaDownload, FaTimes, FaRegClock, FaFolder, FaFolderOpen, FaPowerOff, FaLock, FaCheckCircle, FaRegCircle } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import NDAModal from "../../../components/NDAModal";
 
@@ -44,7 +45,7 @@ export default function TrackerPage() {
 
 
   const getStatusColor = (status) => {
-    switch(status?.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'approved': return 'bg-green-100 text-green-700 border-green-200';
       case 'rejected': return 'bg-red-100 text-red-700 border-red-200';
       default: return 'bg-yellow-100 text-yellow-700 border-yellow-200';
@@ -52,15 +53,15 @@ export default function TrackerPage() {
   };
 
   const getStatusDot = (status) => {
-    switch(status?.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'approved': return 'bg-green-500';
       case 'rejected': return 'bg-red-500';
       default: return 'bg-yellow-500';
     }
   };
 
-  const filteredRequests = requests.filter(r => 
-    r.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredRequests = requests.filter(r =>
+    r.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.company?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -81,50 +82,50 @@ export default function TrackerPage() {
       {/* Header Navbar */}
       <nav className="fixed top-0 left-0 w-full bg-[#0b1120]/95 backdrop-blur-md z-50 py-5 px-4 md:px-12 flex justify-between items-center border-b border-white/10 text-white">
         <div className="flex items-center">
-            <div className="flex items-center">
-              <Link href="/dms/marketplace" className="text-lg text-gray-300 hover:text-white font-medium transition-colors mr-20">
-                Marketplace
+          <div className="flex items-center">
+            <Link href="/dms/marketplace" className="text-lg text-gray-300 hover:text-white font-medium transition-colors mr-20">
+              Marketplace
+            </Link>
+            <div className="flex items-center gap-20">
+              <Link href="#" className="text-lg text-gray-300 hover:text-white font-medium transition-colors">
+                Profile
               </Link>
-              <div className="flex items-center gap-20">
-                <Link href="#" className="text-lg text-gray-300 hover:text-white font-medium transition-colors">
-                  Profile
-                </Link>
-                <span className="text-xl font-bold text-white tracking-wide">
-                  Tracker
-                </span>
-              </div>
+              <span className="text-xl font-bold text-white tracking-wide">
+                Tracker
+              </span>
             </div>
+          </div>
         </div>
 
         {/* Right side - Auth */}
         <div className="hidden md:flex items-center gap-4">
-              <button
-                onClick={handleLogout}
-                className="text-white hover:text-red-400 border border-white/30 hover:border-red-400 px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap flex items-center gap-2"
-              >
-                <FaPowerOff /> Logout
-              </button>
+          <button
+            onClick={handleLogout}
+            className="text-white hover:text-red-400 border border-white/30 hover:border-red-400 px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap flex items-center gap-2"
+          >
+            <FaPowerOff /> Logout
+          </button>
         </div>
       </nav>
 
       {/* Main Content Area */}
       <div className="pt-24 px-4 md:px-8 pb-12 max-w-[1400px] mx-auto">
-        
+
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">Deal Access Requests</h1>
             <p className="text-gray-500 text-sm">Review investor profiles and control access to the data room.</p>
           </div>
-          
+
           <div className="flex items-center gap-3 mt-4 md:mt-0">
             <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search investors or companies..." 
+                placeholder="Search investors or companies..."
                 className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded text-sm focus:outline-none focus:border-[#b48629] focus:ring-1 focus:ring-[#b48629] w-64"
               />
             </div>
@@ -142,7 +143,7 @@ export default function TrackerPage() {
 
         {/* Table Card */}
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-          
+
           {/* Table Toolbar */}
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
             <div className="flex items-center gap-3">
@@ -167,20 +168,21 @@ export default function TrackerPage() {
                   <th className="py-4 px-6 font-bold">Company & Title</th>
                   <th className="py-4 px-6 font-bold">Investor Type</th>
                   <th className="py-4 px-6 font-bold">Status</th>
+                  <th className="py-4 px-6 font-bold text-center">NDA</th>
                   <th className="py-4 px-6 font-bold text-center">Deal</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredRequests.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="py-12 text-center text-gray-500 text-sm">
+                    <td colSpan="8" className="py-12 text-center text-gray-500 text-sm">
                       No access requests found.
                     </td>
                   </tr>
                 ) : (
                   filteredRequests.map((req) => (
-                    <tr 
-                      key={req.id} 
+                    <tr
+                      key={req.id}
                       className="hover:bg-gray-50 transition-colors"
                     >
                       <td className="py-4 px-6 text-sm text-gray-600 whitespace-nowrap">
@@ -214,6 +216,17 @@ export default function TrackerPage() {
                         </span>
                       </td>
                       <td className="py-4 px-6 text-center">
+                        {req.ndaStatus === 'signed' ? (
+                          <div className="flex items-center justify-center text-green-500" title="NDA Signed">
+                            <FaCheckCircle className="text-lg" />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity" title="NDA Pending">
+                            <Image src="/images/lock nda.png" alt="NDA Pending" width={24} height={24} className="rounded-md" />
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-4 px-6 text-center">
                         {req.status?.toLowerCase() === 'approved' || req.status?.toLowerCase() === 'accepted' ? (
                           <button
                             onClick={() => {
@@ -244,7 +257,7 @@ export default function TrackerPage() {
       </div>
 
       {/* NDA Modal */}
-      <NDAModal 
+      <NDAModal
         isOpen={showNDAModal}
         onClose={() => setShowNDAModal(false)}
         projectName={ndaTarget?.projectName}
