@@ -2,23 +2,42 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FaArrowLeft, FaSearch, FaCheck, FaShieldAlt, FaLink, FaArrowRight, FaLock, FaBriefcase, FaPowerOff, FaEllipsisV, FaMapMarkerAlt, FaRegBookmark, FaFilter, FaChevronDown, FaRedoAlt } from "react-icons/fa";
 
 export default function Marketplace() {
   const [userRole, setUserRole] = useState(null);
   const [opportunities, setOpportunities] = useState([]);
   const [isMounted, setIsMounted] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setIsMounted(true);
     setUserRole(localStorage.getItem('userRole'));
-    const savedTeasers = localStorage.getItem('dms_market_teasers');
-    if (savedTeasers) {
+    
+    // Fetch active teasers from the database
+    const fetchTeasers = async () => {
       try {
-        setOpportunities(JSON.parse(savedTeasers));
-      } catch (e) { }
-    }
+        const res = await fetch('/api/dms/marketplace');
+        if (res.ok) {
+          const data = await res.json();
+          setOpportunities(data.teasers || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch marketplace deals:", err);
+      }
+    };
+    
+    fetchTeasers();
   }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('companyId');
+    localStorage.removeItem('userName');
+    router.push('/dms/login');
+  };
 
   if (!isMounted) return null;
 
@@ -52,14 +71,12 @@ export default function Marketplace() {
         {/* Right side - Auth */}
         <div className="hidden md:flex items-center gap-4">
           {userRole ? (
-            <Link href="/dms/login">
               <button
-                onClick={() => localStorage.removeItem('userRole')}
+                onClick={handleLogout}
                 className="text-white hover:text-red-400 border border-white/30 hover:border-red-400 px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap flex items-center gap-2"
               >
                 <FaPowerOff /> Logout
               </button>
-            </Link>
           ) : (
             <>
               <Link href="/dms/login" className="text-white hover:text-[#eab308] border border-white/30 hover:border-[#eab308] px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap">
@@ -247,7 +264,7 @@ export default function Marketplace() {
                             <span className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">Opportunity</span>
                             <span className="text-[10px] text-gray-500 italic">Anonymous</span>
                           </div>
-                          <Link href={`/dms/teaser?project=${encodeURIComponent(opp.projectName)}`} className="block w-full">
+                          <Link href={`/dms/teaser?project=${encodeURIComponent(opp.projectName)}&projectId=${opp.projectId}`} className="block w-full">
                             <button className="w-full py-3 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded transition-colors">
                               View Teaser
                             </button>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { users, loginHistory } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import bcrypt from 'bcryptjs';
 
 export async function POST(req) {
   try {
@@ -15,6 +16,7 @@ export async function POST(req) {
       email: users.email,
       password_hash: users.passwordHash,
       role: users.role,
+      dmsRole: users.dmsRole,
       status: users.status,
       nda_status: users.ndaStatus,
       request_status: users.requestStatus
@@ -26,7 +28,8 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    if (user.password_hash !== password) {
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 

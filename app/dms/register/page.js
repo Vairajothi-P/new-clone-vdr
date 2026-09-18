@@ -12,6 +12,30 @@ export default function DMSRegister() {
   const [loadingText, setLoadingText] = useState("Starting...");
   const [dealType, setDealType] = useState("");
   const [participantType, setParticipantType] = useState("");
+  const [inviteToken, setInviteToken] = useState("");
+  const [projectId, setProjectId] = useState("");
+  
+  // Form fields
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [companyType, setCompanyType] = useState("");
+  const [companyName, setCompanyName] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const token = searchParams.get('inviteToken');
+      const proj = searchParams.get('projectId');
+      if (token) {
+        setInviteToken(token);
+        setProjectId(proj);
+        setDealType("M&A");
+        setParticipantType("Buyer");
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!isSubmitting) return;
@@ -24,7 +48,7 @@ export default function DMSRegister() {
         }
         return prev + 1;
       });
-    }, 200); 
+    }, 200);
 
     return () => clearInterval(interval);
   }, [isSubmitting]);
@@ -40,25 +64,52 @@ export default function DMSRegister() {
       setLoadingText("Ready your account...");
     } else if (progress === 100) {
       setLoadingText("Account created! Redirecting...");
-      
+
       const roleToSet = participantType || 'Buyer';
       localStorage.setItem('userRole', roleToSet);
-      
+
       const timeout = setTimeout(() => {
-        if (roleToSet === 'Buyer') {
+        if (inviteToken) {
+          router.push('/dms/workspace');
+        } else if (roleToSet === 'Buyer') {
           router.push('/dms/marketplace');
         } else {
           router.push('/dms/workspace');
         }
       }, 5000);
-      
+
       return () => clearTimeout(timeout);
     }
-  }, [progress, router]);
+  }, [progress, router, inviteToken, participantType]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName, lastName, email, password, dealType, participantType, companyType, companyName, inviteToken, projectId
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Registration failed');
+      }
+      
+      const data = await res.json();
+      if (data.userId) localStorage.setItem('userId', data.userId);
+      if (data.companyId) localStorage.setItem('companyId', data.companyId);
+      
+      // The progress effect will handle the loading bar and redirect
+    } catch (error) {
+      console.error(error);
+      setIsSubmitting(false);
+      alert(error.message);
+    }
   };
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans">
@@ -69,12 +120,12 @@ export default function DMSRegister() {
             <FaArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
             <span className="font-medium">Back to DMS</span>
           </Link>
-          
+
           <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Join Secure DMS</h1>
           <p className="text-gray-400 text-lg mb-12 leading-relaxed">
             Create an account to browse confidential acquisition opportunities, execute NDAs, and manage end-to-end deal workflows in a single secure environment.
           </p>
-          
+
           <div className="space-y-8">
             <div className="flex items-start gap-5">
               <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 border border-white/10">
@@ -85,7 +136,7 @@ export default function DMSRegister() {
                 <p className="text-gray-400 leading-relaxed">Access exclusive private market opportunities tailored to your investment mandate.</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-5">
               <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 border border-white/10">
                 <i className="fas fa-shield-alt text-[#eab308] text-lg"></i>
@@ -97,7 +148,7 @@ export default function DMSRegister() {
             </div>
           </div>
         </div>
-        
+
         <div className="mt-16 pt-8 border-t border-white/10">
           <div className="flex items-center gap-3">
             <i className="fas fa-shield-alt text-[#3b82f6] text-2xl"></i>
@@ -105,26 +156,35 @@ export default function DMSRegister() {
           </div>
         </div>
       </div>
-      
+
       {/* Right Panel - Form */}
       <div className="md:w-[55%] flex items-center justify-center p-8 md:p-12 lg:p-24 bg-white">
         <div className="w-full max-w-lg">
           {!isSubmitting && (
             <div className="mb-10 text-center md:text-left">
-              <h2 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">Create an account</h2>
-              <p className="text-gray-500 text-lg">Already have an account? <Link href="/dms/login" className="text-[#3b82f6] font-semibold hover:underline">Sign in</Link></p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">
+                {inviteToken ? "Accept Deal Invitation" : "Create an account"}
+              </h2>
+              {inviteToken ? (
+                <div className="bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-lg flex items-start gap-3 text-sm">
+                  <i className="fas fa-info-circle mt-0.5"></i>
+                  <p>You have been invited to securely access a confidential deal. Please create your buyer account to proceed.</p>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-lg">Already have an account? <Link href="/dms/login" className="text-[#3b82f6] font-semibold hover:underline">Sign in</Link></p>
+              )}
             </div>
           )}
-          
+
           {isSubmitting ? (
             <div className="py-20 flex flex-col justify-center h-full min-h-[400px] animate-fade-in">
               <div className="mb-10">
                 <h3 className="text-2xl font-bold text-[#3b82f6] mb-3 transition-all duration-300">{loadingText}</h3>
                 <p className="text-gray-500 text-lg">Please wait while we provision your secure environment.</p>
               </div>
-              
+
               <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-200">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-blue-500 to-[#3b82f6] transition-all duration-1000 ease-linear relative"
                   style={{ width: `${progress}%` }}
                 >
@@ -137,48 +197,47 @@ export default function DMSRegister() {
             </div>
           ) : (
             <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* 1. First Name & Last Name */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">First Name</label>
-                  <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="John" required />
+                  <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="John" required />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
-                  <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="Doe" required />
+                  <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="Doe" required />
                 </div>
               </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Work Email</label>
-                <input type="email" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="john@company.com" required />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
-                <input type="password" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="••••••••" required minLength={8} />
-                <p className="text-xs text-gray-500 mt-2">Must be at least 8 characters long.</p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Which type?</label>
-                <select 
-                  value={dealType} 
-                  onChange={(e) => setDealType(e.target.value)} 
-                  required 
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white appearance-none"
-                >
-                  <option value="" disabled>Select type...</option>
-                  <option value="M&A">M&A</option>
-                </select>
-              </div>
 
-              {dealType === "M&A" && (
+              {/* 2. Which type? */}
+              {!inviteToken && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Which type?</label>
+                  <select
+                    value={dealType}
+                    onChange={(e) => setDealType(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white appearance-none"
+                  >
+                    <option value="" disabled>Select type...</option>
+                    <option value="M&A">M&A</option>
+                  </select>
+                </div>
+              )}
+
+              {/* 3. Type (Buyer/Seller) */}
+              {dealType === "M&A" && !inviteToken && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Type</label>
-                  <select 
-                    value={participantType} 
-                    onChange={(e) => setParticipantType(e.target.value)} 
-                    required 
+                  <select
+                    value={participantType}
+                    onChange={(e) => {
+                      setParticipantType(e.target.value);
+                      if (e.target.value === 'Buyer') {
+                        setCompanyName(""); // Clear company name if switching to Buyer
+                      }
+                    }}
+                    required
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white appearance-none"
                   >
                     <option value="" disabled>Select participant type...</option>
@@ -187,27 +246,50 @@ export default function DMSRegister() {
                   </select>
                 </div>
               )}
-              
+
+              {/* 4. Conditional Fields */}
+              {participantType === "Seller" && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Company Name</label>
+                  <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="Vishwa Tech" required />
+                </div>
+              )}
+
+              {(participantType === "Seller" || participantType === "Buyer") && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Company Type</label>
+                  <select value={companyType} onChange={(e) => setCompanyType(e.target.value)} required className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white appearance-none">
+                    <option value="" disabled>Select your company type...</option>
+                    <option>Corporate Development</option>
+                    <option>Private Equity</option>
+                    <option>Investment Bank</option>
+                    <option>Law Firm</option>
+                    <option>Advisor</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+              )}
+
+              {/* 5. Work Email */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Company Type</label>
-                <select defaultValue="" required className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white appearance-none">
-                  <option value="" disabled>Select your company type...</option>
-                  <option>Corporate Development</option>
-                  <option>Private Equity</option>
-                  <option>Investment Bank</option>
-                  <option>Law Firm</option>
-                  <option>Advisor</option>
-                  <option>Other</option>
-                </select>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Work Email</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="john@company.com" required />
               </div>
               
+              {/* 6. Password */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="••••••••" required minLength={8} />
+                <p className="text-xs text-gray-500 mt-2">Must be at least 8 characters long.</p>
+              </div>
+
               <div className="flex items-start gap-3 pt-2">
                 <input type="checkbox" id="terms" required className="mt-1 w-5 h-5 text-[#3b82f6] border-gray-300 rounded focus:ring-[#3b82f6] cursor-pointer" />
                 <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
                   I agree to the <a href="#" className="text-[#3b82f6] font-medium hover:underline">Terms of Service</a> and <a href="#" className="text-[#3b82f6] font-medium hover:underline">Privacy Policy</a>.
                 </label>
               </div>
-              
+
               <button type="submit" className="w-full bg-[#3b82f6] hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-lg transition-colors mt-8 shadow-md hover:shadow-lg text-lg">
                 Create Account
               </button>

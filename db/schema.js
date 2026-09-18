@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 // ENUMS
 export const companyStatusEnum = pgEnum('company_status', ['pending', 'active', 'suspended', 'rejected']);
 export const planStatusEnum = pgEnum('plan_status', ['active', 'expired', 'cancelled', 'trial']);
-export const userRoleEnum = pgEnum('user_role', ['super_admin', 'admin', 'sub_admin', 'internal_user', 'external_user']);
+export const userRoleEnum = pgEnum('user_role', ['super_admin', 'admin', 'sub_admin', 'internal_user', 'guest_admin', 'guest_lead', 'external_user']);
 export const userStatusEnum = pgEnum('user_status', ['invited', 'active', 'suspended', 'revoked']);
 export const permissionScopeEnum = pgEnum('permission_scope', ['group', 'document', 'folder', 'workspace', 'files']);
 export const channelTypeEnum = pgEnum('channel_type', ['public', 'private', 'direct_message']);
@@ -48,10 +48,16 @@ export const subscriptions = pgTable('subscriptions', {
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
-  companyId: uuid('company_id').notNull(),
+  companyId: uuid('company_id'), // Removed notNull() for DMS buyers/sellers
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
+  // DMS specific fields
+  jobTitle: text('job_title'),
+  investorType: text('investor_type'),
+  investmentRange: text('investment_range'),
+  companyType: text('company_type'),
+  dmsRole: text('dms_role'), // 'buyer' or 'seller'
   role: userRoleEnum('role').default('external_user').notNull(),
   status: userStatusEnum('status').default('invited').notNull(),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
@@ -115,6 +121,8 @@ export const documents = pgTable('documents', {
   creatorRevoked: boolean('creator_revoked').default(false),
   workspaceId: uuid('workspace_id').references(() => workspaces.id),
   uploadComment: text('upload_comment'),
+  indexingStatus: text('indexing_status').default('not_indexed'),
+  indexingError: text('indexing_error'),
 });
 
 export const groups = pgTable('groups', {
@@ -208,7 +216,7 @@ export const workspaceSettings = pgTable('workspace_settings', {
   companyId: uuid('company_id').notNull(),
   brandName: varchar('brand_name'),
   logoUrl: text('logo_url'),
-  activeTheme: integer('active_theme'),
+  activeTheme: varchar('active_theme'),
   adminName: varchar('admin_name'),
   adminEmail: varchar('admin_email'),
   adminPhone: varchar('admin_phone'),
@@ -517,6 +525,15 @@ export const announcementPosts = pgTable('announcement_posts', {
   attachments: jsonb('attachments').default('[]'),
 });
 
+export const dmsDealInvitations = pgTable('dms_deal_invitations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id').references(() => dmsProjects.id).notNull(),
+  email: text('email').notNull(),
+  token: text('token').notNull().unique(),
+  status: text('status').default('pending').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const communicationAuditLogs = pgTable('communication_audit_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
   companyId: uuid('company_id').references(() => companies.id).notNull(),
@@ -527,4 +544,54 @@ export const communicationAuditLogs = pgTable('communication_audit_logs', {
   entityId: uuid('entity_id').notNull(),
   metadata: jsonb('metadata').default('{}'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+// DMS TABLES
+
+export const dmsProjects = pgTable('dms_projects', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  status: text('status').default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const dmsTeasers = pgTable('dms_teasers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id').references(() => dmsProjects.id).notNull().unique(),
+  dealName: text('deal_name').notNull(),
+  sector: text('sector'),
+  geography: text('geography'),
+  companyOverview: text('company_overview'),
+  revenue: text('revenue'),
+  ebitda: text('ebitda'),
+  yoyGrowth: text('yoy_growth'),
+  employees: text('employees'),
+  status: text('status').default('draft'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const dmsDealProposals = pgTable('dms_deal_proposals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  teaserId: uuid('teaser_id').references(() => dmsTeasers.id).notNull(),
+  buyerId: uuid('buyer_id').references(() => users.id).notNull(),
+  status: text('status').default('pending'),
+  message: text('message'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const dmsDeals = pgTable('dms_deals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id').references(() => dmsProjects.id).notNull(),
+  buyerId: uuid('buyer_id').references(() => users.id).notNull(),
+  dealName: text('deal_name'),
+  proposalId: uuid('proposal_id').references(() => dmsDealProposals.id),
+  workspaceId: uuid('workspace_id').references(() => workspaces.id),
+  ndaStatus: text('nda_status').default('pending'),
+  status: text('status').default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

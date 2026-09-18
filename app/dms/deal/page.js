@@ -9,18 +9,26 @@ import NDAModal from "../../../components/NDAModal";
 export default function DealDashboard() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const projectName = searchParams.get('project') || "Project";
+  const projectId = searchParams.get('projectId');
+  const projectName = searchParams.get('projectName') || searchParams.get('project') || "Project";
 
   const [deals, setDeals] = useState([]);
   const [requests, setRequests] = useState([]);
   const [isAddDealModalOpen, setIsAddDealModalOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [openProposalDropdownId, setOpenProposalDropdownId] = useState(null);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLink, setInviteLink] = useState("");
+  const [isInviting, setIsInviting] = useState(false);
   const [newDealName, setNewDealName] = useState("");
   const [newDealDesc, setNewDealDesc] = useState("");
+  const [buyersList, setBuyersList] = useState([]);
+  const [selectedBuyerId, setSelectedBuyerId] = useState("");
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [activeTab, setActiveTab] = useState('teaser');
+  const [userRole, setUserRole] = useState('seller');
   
   // NDA Modal State
   const [showNDAModal, setShowNDAModal] = useState(false);
@@ -43,111 +51,209 @@ export default function DealDashboard() {
   const [isTeaserPublished, setIsTeaserPublished] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(`dms_deals_${projectName}`);
-    if (saved) {
-      try {
-        setDeals(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse deals", e);
-      }
+    const roleItem = localStorage.getItem('userRole');
+    if (!roleItem) {
+      router.push('/dms/login');
+      return;
+    }
+    const role = roleItem.toLowerCase();
+    setUserRole(role);
+    if (role === 'buyer' || role.includes('guest')) {
+      setActiveTab('deals');
     }
 
-    const savedRequests = localStorage.getItem(`dms_requests_${projectName}`);
-    if (savedRequests) {
-      try {
-        setRequests(JSON.parse(savedRequests));
-      } catch (e) {
-        console.error("Failed to parse requests", e);
-      }
+    if (!projectId) return;
+
+    const userId = localStorage.getItem('userId');
+    let url = `/api/dms/deals?projectId=${projectId}`;
+    if ((role === 'buyer' || role.includes('guest')) && userId) {
+      url += `&buyerId=${userId}`;
     }
 
-    const savedTeasers = localStorage.getItem('dms_market_teasers');
-    if (savedTeasers) {
-      try {
-        const teasers = JSON.parse(savedTeasers);
-        const existingTeaser = teasers.find(t => t.projectName === projectName);
-        if (existingTeaser) {
-          setFormData(existingTeaser);
+    // Fetch Deals
+    fetch(url)
+      .then(res => res.json())
+      .then(data => setDeals(data.deals || []))
+      .catch(console.error);
+
+    // Fetch Buyers for Deal Creation dropdown
+    fetch('/api/dms/buyers')
+      .then(res => res.json())
+      .then(data => setBuyersList(data.buyers || []))
+      .catch(console.error);
+
+    // Fetch Proposals
+    fetch(`/api/dms/proposals?projectId=${projectId}`)
+      .then(res => res.json())
+      .then(data => setRequests(data.proposals || []))
+      .catch(console.error);
+
+    // Fetch Teaser
+    fetch(`/api/dms/teasers?projectId=${projectId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.teaser) {
+          setFormData({
+            name: data.teaser.dealName || "",
+            sector: data.teaser.sector || "",
+            geography: data.teaser.geography || "",
+            overview: data.teaser.companyOverview || "",
+            revenue: data.teaser.revenue || "",
+            ebitda: data.teaser.ebitda || "",
+            growth: data.teaser.yoyGrowth || "",
+            employees: data.teaser.employees || "",
+            dealType: "Majority Acquisition",
+            askingPrice: "Available upon qualified access"
+          });
           setIsTeaserPublished(true);
         } else {
           setIsTeaserPublished(false);
         }
-      } catch (e) {
-        console.error("Failed to parse teasers", e);
-      }
-    }
-  }, [projectName]);
+      })
+      .catch(console.error);
+  }, [projectId]);
 
-  const handleCreateDeal = (e) => {
+  const handleCreateDeal = async (e) => {
     e.preventDefault();
-    if (!newDealName.trim()) return;
-
-    const newDeal = { name: newDealName, desc: newDealDesc, status: "DRAFT", id: Date.now() };
-    const updatedDeals = [...deals, newDeal];
-    setDeals(updatedDeals);
-    localStorage.setItem(`dms_deals_${projectName}`, JSON.stringify(updatedDeals));
-
-    setIsAddDealModalOpen(false);
-    setNewDealName("");
-    setNewDealDesc("");
-  };
-
-  const handleDeleteDeal = (id) => {
-    const updatedDeals = deals.filter(deal => deal.id !== id);
-    setDeals(updatedDeals);
-    localStorage.setItem(`dms_deals_${projectName}`, JSON.stringify(updatedDeals));
-    setOpenDropdownId(null);
-  };
-
-  const handleSaveDeal = (e) => {
-    e.preventDefault();
-
-    const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
-    const existingIndex = marketTeasers.findIndex(t => t.projectName === projectName);
-
-    const newTeaser = {
-      ...formData,
-      projectName: projectName,
-      id: existingIndex >= 0 ? marketTeasers[existingIndex].id : Date.now(),
-      status: 'Active'
-    };
-
-    if (existingIndex >= 0) {
-      marketTeasers[existingIndex] = newTeaser;
-      alert("Teaser details updated successfully!");
-    } else {
-      marketTeasers.push(newTeaser);
-      alert("Teaser details saved successfully and published to marketplace!");
+    if (!newDealName.trim() || !selectedBuyerId) {
+      alert("Please enter a deal name and select a buyer");
+      return;
     }
 
-    localStorage.setItem('dms_market_teasers', JSON.stringify(marketTeasers));
-    setIsTeaserPublished(true);
-  };
-
-  const handleRemoveTeaser = () => {
-    if (confirm("Are you sure you want to remove this teaser from the marketplace?")) {
-      const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
-      const updatedTeasers = marketTeasers.filter(t => t.projectName !== projectName);
-      localStorage.setItem('dms_market_teasers', JSON.stringify(updatedTeasers));
-      alert("Teaser removed from marketplace");
-      setIsTeaserPublished(false);
-      setFormData({
-        name: "",
-        sector: "",
-        geography: "",
-        overview: "",
-        revenue: "",
-        ebitda: "",
-        growth: "",
-        employees: "",
-        dealType: "Majority Acquisition",
-        askingPrice: ""
+    try {
+      const res = await fetch('/api/dms/deals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          buyerId: selectedBuyerId,
+          dealName: newDealName
+        })
       });
+
+      if (res.ok) {
+        // Refresh Deals
+        const dealsRes = await fetch(`/api/dms/deals?projectId=${projectId}`);
+        const dealsData = await dealsRes.json();
+        setDeals(dealsData.deals || []);
+
+        setIsAddDealModalOpen(false);
+        setNewDealName("");
+        setNewDealDesc("");
+        setSelectedBuyerId("");
+      } else {
+        alert("Failed to create deal");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error creating deal");
+    }
+  };
+
+  const handleDeleteDeal = async (id) => {
+    try {
+      const res = await fetch(`/api/dms/deals?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        const updatedDeals = deals.filter(deal => deal.id !== id);
+        setDeals(updatedDeals);
+        localStorage.setItem(`dms_deals_${projectName}`, JSON.stringify(updatedDeals));
+        setOpenDropdownId(null);
+      } else {
+        alert("Failed to delete deal from server");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting deal");
+    }
+  };
+
+  const handleSaveDeal = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/dms/teasers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          dealName: formData.name,
+          sector: formData.sector,
+          geography: formData.geography,
+          companyOverview: formData.overview,
+          revenue: formData.revenue,
+          ebitda: formData.ebitda,
+          yoyGrowth: formData.growth,
+          employees: formData.employees,
+          status: 'Active'
+        })
+      });
+      if (res.ok) {
+        alert("Teaser saved successfully and published to marketplace!");
+        setIsTeaserPublished(true);
+      } else {
+        alert("Failed to save teaser");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save teaser");
+    }
+  };
+
+  const handleInviteBuyer = async (e) => {
+    e.preventDefault();
+    if (!inviteEmail) return;
+    setIsInviting(true);
+    try {
+      const res = await fetch('/api/dms/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inviteEmail, projectId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setInviteLink(data.inviteLink);
+      } else {
+        alert(data.error || "Failed to invite buyer");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error sending invite");
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const handleRemoveTeaser = async () => {
+    if (confirm("Are you sure you want to remove this teaser from the marketplace?")) {
+      try {
+        const res = await fetch(`/api/dms/teasers?projectId=${projectId}`, { method: 'DELETE' });
+        if (res.ok) {
+          alert("Teaser removed from marketplace");
+          setIsTeaserPublished(false);
+          // Don't wipe the form data so they can edit and republish if they want
+          setFormData({
+            ...formData,
+            status: 'draft'
+          });
+        } else {
+          alert("Failed to remove teaser from marketplace");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error removing teaser");
+      }
     }
   };
 
   const handleFormChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('companyId');
+    localStorage.removeItem('userName');
+    router.push('/dms/login');
   };
 
   return (
@@ -160,7 +266,7 @@ export default function DealDashboard() {
             <div className="w-8 h-8 rounded-full bg-[#303030] text-white flex items-center justify-center shadow-lg font-serif italic text-sm">
               N
             </div>
-            <h2 className="text-xl font-bold text-gray-900 tracking-tight">Deal Setup</h2>
+            <h2 className="text-xl font-bold text-gray-900 tracking-tight">{userRole === 'buyer' || userRole.includes('guest') ? 'Deal View' : 'Deal Setup'}</h2>
           </div>
 
           <nav className="flex flex-col gap-2 px-4">
@@ -168,13 +274,16 @@ export default function DealDashboard() {
               <FaFolder className="text-lg" />
               <span>Project</span>
             </Link>
-            <button
-              onClick={() => setActiveTab('teaser')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-colors ${activeTab === 'teaser' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
-            >
-              <FaShieldAlt className="text-lg" />
-              <span>Teaser</span>
-            </button>
+            
+            {userRole !== 'buyer' && !userRole.includes('guest') && (
+              <button
+                onClick={() => setActiveTab('teaser')}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-colors ${activeTab === 'teaser' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+              >
+                <FaShieldAlt className="text-lg" />
+                <span>Teaser</span>
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('deals')}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'deals' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
@@ -182,36 +291,41 @@ export default function DealDashboard() {
               <FaDatabase className="text-lg" />
               <span>Deals</span>
             </button>
-            <button
-              onClick={() => setActiveTab('proposals')}
-              className={`flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-colors w-full ${activeTab === 'proposals' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
-            >
-              <div className="flex items-center gap-3">
-                <FaBell className="text-lg" />
-                <span>Deal Proposal</span>
-              </div>
-              {requests.filter(r => r.status === 'PENDING').length > 0 && (
-                <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {requests.filter(r => r.status === 'PENDING').length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('bidding')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'bidding' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
-            >
-              <FaFileInvoiceDollar className="text-lg" />
-              <span>Bidding Details</span>
-            </button>
+            
+            {userRole !== 'buyer' && !userRole.includes('guest') && (
+              <>
+                <button
+                  onClick={() => setActiveTab('proposals')}
+                  className={`flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-colors w-full ${activeTab === 'proposals' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <FaBell className="text-lg" />
+                    <span>Deal Proposal</span>
+                  </div>
+                  {requests.filter(r => r.status === 'PENDING').length > 0 && (
+                    <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {requests.filter(r => r.status === 'PENDING').length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveTab('bidding')}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'bidding' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+                >
+                  <FaFileInvoiceDollar className="text-lg" />
+                  <span>Bidding Details</span>
+                </button>
+              </>
+            )}
           </nav>
         </div>
 
         {/* Bottom Actions */}
         <div className="px-4 flex flex-col gap-2 relative">
-          <Link href="/dms/login" className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 font-medium transition-colors">
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 font-medium transition-colors">
             <FaPowerOff className="text-lg" />
             <span>Logout</span>
-          </Link>
+          </button>
         </div>
       </aside>
 
@@ -229,7 +343,7 @@ export default function DealDashboard() {
                   <FaArrowLeft />
                 </Link>
                 <h1 className="text-xl font-bold text-gray-900">{projectName}</h1>
-                <span className="px-3 py-1 bg-[#e6fbf2] text-[#00c875] text-xs font-bold rounded-full tracking-wide">Deal Setup</span>
+                <span className="px-3 py-1 bg-[#e6fbf2] text-[#00c875] text-xs font-bold rounded-full tracking-wide">{userRole === 'buyer' ? 'Deal View' : 'Deal Setup'}</span>
               </div>
 
               <div className="flex items-center gap-8">
@@ -371,21 +485,37 @@ export default function DealDashboard() {
             {activeTab === 'deals' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {/* Add New Deal Card */}
-                <button
-                  onClick={() => setIsAddDealModalOpen(true)}
-                  className="h-44 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center gap-3 hover:border-gray-400 hover:bg-gray-50 transition-all group"
-                >
-                  <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center text-xl shadow-md group-hover:scale-105 transition-transform">
-                    <FaPlus />
-                  </div>
-                  <span className="text-[13px] text-gray-500 font-medium">Add New Deal</span>
-                </button>
+                {userRole !== 'buyer' && (
+                  <button
+                    onClick={() => setIsAddDealModalOpen(true)}
+                    className="h-44 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center gap-3 hover:border-gray-400 hover:bg-gray-50 transition-all group"
+                  >
+                    <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center text-xl shadow-md group-hover:scale-105 transition-transform">
+                      <FaPlus />
+                    </div>
+                    <span className="text-[13px] text-gray-500 font-medium">Add New Deal</span>
+                  </button>
+                )}
 
                 {/* Existing Deals */}
                 {deals.map((deal) => (
                   <div
                     key={deal.id}
-                    onClick={() => router.push('/documents')}
+                    onClick={() => {
+                      const dmsRole = localStorage.getItem('userRole');
+                      const vdrRole = dmsRole === 'seller' ? 'super_admin' : 'guest_admin';
+                      
+                      const vdrSession = {
+                        id: localStorage.getItem('userId'),
+                        role: vdrRole,
+                        dms_role: dmsRole,
+                        name: localStorage.getItem('userName') || 'User',
+                        company_id: localStorage.getItem('companyId') || '',
+                        active_workspace_id: deal.id
+                      };
+                      localStorage.setItem('vdr_session', JSON.stringify(vdrSession));
+                      router.push('/documents');
+                    }}
                     className="h-44 bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] p-4 relative flex flex-col hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] transition-all cursor-pointer group"
                   >
                     <div className="flex justify-between items-start mb-auto">
@@ -394,15 +524,17 @@ export default function DealDashboard() {
                       </span>
 
                       <div className="relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenDropdownId(openDropdownId === deal.id ? null : deal.id);
-                          }}
-                          className="text-gray-400 hover:text-gray-600 p-1 opacity-60 hover:opacity-100"
-                        >
-                          <FaEllipsisV className="text-[11px]" />
-                        </button>
+                        {userRole !== 'buyer' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(openDropdownId === deal.id ? null : deal.id);
+                            }}
+                            className="text-gray-400 hover:text-gray-600 p-1 opacity-60 hover:opacity-100"
+                          >
+                            <FaEllipsisV className="text-[11px]" />
+                          </button>
+                        )}
 
                         {openDropdownId === deal.id && (
                           <div className="absolute right-0 mt-1 w-24 bg-white rounded-md shadow-lg border border-gray-100 z-10 overflow-hidden">
@@ -424,7 +556,7 @@ export default function DealDashboard() {
                       <div className="w-12 h-12 rounded-full bg-[#f4f7f9] flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
                         <FaShieldAlt className="text-2xl text-[#b48629]" />
                       </div>
-                      <span className="font-bold text-gray-800 text-sm">{deal.name}</span>
+                      <span className="font-bold text-gray-800 text-sm">{deal.name || 'Unnamed Deal'}</span>
                     </div>
                   </div>
                 ))}
@@ -433,12 +565,24 @@ export default function DealDashboard() {
 
             {activeTab === 'proposals' && (
               <div className="w-full">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Deal Proposals</h2>
-                  <p className="text-sm text-gray-500 mt-1">Review and manage access requests for this deal.</p>
+                <div className="mb-6 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Deal Proposals</h2>
+                    <p className="text-sm text-gray-500 mt-1">Review and manage access requests for this deal.</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setInviteEmail("");
+                      setInviteLink("");
+                      setIsInviteModalOpen(true);
+                    }}
+                    className="px-5 py-2.5 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded-lg shadow-sm transition-colors"
+                  >
+                    + Invite Known Buyer
+                  </button>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden">
+                <div className="bg-white rounded-xl shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] border border-gray-100">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-gray-50/50 border-b border-gray-100 text-sm text-gray-500 font-bold uppercase tracking-wider">
@@ -462,11 +606,13 @@ export default function DealDashboard() {
                           <td className="py-5 px-6 text-base text-gray-500">{req.jobTitle}</td>
                           <td className="py-5 px-6 text-base text-gray-500">{req.investorType}</td>
                           <td className="py-5 px-6">
-                            <span className={`px-3 py-1.5 text-xs font-bold rounded-md tracking-wide ${req.status === 'PENDING' ? 'bg-red-50 text-red-600' :
-                                req.status === 'ACCEPTED' ? 'bg-[#e6fbf2] text-[#00c875]' :
-                                  'bg-red-50 text-red-600'
+                            <span className={`px-3 py-1.5 text-xs font-bold rounded-md tracking-wide capitalize ${
+                                req.status?.toLowerCase() === 'approved' || req.status?.toLowerCase() === 'accepted' ? 'bg-[#e6fbf2] text-[#00c875]' :
+                                req.status?.toLowerCase() === 'rejected' ? 'bg-red-50 text-red-600' :
+                                req.status?.toLowerCase() === 'revoked' ? 'bg-orange-50 text-orange-600' :
+                                'bg-blue-50 text-blue-600' // default for pending, etc
                               }`}>
-                              {req.status === 'PENDING' ? 'Pending' : req.status}
+                              {req.status?.toLowerCase() === 'accepted' ? 'Approved' : req.status}
                             </span>
                           </td>
                           <td className="py-5 px-6 text-center">
@@ -482,20 +628,50 @@ export default function DealDashboard() {
                               </button>
 
                               {openProposalDropdownId === req.id && (
-                                <div className="absolute right-0 bottom-full mb-2 w-32 bg-white rounded-md shadow-lg border border-gray-100 z-50 overflow-hidden">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const updatedReqs = requests.filter(r => r.id !== req.id);
-                                      setRequests(updatedReqs);
-                                      localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(updatedReqs));
-                                      setOpenProposalDropdownId(null);
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
+                                  <div className="absolute right-0 top-full mt-2 w-32 bg-white rounded-md shadow-lg border border-gray-100 z-50 overflow-hidden">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedRequest(req);
+                                        setOpenProposalDropdownId(null);
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-[var(--brand)] hover:bg-[var(--brand)]/10 transition-colors font-medium"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedRequest(req);
+                                        setOpenProposalDropdownId(null);
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium border-t border-gray-100"
+                                    >
+                                      Reject
+                                    </button>
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          const res = await fetch('/api/dms/proposals', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ proposalId: req.id, action: 'revoke', projectId })
+                                          });
+                                          if (res.ok) {
+                                            const updatedReqs = requests.map(r => r.id === req.id ? { ...r, status: 'revoked' } : r);
+                                            setRequests(updatedReqs);
+                                          }
+                                        } catch (err) {
+                                          console.error("Failed to revoke proposal", err);
+                                        }
+                                        setOpenProposalDropdownId(null);
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium border-t border-gray-100"
+                                    >
+                                      Revoke Access
+                                    </button>
+                                  </div>
                               )}
                             </div>
                           </td>
@@ -582,7 +758,7 @@ export default function DealDashboard() {
             </div>
 
             <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-              {selectedRequest.status === 'ACCEPTED' ? (
+              {(selectedRequest.status?.toLowerCase() === 'approved' || selectedRequest.status?.toLowerCase() === 'accepted') ? (
                 <button
                   onClick={() => {
                     setNdaTarget({
@@ -599,47 +775,48 @@ export default function DealDashboard() {
               ) : (
                 <>
                   <button
-                    onClick={() => {
-                      const updatedReqs = requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'REJECTED' } : r);
-                      setRequests(updatedReqs);
-                      localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(updatedReqs));
-
-                      // Update global tracker
-                      const allReqs = JSON.parse(localStorage.getItem('dms_all_requests') || '[]');
-                      const updatedAllReqs = allReqs.map(r => r.id === selectedRequest.id ? { ...r, status: 'Rejected' } : r);
-                      localStorage.setItem('dms_all_requests', JSON.stringify(updatedAllReqs));
-
-                      setSelectedRequest(null);
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/dms/proposals', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ proposalId: selectedRequest.id, action: 'reject', projectId })
+                        });
+                        if (res.ok) {
+                          setRequests(requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'rejected' } : r));
+                          setSelectedRequest(null);
+                        }
+                      } catch (err) {
+                        console.error(err);
+                        alert("Failed to reject proposal");
+                      }
                     }}
                     className="px-5 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-bold transition-colors text-sm"
                   >
                     Reject Request
                   </button>
                   <button
-                    onClick={() => {
-                      // Update request status locally
-                      const updatedReqs = requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'ACCEPTED' } : r);
-                      setRequests(updatedReqs);
-                      localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(updatedReqs));
-
-                      // Update global tracker
-                      const allReqs = JSON.parse(localStorage.getItem('dms_all_requests') || '[]');
-                      const updatedAllReqs = allReqs.map(r => r.id === selectedRequest.id ? { ...r, status: 'Approved' } : r);
-                      localStorage.setItem('dms_all_requests', JSON.stringify(updatedAllReqs));
-
-                      // Auto-create a deal card based on company name
-                      const newDeal = {
-                        name: selectedRequest.company || "New Deal",
-                        desc: "Created automatically from approved access request.",
-                        status: "DRAFT",
-                        id: Date.now()
-                      };
-                      const updatedDeals = [...deals, newDeal];
-                      setDeals(updatedDeals);
-                      localStorage.setItem(`dms_deals_${projectName}`, JSON.stringify(updatedDeals));
-
-                      setSelectedRequest(null);
-                      alert(`Deal card "${newDeal.name}" created automatically.`);
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/dms/proposals', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ proposalId: selectedRequest.id, action: 'accept', projectId })
+                        });
+                        if (res.ok) {
+                          setRequests(requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'approved' } : r));
+                          // Refresh deals
+                          const dealsRes = await fetch(`/api/dms/deals?projectId=${projectId}`);
+                          const dealsData = await dealsRes.json();
+                          setDeals(dealsData.deals || []);
+                          
+                          setSelectedRequest(null);
+                          alert(`Deal created automatically for ${selectedRequest.company}.`);
+                        }
+                      } catch (err) {
+                        console.error(err);
+                        alert("Failed to accept proposal");
+                      }
                     }}
                     className="px-5 py-2.5 bg-[#00c875] hover:bg-[#00a863] text-white rounded-lg font-bold transition-colors text-sm shadow-sm flex items-center gap-2"
                   >
@@ -658,6 +835,26 @@ export default function DealDashboard() {
           <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-xl relative animate-in fade-in zoom-in duration-200">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Create New Deal</h2>
             <form onSubmit={handleCreateDeal}>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Select Buyer</label>
+                <select
+                  required
+                  value={selectedBuyerId}
+                  onChange={(e) => {
+                    setSelectedBuyerId(e.target.value);
+                    const buyer = buyersList.find(b => b.id.toString() === e.target.value);
+                    if (buyer && buyer.companyName && !newDealName) {
+                      setNewDealName(buyer.companyName);
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00c875] bg-white"
+                >
+                  <option value="">-- Select a Buyer --</option>
+                  {buyersList.map(b => (
+                    <option key={b.id} value={b.id}>{b.companyName || b.name} ({b.email})</option>
+                  ))}
+                </select>
+              </div>
               <div className="mb-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Deal Name</label>
                 <input
@@ -695,6 +892,90 @@ export default function DealDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Known Buyer Modal */}
+      {isInviteModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in duration-200 overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h2 className="text-lg font-bold text-gray-800">Invite Known Buyer</h2>
+              <button onClick={() => setIsInviteModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <FaTimes />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {!inviteLink ? (
+                <form onSubmit={handleInviteBuyer}>
+                  <p className="text-sm text-gray-600 mb-5">
+                    Send a direct registration link to a buyer. When they sign up, they will bypass the marketplace and automatically be granted access to this deal.
+                  </p>
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Buyer's Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
+                      placeholder="buyer@example.com"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsInviteModalOpen(false)}
+                      className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isInviting}
+                      className="px-5 py-2 bg-[#0b1120] hover:bg-gray-800 disabled:bg-gray-400 text-white rounded-lg font-bold transition-colors shadow-sm"
+                    >
+                      {isInviting ? "Generating..." : "Generate Invite"}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div>
+                  <div className="w-12 h-12 rounded-full bg-[#e6fbf2] text-[#00c875] flex items-center justify-center mx-auto mb-4">
+                    <FaCheck className="text-xl" />
+                  </div>
+                  <h3 className="text-center font-bold text-gray-900 mb-2">Invitation Ready!</h3>
+                  <p className="text-center text-sm text-gray-600 mb-6">
+                    An email has been sent to <strong>{inviteEmail}</strong> (if email is configured). You can also copy the direct link below:
+                  </p>
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-6 relative">
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={inviteLink} 
+                      className="w-full bg-transparent text-sm text-gray-600 outline-none pr-16"
+                    />
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(inviteLink);
+                        alert("Link copied to clipboard!");
+                      }}
+                      className="absolute right-2 top-2 px-3 py-1 bg-white border border-gray-200 rounded text-xs font-bold text-gray-700 hover:bg-gray-50"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setIsInviteModalOpen(false)}
+                    className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg transition-colors"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

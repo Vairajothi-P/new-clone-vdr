@@ -10,6 +10,7 @@ function TeaserContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const projectName = searchParams.get('project') || "Project Aurora";
+  const isApproved = searchParams.get('approved') === 'true';
 
   const handleRemoveFromMarketplace = () => {
     if (confirm("Are you sure you want to remove this teaser from the marketplace?")) {
@@ -34,46 +35,57 @@ function TeaserContent() {
     setRequestForm({ ...requestForm, [e.target.name]: e.target.value });
   };
 
-  const handleSubmitRequest = () => {
+  const handleSubmitRequest = async () => {
     if (!requestForm.fullName || !requestForm.company) {
       alert("Please provide at least a Full Name and Company.");
       return;
     }
-    const requests = JSON.parse(localStorage.getItem('dms_all_requests') || "[]");
 
-    // Format date like 'Oct 24, 2023'
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const projectId = searchParams.get('projectId');
+    const buyerId = localStorage.getItem('userId');
 
-    requests.push({
-      ...requestForm,
-      id: Date.now(),
-      projectName,
-      dateSubmitted: dateStr,
-      status: "PENDING"
-    });
+    if (!projectId || !buyerId) {
+      alert("Missing project ID or user ID. Please login as a buyer.");
+      return;
+    }
 
-    localStorage.setItem('dms_all_requests', JSON.stringify(requests));
+    try {
+      const res = await fetch('/api/dms/proposals/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          buyerId,
+          message: requestForm.message,
+          company: requestForm.company,
+          jobTitle: requestForm.jobTitle,
+          investorType: requestForm.investorType,
+          investmentRange: requestForm.investmentRange,
+          fullName: requestForm.fullName
+        })
+      });
 
-    // Also save in project-specific list for backward compatibility
-    const projRequests = JSON.parse(localStorage.getItem(`dms_requests_${projectName}`) || "[]");
-    projRequests.push({ ...requestForm, id: Date.now(), projectName, dateSubmitted: dateStr, status: "PENDING" });
-    localStorage.setItem(`dms_requests_${projectName}`, JSON.stringify(projRequests));
-
-    setIsModalOpen(false);
-
-    // Reset form
-    setRequestForm({
-      fullName: "",
-      email: "",
-      company: "",
-      jobTitle: "",
-      investorType: "Select type",
-      investmentRange: "Select range",
-      message: ""
-    });
-
-    router.push('/dms/tracker');
+      if (res.ok) {
+        setIsModalOpen(false);
+        setRequestForm({
+          fullName: "",
+          email: "",
+          company: "",
+          jobTitle: "",
+          investorType: "Select type",
+          investmentRange: "Select range",
+          message: ""
+        });
+        router.push('/dms/tracker');
+      } else if (res.status === 409) {
+        alert("You have already requested access for this deal.");
+      } else {
+        alert("Failed to submit request. Please try again.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error submitting request");
+    }
   };
 
   return (
@@ -83,9 +95,15 @@ function TeaserContent() {
       <div className="bg-[#fafafa]">
         <div className="max-w-5xl mx-auto px-6 py-16 md:py-20">
           {/* Back Button */}
-          <Link href="/dms/marketplace" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors mb-12">
-            <FaArrowLeft className="mr-2" /> Back to marketplace
-          </Link>
+          {isApproved ? (
+            <Link href="/dms/workspace" className="inline-flex items-center text-sm font-medium text-[#b48629] hover:text-[#916b20] transition-colors mb-12">
+              <FaArrowLeft className="mr-2" /> Back to workspace
+            </Link>
+          ) : (
+            <Link href="/dms/marketplace" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors mb-12">
+              <FaArrowLeft className="mr-2" /> Back to marketplace
+            </Link>
+          )}
 
           {/* Top Badges */}
           <div className="flex items-center gap-4 mb-6">
@@ -120,13 +138,33 @@ function TeaserContent() {
 
             <div className="lg:col-span-1">
               <div className="bg-white border border-gray-200 p-6 rounded-sm shadow-sm">
-                <div className="flex items-center gap-2 mb-4 text-gray-900">
-                  <FaLock className="text-[#b48629]" />
-                  <h3 className="text-xs font-bold tracking-widest uppercase">Identity Protected</h3>
-                </div>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  Company identity and detailed transaction information are available only to qualified buyers.
-                </p>
+                {isApproved ? (
+                  <>
+                    <div className="flex items-center gap-2 mb-4 text-[#00c875]">
+                      <FaCheck />
+                      <h3 className="text-xs font-bold tracking-widest uppercase">Access Approved</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed mb-6">
+                      You have full access to view confidential deal documents and participate in the transaction.
+                    </p>
+                    <button
+                      onClick={() => alert("Redirecting to Virtual Data Room (Documents)...")}
+                      className="w-full py-3 bg-[#00c875] hover:bg-[#00a863] text-white text-sm font-bold rounded transition-colors"
+                    >
+                      Open Data Room
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 mb-4 text-gray-900">
+                      <FaLock className="text-[#b48629]" />
+                      <h3 className="text-xs font-bold tracking-widest uppercase">Identity Protected</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      Company identity and detailed transaction information are available only to qualified buyers.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -215,17 +253,21 @@ function TeaserContent() {
                   <span className="text-sm font-bold text-gray-900 text-right">Available upon<br />qualified access</span>
                 </div>
 
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="w-full py-3 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded transition-colors mb-4"
-                >
-                  Request Access
-                </button>
+                {!isApproved && (
+                  <>
+                    <button
+                      onClick={() => setIsModalOpen(true)}
+                      className="w-full py-3 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded transition-colors mb-4"
+                    >
+                      Request Access
+                    </button>
 
-                <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-                  <svg className="w-3 h-3 text-[#00c875]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                  <span>Controlled seller approval</span>
-                </div>
+                    <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                      <svg className="w-3 h-3 text-[#00c875]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      <span>Controlled seller approval</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

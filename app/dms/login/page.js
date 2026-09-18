@@ -8,15 +8,59 @@ import { FaArrowLeft } from "react-icons/fa";
 export default function DMSLogin() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate login and redirect to workspace
-    setTimeout(() => {
-      router.push('/dms/workspace');
-    }, 1000);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Login failed');
+      }
+
+      const { data } = await res.json();
+      
+      localStorage.setItem('userRole', data.dmsRole || 'buyer');
+      localStorage.setItem('companyId', data.company_id);
+      localStorage.setItem('userId', data.id);
+      localStorage.setItem('userName', data.name || 'User');
+
+      if (data.dmsRole === 'buyer') {
+        try {
+          const dealsRes = await fetch(`/api/dms/buyer-deals?buyerId=${data.id}`);
+          const dealsData = await dealsRes.json();
+          if (dealsData.deals && dealsData.deals.length > 0) {
+            // Check if they have ANY deal that was created from a direct invite (known buyer)
+            // A direct invite deal will not have a proposalId attached.
+            const hasDirectInviteDeals = dealsData.deals.some(deal => !deal.proposalId);
+            
+            if (hasDirectInviteDeals) {
+              router.push('/dms/workspace');
+              return;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to check buyer deals", e);
+        }
+        // If they only have deals from proposals (unknown buyer), or no deals at all, go to marketplace
+        router.push('/dms/marketplace');
+      } else {
+        router.push('/dms/workspace');
+      }
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -76,7 +120,7 @@ export default function DMSLogin() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Work Email</label>
-              <input type="email" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="john@company.com" required disabled={isSubmitting} />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="john@company.com" required disabled={isSubmitting} />
             </div>
             
             <div>
@@ -84,7 +128,7 @@ export default function DMSLogin() {
                 <label className="block text-sm font-semibold text-gray-700">Password</label>
                 <a href="#" className="text-sm font-medium text-[#3b82f6] hover:underline">Forgot password?</a>
               </div>
-              <input type="password" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="••••••••" required disabled={isSubmitting} />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="••••••••" required disabled={isSubmitting} />
             </div>
             
             <button 

@@ -12,29 +12,81 @@ export default function WorkspaceDashboard() {
   const [projectName, setProjectName] = useState("");
   const [projectDesc, setProjectDesc] = useState("");
   const [dealType, setDealType] = useState("Merge");
+  const [userRole, setUserRole] = useState('seller');
   const router = useRouter();
 
   useEffect(() => {
-    const saved = localStorage.getItem('dms_projects');
-    if (saved) {
-      try {
-        setWorkspaces(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse projects", e);
-      }
+    const roleItem = localStorage.getItem('userRole');
+    if (!roleItem) {
+      router.push('/dms/login');
+      return;
     }
+    const role = roleItem.toLowerCase();
+    setUserRole(role);
+
+    const fetchData = async () => {
+      if (role === 'buyer') {
+        const userId = localStorage.getItem('userId');
+        if (!userId) return;
+        try {
+          const res = await fetch(`/api/dms/buyer-deals?buyerId=${userId}`);
+          if (res.ok) {
+            const data = await res.json();
+            setWorkspaces(data.deals || []);
+          }
+        } catch (error) {
+          console.error("Failed to fetch buyer deals", error);
+        }
+      } else {
+        const companyId = localStorage.getItem('companyId');
+        if (!companyId) return;
+
+        try {
+          const res = await fetch(`/api/dms/projects?companyId=${companyId}`);
+          if (res.ok) {
+            const data = await res.json();
+            setWorkspaces(data.projects || []);
+          }
+        } catch (error) {
+          console.error("Failed to fetch projects", error);
+        }
+      }
+    };
+    fetchData();
   }, []);
 
-  const handleCreateProject = (e) => {
+  const handleCreateProject = async (e) => {
     e.preventDefault();
+    const companyId = localStorage.getItem('companyId');
+    if (!companyId) {
+      alert("User not logged in or Company ID missing");
+      return;
+    }
+
     if (projectName.trim()) {
-      const updatedWorkspaces = [...workspaces, { name: projectName, status: "ACTIVE", dealType: dealType }];
-      setWorkspaces(updatedWorkspaces);
-      localStorage.setItem('dms_projects', JSON.stringify(updatedWorkspaces));
-      setIsModalOpen(false);
-      setProjectName("");
-      setProjectDesc("");
-      setDealType("Merge");
+      try {
+        const res = await fetch('/api/dms/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: projectName, companyId })
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          // Map backend dealType to frontend state if we add dealType to DB later.
+          // For now, API just returns { project: ... } with status ACTIVE.
+          setWorkspaces([...workspaces, { ...data.project, dealType }]);
+          setIsModalOpen(false);
+          setProjectName("");
+          setProjectDesc("");
+          setDealType("Merge");
+        } else {
+          alert("Failed to create project");
+        }
+      } catch (error) {
+        console.error("Error creating project", error);
+        alert("Error creating project");
+      }
     }
   };
 
@@ -43,24 +95,35 @@ export default function WorkspaceDashboard() {
     setWorkspaces(updatedWorkspaces);
     localStorage.setItem('dms_projects', JSON.stringify(updatedWorkspaces));
 
-    // Remove related teasers from the marketplace
-    const marketTeasers = JSON.parse(localStorage.getItem('dms_market_teasers') || '[]');
-    const updatedTeasers = marketTeasers.filter(teaser => teaser.projectName !== name);
-    localStorage.setItem('dms_market_teasers', JSON.stringify(updatedTeasers));
+    // Related teasers are automatically deleted via DB cascade constraint
+    // No local storage cleanup needed anymore
 
     setOpenDropdownId(null);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('companyId');
+    localStorage.removeItem('userName');
+    router.push('/dms/login');
   };
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] relative p-8 md:p-16 flex justify-center items-start font-sans">
 
       {/* Top Right Buttons */}
-      <div className="absolute top-8 right-8 flex items-center gap-3">
-        <Link href="/dms/login">
-          <button className="w-10 h-10 rounded-full border border-red-200 bg-white text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors shadow-sm">
-            <FaPowerOff className="text-sm" />
-          </button>
-        </Link>
+      <div className="absolute top-8 right-8 flex items-center gap-4">
+        {(userRole === 'buyer' || userRole.includes('guest')) && (
+          <Link href="/dms/marketplace">
+            <button className="px-5 py-2 bg-white border border-[#00c875] text-[#00c875] rounded-full text-sm font-bold hover:bg-[#00c875] hover:text-white transition-all shadow-sm flex items-center gap-2">
+              <FaDatabase /> Marketplace
+            </button>
+          </Link>
+        )}
+        <button onClick={handleLogout} className="w-10 h-10 rounded-full border border-red-200 bg-white text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors shadow-sm" title="Logout">
+          <FaPowerOff className="text-sm" />
+        </button>
       </div>
 
       {/* Main Container */}
@@ -69,8 +132,8 @@ export default function WorkspaceDashboard() {
         {/* Header Row */}
         <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-gray-900">Vishwa Tech</h1>
-            <span className="px-3 py-1 bg-[#e6fbf2] text-[#00c875] text-xs font-bold rounded-full tracking-wide">Seller</span>
+            <h1 className="text-xl font-bold text-gray-900">{userRole.toLowerCase() === 'buyer' ? 'Buyer Workspace' : 'Vishwa Tech'}</h1>
+            <span className="px-3 py-1 bg-[#e6fbf2] text-[#00c875] text-xs font-bold rounded-full tracking-wide capitalize">{userRole}</span>
           </div>
 
           <div className="flex items-center gap-8">
@@ -108,21 +171,25 @@ export default function WorkspaceDashboard() {
         <div className="p-8 pb-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
 
-            {/* Add New Workspace Card */}
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="h-44 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center gap-3 hover:border-gray-400 hover:bg-gray-50 transition-all group"
-            >
-              <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center text-xl shadow-md group-hover:scale-105 transition-transform">
-                <FaPlus />
-              </div>
-              <span className="text-[13px] text-gray-500 font-medium">Add New Project</span>
-            </button>
+            {/* Add New Workspace Card - Sellers Only */}
+            {userRole !== 'buyer' && !userRole.includes('guest') && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="h-44 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center gap-3 hover:border-gray-400 hover:bg-gray-50 transition-all group"
+              >
+                <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center text-xl shadow-md group-hover:scale-105 transition-transform">
+                  <FaPlus />
+                </div>
+                <span className="text-[13px] text-gray-500 font-medium">Add New Project</span>
+              </button>
+            )}
 
             {/* Existing Workspaces */}
             {workspaces.map((workspace, index) => (
               <div
-                onClick={() => router.push(`/dms/deal?project=${encodeURIComponent(workspace.name)}`)}
+                onClick={() => {
+                  router.push(`/dms/deal?projectId=${workspace.projectId || workspace.id}&projectName=${encodeURIComponent(workspace.name)}`);
+                }}
                 key={index}
                 className="block cursor-pointer"
               >
@@ -150,7 +217,7 @@ export default function WorkspaceDashboard() {
                         <FaEllipsisV className="text-[11px]" />
                       </button>
 
-                      {openDropdownId === workspace.name && (
+                      {openDropdownId === workspace.name && userRole !== 'buyer' && !userRole.includes('guest') && (
                         <div className="absolute right-0 mt-1 w-24 bg-white rounded-md shadow-lg border border-gray-100 z-10 overflow-hidden">
                           <button
                             onClick={(e) => {

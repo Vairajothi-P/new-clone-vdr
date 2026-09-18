@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { FaArrowLeft, FaSearch, FaEllipsisV, FaDownload, FaTimes, FaRegClock, FaFolder, FaPowerOff } from "react-icons/fa";
+import { FaArrowLeft, FaSearch, FaEllipsisV, FaDownload, FaTimes, FaRegClock, FaFolder, FaFolderOpen, FaPowerOff, FaLock } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import NDAModal from "../../../components/NDAModal";
 
@@ -19,9 +19,26 @@ export default function TrackerPage() {
 
   useEffect(() => {
     setIsMounted(true);
-    // Load requests, sort by newest (descending ID)
-    const savedRequests = JSON.parse(localStorage.getItem('dms_all_requests') || "[]");
-    setRequests(savedRequests.sort((a, b) => b.id - a.id));
+    const role = localStorage.getItem('userRole');
+    if (!role) {
+      router.push('/dms/login');
+      return;
+    }
+    const fetchRequests = async () => {
+      const buyerId = localStorage.getItem('userId');
+      if (!buyerId) return;
+      try {
+        const res = await fetch(`/api/dms/tracker?buyerId=${buyerId}`);
+        if (res.ok) {
+          const data = await res.json();
+          // Load requests, sort by newest (descending ID)
+          setRequests((data.requests || []).sort((a, b) => b.id - a.id));
+        }
+      } catch (err) {
+        console.error("Failed to fetch tracker requests:", err);
+      }
+    };
+    fetchRequests();
   }, []);
 
 
@@ -49,6 +66,14 @@ export default function TrackerPage() {
 
   const pendingCount = requests.filter(r => r.status?.toLowerCase() === 'pending').length;
 
+  const handleLogout = () => {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('companyId');
+    localStorage.removeItem('userName');
+    router.push('/dms/login');
+  };
+
   if (!isMounted) return null;
 
   return (
@@ -73,14 +98,12 @@ export default function TrackerPage() {
 
         {/* Right side - Auth */}
         <div className="hidden md:flex items-center gap-4">
-            <Link href="/dms/login">
               <button
-                onClick={() => localStorage.removeItem('userRole')}
+                onClick={handleLogout}
                 className="text-white hover:text-red-400 border border-white/30 hover:border-red-400 px-6 py-2 rounded-full font-medium transition-colors whitespace-nowrap flex items-center gap-2"
               >
                 <FaPowerOff /> Logout
               </button>
-            </Link>
         </div>
       </nav>
 
@@ -144,7 +167,7 @@ export default function TrackerPage() {
                   <th className="py-4 px-6 font-bold">Company & Title</th>
                   <th className="py-4 px-6 font-bold">Investor Type</th>
                   <th className="py-4 px-6 font-bold">Status</th>
-                  <th className="py-4 px-6 font-bold text-center">Actions</th>
+                  <th className="py-4 px-6 font-bold text-center">Deal</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -190,52 +213,26 @@ export default function TrackerPage() {
                           {req.status}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-center text-gray-400">
-                        <div className="relative inline-block text-left">
+                      <td className="py-4 px-6 text-center">
+                        {req.status?.toLowerCase() === 'approved' || req.status?.toLowerCase() === 'accepted' ? (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenDropdownId(openDropdownId === req.id ? null : req.id);
+                            onClick={() => {
+                              setNdaTarget({
+                                projectName: req.projectName,
+                                dealName: req.company
+                              });
+                              setShowNDAModal(true);
                             }}
-                            className="hover:text-gray-900 p-2"
+                            title="Open Deal"
+                            className="p-2 text-[#00c875] hover:bg-[#00c875]/10 rounded-full transition-colors flex items-center justify-center mx-auto"
                           >
-                            <FaEllipsisV />
+                            <FaFolderOpen className="text-lg" />
                           </button>
-                          
-                          {openDropdownId === req.id && (
-                            <div className="absolute right-0 bottom-full mb-2 w-32 bg-white rounded-md shadow-lg border border-gray-100 z-50 overflow-hidden">
-                              {req.status === 'Approved' && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setNdaTarget({
-                                      projectName: req.projectName,
-                                      dealName: req.company
-                                    });
-                                    setOpenDropdownId(null);
-                                    setShowNDAModal(true);
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-sm text-[var(--brand)] hover:bg-[var(--brand)]/10 transition-colors font-medium flex items-center gap-2 border-b border-gray-100"
-                                >
-                                  <FaFolder className="text-xs" /> Open Deal
-                                </button>
-                              )}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // Update state and local storage
-                                  const updatedReqs = requests.filter(r => r.id !== req.id);
-                                  setRequests(updatedReqs);
-                                  localStorage.setItem('dms_all_requests', JSON.stringify(updatedReqs));
-                                  setOpenDropdownId(null);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        ) : (
+                          <div className="p-2 text-gray-300 flex items-center justify-center mx-auto" title="Locked until approved">
+                            <FaLock className="text-lg" />
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))

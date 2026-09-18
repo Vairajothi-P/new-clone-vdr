@@ -9,5 +9,15 @@ if (!connectionString) {
 }
 
 // Disable prefetch as it is not supported for "Transaction" pool mode in Supabase
-export const client = postgres(connectionString, { prepare: false });
+let client;
+if (process.env.NODE_ENV !== "production") {
+  if (!globalThis.postgresClient) {
+    globalThis.postgresClient = postgres(connectionString, { prepare: false, max: 1 });
+  }
+  client = globalThis.postgresClient;
+} else {
+  client = postgres(connectionString, { prepare: false });
+}
+
+export { client };
 export const db = drizzle(client, { schema });

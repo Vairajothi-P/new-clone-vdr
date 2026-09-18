@@ -70,7 +70,7 @@ export default function MainSidebar() {
       const canAccessCommunication = perms?.some(p => p.can_access_communication);
       const canAccessControlAudits = perms?.some((p) => p.can_access_control_audits);
 
-      setHasGroupsAccess(!!canAccessGroups);
+      setHasGroupsAccess(!!canAccessGroups || sessionObj.role === 'guest_admin');
       setHasSettingsAccess(!!canAccessSettings);
       setHasQaAccess(!!canAccessQa);
       setHasDealsAccess(!!canAccessDeals);
