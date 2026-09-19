@@ -13,7 +13,30 @@ export default function Marketplace() {
 
   useEffect(() => {
     setIsMounted(true);
-    setUserRole(localStorage.getItem('userRole'));
+    
+    // Check 12 hours timeout
+    const loginTime = localStorage.getItem('loginTimestamp');
+    const role = localStorage.getItem('userRole');
+    
+    if (role && loginTime) {
+      const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+      if (Date.now() - parseInt(loginTime, 10) > TWELVE_HOURS) {
+        // Session expired
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('companyId');
+        localStorage.removeItem('userName');
+        localStorage.removeItem('loginTimestamp');
+        router.push('/dms/login');
+        return;
+      }
+    } else if (!role) {
+      // Not logged in
+      router.push('/dms/login');
+      return;
+    }
+
+    setUserRole(role);
     
     // Fetch active teasers from the database
     const fetchTeasers = async () => {
@@ -29,17 +52,18 @@ export default function Marketplace() {
     };
     
     fetchTeasers();
-  }, []);
+  }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem('userId');
     localStorage.removeItem('userRole');
     localStorage.removeItem('companyId');
     localStorage.removeItem('userName');
+    localStorage.removeItem('loginTimestamp');
     router.push('/dms/login');
   };
 
-  if (!isMounted) return null;
+  if (!isMounted || !userRole) return null;
 
   return (
     <main className={`${userRole ? 'h-screen overflow-hidden bg-[#f4f7f9] text-gray-900' : 'min-h-screen bg-[#0b1120] text-white'}`}>

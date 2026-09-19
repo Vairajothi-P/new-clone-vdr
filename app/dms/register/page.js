@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FaArrowLeft } from "react-icons/fa";
+import { FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function DMSRegister() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function DMSRegister() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [companyType, setCompanyType] = useState("");
   const [companyName, setCompanyName] = useState("");
 
@@ -112,54 +113,26 @@ export default function DMSRegister() {
     }
   };
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans">
-      {/* Left Panel */}
-      <div className="md:w-[45%] bg-[#0b1120] text-white p-10 md:p-16 flex flex-col justify-between">
-        <div>
-          <Link href="/dms" className="flex items-center text-gray-400 hover:text-white transition-colors group mb-12 w-fit">
+    <div className="h-screen bg-gray-100 flex items-center justify-center p-4 md:p-8 font-sans overflow-hidden">
+      <div className="w-full max-w-6xl h-[95vh] max-h-[900px] min-h-[500px] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
+        {/* Left Panel */}
+        <div className="relative md:w-[50%] lg:w-[45%] bg-[#0b1120] text-white p-10 md:p-16 flex flex-col justify-center">
+          <Link href="/dms" className="absolute top-10 left-10 md:top-16 md:left-16 flex items-center text-gray-400 hover:text-white transition-colors group w-fit">
             <FaArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
             <span className="font-medium">Back to DMS</span>
           </Link>
 
-          <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Join Secure DMS</h1>
-          <p className="text-gray-400 text-lg mb-12 leading-relaxed">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Join Secure DMS</h1>
+          <p className="text-gray-400 text-lg leading-relaxed">
             Create an account to browse confidential acquisition opportunities, execute NDAs, and manage end-to-end deal workflows in a single secure environment.
           </p>
-
-          <div className="space-y-8">
-            <div className="flex items-start gap-5">
-              <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 border border-white/10">
-                <i className="fas fa-search text-[#eab308] text-lg"></i>
-              </div>
-              <div>
-                <h4 className="font-semibold text-lg mb-1">Discover Deals</h4>
-                <p className="text-gray-400 leading-relaxed">Access exclusive private market opportunities tailored to your investment mandate.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-5">
-              <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 border border-white/10">
-                <i className="fas fa-shield-alt text-[#eab308] text-lg"></i>
-              </div>
-              <div>
-                <h4 className="font-semibold text-lg mb-1">Bank-grade Security</h4>
-                <p className="text-gray-400 leading-relaxed">Your identity and confidential documents are protected by enterprise-level encryption.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-16 pt-8 border-t border-white/10">
-          <div className="flex items-center gap-3">
-            <i className="fas fa-shield-alt text-[#3b82f6] text-2xl"></i>
-            <span className="font-bold text-2xl tracking-tight">Secure DMS</span>
-          </div>
         </div>
       </div>
 
       {/* Right Panel - Form */}
-      <div className="md:w-[55%] flex items-center justify-center p-8 md:p-12 lg:p-24 bg-white">
-        <div className="w-full max-w-lg">
+      <div className="md:w-[50%] lg:w-[55%] flex p-8 md:p-12 lg:p-16 bg-white overflow-y-auto">
+        <div className="w-full max-w-lg m-auto py-8">
           {!isSubmitting && (
             <div className="mb-10 text-center md:text-left">
               <h2 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">
@@ -279,7 +252,24 @@ export default function DMSRegister() {
               {/* 6. Password */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white" placeholder="••••••••" required minLength={8} />
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] outline-none transition-all bg-gray-50 focus:bg-white pr-10" 
+                    placeholder="••••••••" 
+                    required 
+                    minLength={8} 
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+                  </button>
+                </div>
                 <p className="text-xs text-gray-500 mt-2">Must be at least 8 characters long.</p>
               </div>
 
@@ -296,6 +286,7 @@ export default function DMSRegister() {
             </form>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

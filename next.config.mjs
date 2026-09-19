@@ -4,6 +4,15 @@ const nextConfig = {
     "localhost",
     "192.168.*.*",
   ],
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/dms',
+        permanent: true,
+      },
+    ]
+  },
 };
 
 export default nextConfig;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FaPowerOff, FaCog, FaDatabase, FaPlus, FaEllipsisV, FaShieldAlt, FaTimes, FaSave, FaArrowLeft, FaBell, FaCheck, FaFolder, FaFileInvoiceDollar } from "react-icons/fa";
+import { FaPowerOff, FaCog, FaDatabase, FaPlus, FaEllipsisV, FaShieldAlt, FaTimes, FaSave, FaArrowLeft, FaBell, FaCheck, FaFolder, FaFileInvoiceDollar, FaTrash } from "react-icons/fa";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import NDAModal from "../../../components/NDAModal";
@@ -30,6 +30,13 @@ export default function DealDashboard() {
   const [activeTab, setActiveTab] = useState('teaser');
   const [userRole, setUserRole] = useState('seller');
   
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (projectId) {
+      sessionStorage.setItem(`deal_activeTab_${projectId}`, tab);
+    }
+  };
+
   // NDA Modal State
   const [showNDAModal, setShowNDAModal] = useState(false);
   const [ndaTarget, setNdaTarget] = useState(null);
@@ -58,11 +65,15 @@ export default function DealDashboard() {
     }
     const role = roleItem.toLowerCase();
     setUserRole(role);
-    if (role === 'buyer' || role.includes('guest')) {
+    
+    if (!projectId) return;
+
+    const savedTab = sessionStorage.getItem(`deal_activeTab_${projectId}`);
+    if (savedTab) {
+      setActiveTab(savedTab);
+    } else if (role === 'buyer' || role.includes('guest')) {
       setActiveTab('deals');
     }
-
-    if (!projectId) return;
 
     const userId = localStorage.getItem('userId');
     let url = `/api/dms/deals?projectId=${projectId}`;
@@ -154,7 +165,7 @@ export default function DealDashboard() {
     try {
       const res = await fetch(`/api/dms/deals?id=${id}`, { method: 'DELETE' });
       if (res.ok) {
-        const updatedDeals = deals.filter(deal => deal.id !== id);
+        const updatedDeals = deals.map(deal => deal.id === id ? { ...deal, status: 'trashed' } : deal);
         setDeals(updatedDeals);
         localStorage.setItem(`dms_deals_${projectName}`, JSON.stringify(updatedDeals));
         setOpenDropdownId(null);
@@ -263,21 +274,13 @@ export default function DealDashboard() {
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between py-6 z-40 shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
         <div>
           <div className="px-6 mb-8 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#303030] text-white flex items-center justify-center shadow-lg font-serif italic text-sm">
-              N
-            </div>
             <h2 className="text-xl font-bold text-gray-900 tracking-tight">{userRole === 'buyer' || userRole.includes('guest') ? 'Deal View' : 'Deal Setup'}</h2>
           </div>
 
           <nav className="flex flex-col gap-2 px-4">
-            <Link href="/dms/workspace" className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium transition-colors">
-              <FaFolder className="text-lg" />
-              <span>Project</span>
-            </Link>
-            
             {userRole !== 'buyer' && !userRole.includes('guest') && (
               <button
-                onClick={() => setActiveTab('teaser')}
+                onClick={() => handleTabChange('teaser')}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-colors ${activeTab === 'teaser' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
               >
                 <FaShieldAlt className="text-lg" />
@@ -285,7 +288,7 @@ export default function DealDashboard() {
               </button>
             )}
             <button
-              onClick={() => setActiveTab('deals')}
+              onClick={() => handleTabChange('deals')}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'deals' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
             >
               <FaDatabase className="text-lg" />
@@ -295,7 +298,7 @@ export default function DealDashboard() {
             {userRole !== 'buyer' && !userRole.includes('guest') && (
               <>
                 <button
-                  onClick={() => setActiveTab('proposals')}
+                  onClick={() => handleTabChange('proposals')}
                   className={`flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-colors w-full ${activeTab === 'proposals' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
                 >
                   <div className="flex items-center gap-3">
@@ -309,7 +312,7 @@ export default function DealDashboard() {
                   )}
                 </button>
                 <button
-                  onClick={() => setActiveTab('bidding')}
+                  onClick={() => handleTabChange('bidding')}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'bidding' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
                 >
                   <FaFileInvoiceDollar className="text-lg" />
@@ -322,6 +325,16 @@ export default function DealDashboard() {
 
         {/* Bottom Actions */}
         <div className="px-4 flex flex-col gap-2 relative">
+          {userRole !== 'buyer' && !userRole.includes('guest') && (
+            <button
+              onClick={() => handleTabChange('trash')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'trash' ? 'bg-[#00c875]/10 text-[#00c875]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+            >
+              <FaTrash className="text-lg" />
+              <span>Trash</span>
+            </button>
+          )}
+          
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 font-medium transition-colors">
             <FaPowerOff className="text-lg" />
             <span>Logout</span>
@@ -330,18 +343,35 @@ export default function DealDashboard() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto p-8 relative flex justify-center items-start">
+      <main className="flex-1 overflow-y-auto p-8 relative flex flex-col items-center justify-start">
+
+        {/* Top Header outside card */}
+        <div className="w-full max-w-5xl flex items-center justify-between mb-4 mt-2">
+          <Link href="/dms/workspace" className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors font-medium group">
+            <div className="w-8 h-8 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm group-hover:-translate-x-1 transition-transform">
+              <FaArrowLeft className="text-sm" />
+            </div>
+            Back to Workspace
+          </Link>
+
+          {activeTab === 'deals' && userRole !== 'buyer' && (
+            <button
+              onClick={() => setIsAddDealModalOpen(true)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#0b1120] hover:bg-gray-800 text-white text-sm font-bold rounded-lg shadow-md transition-all hover:-translate-y-0.5"
+            >
+              <FaPlus className="text-xs" />
+              Create Deal
+            </button>
+          )}
+        </div>
 
         {/* Main Container */}
-        <div className="w-full max-w-5xl min-h-[60vh] bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col mt-4">
+        <div className="w-full max-w-5xl min-h-[60vh] bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col">
 
           {/* Header Row */}
           {activeTab === 'deals' && (
             <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <Link href="/dms/workspace" className="text-gray-400 hover:text-gray-600 transition-colors mr-2">
-                  <FaArrowLeft />
-                </Link>
                 <h1 className="text-xl font-bold text-gray-900">{projectName}</h1>
                 <span className="px-3 py-1 bg-[#e6fbf2] text-[#00c875] text-xs font-bold rounded-full tracking-wide">{userRole === 'buyer' ? 'Deal View' : 'Deal Setup'}</span>
               </div>
@@ -482,23 +512,10 @@ export default function DealDashboard() {
               </div>
             )}
 
-            {activeTab === 'deals' && (
+            {(activeTab === 'deals' || activeTab === 'trash') && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {/* Add New Deal Card */}
-                {userRole !== 'buyer' && (
-                  <button
-                    onClick={() => setIsAddDealModalOpen(true)}
-                    className="h-44 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center gap-3 hover:border-gray-400 hover:bg-gray-50 transition-all group"
-                  >
-                    <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center text-xl shadow-md group-hover:scale-105 transition-transform">
-                      <FaPlus />
-                    </div>
-                    <span className="text-[13px] text-gray-500 font-medium">Add New Deal</span>
-                  </button>
-                )}
-
                 {/* Existing Deals */}
-                {deals.map((deal) => (
+                {deals.filter(d => activeTab === 'trash' ? d.status === 'trashed' : d.status !== 'trashed').map((deal) => (
                   <div
                     key={deal.id}
                     onClick={() => {
@@ -524,7 +541,7 @@ export default function DealDashboard() {
                       </span>
 
                       <div className="relative">
-                        {userRole !== 'buyer' && (
+                        {userRole !== 'buyer' && activeTab !== 'trash' && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -536,7 +553,7 @@ export default function DealDashboard() {
                           </button>
                         )}
 
-                        {openDropdownId === deal.id && (
+                        {openDropdownId === deal.id && activeTab !== 'trash' && (
                           <div className="absolute right-0 mt-1 w-24 bg-white rounded-md shadow-lg border border-gray-100 z-10 overflow-hidden">
                             <button
                               onClick={(e) => {

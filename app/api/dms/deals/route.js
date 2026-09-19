@@ -73,7 +73,7 @@ export async function DELETE(req) {
       return NextResponse.json({ error: 'Missing deal ID' }, { status: 400 });
     }
 
-    await db.delete(dmsDeals).where(eq(dmsDeals.id, dealId));
+    await db.update(dmsDeals).set({ status: 'trashed' }).where(eq(dmsDeals.id, dealId));
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

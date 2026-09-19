@@ -188,7 +188,9 @@ export default function WorkspaceDashboard() {
             {workspaces.map((workspace, index) => (
               <div
                 onClick={() => {
-                  router.push(`/dms/deal?projectId=${workspace.projectId || workspace.id}&projectName=${encodeURIComponent(workspace.name)}`);
+                  const pid = workspace.projectId || workspace.id;
+                  sessionStorage.removeItem(`deal_activeTab_${pid}`);
+                  router.push(`/dms/deal?projectId=${pid}&projectName=${encodeURIComponent(workspace.name)}`);
                 }}
                 key={index}
                 className="block cursor-pointer"
@@ -206,31 +208,33 @@ export default function WorkspaceDashboard() {
                       )}
                     </div>
 
-                    <div className="relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenDropdownId(openDropdownId === workspace.name ? null : workspace.name);
-                        }}
-                        className="text-gray-400 hover:text-gray-600 p-1 opacity-60 hover:opacity-100"
-                      >
-                        <FaEllipsisV className="text-[11px]" />
-                      </button>
+                    {userRole !== 'buyer' && !userRole.includes('guest') && (
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(openDropdownId === workspace.name ? null : workspace.name);
+                          }}
+                          className="text-gray-400 hover:text-gray-600 p-1 opacity-60 hover:opacity-100"
+                        >
+                          <FaEllipsisV className="text-[11px]" />
+                        </button>
 
-                      {openDropdownId === workspace.name && userRole !== 'buyer' && !userRole.includes('guest') && (
-                        <div className="absolute right-0 mt-1 w-24 bg-white rounded-md shadow-lg border border-gray-100 z-10 overflow-hidden">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteProject(workspace.name);
-                            }}
-                            className="w-full text-left px-4 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors font-medium"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                        {openDropdownId === workspace.name && (
+                          <div className="absolute right-0 mt-1 w-24 bg-white rounded-md shadow-lg border border-gray-100 z-10 overflow-hidden">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteProject(workspace.name);
+                              }}
+                              className="w-full text-left px-4 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors font-medium"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col items-center justify-center flex-1 gap-2 pb-2">
